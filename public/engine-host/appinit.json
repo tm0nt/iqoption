@@ -1,0 +1,36 @@
+{
+  "lang": {
+    "en_US": { "name": "en_US", "title": "English", "selected": true, "shortname": "en" },
+    "pt_PT": { "name": "pt_PT", "title": "Português", "selected": false, "shortname": "pt" },
+    "es_ES": { "name": "es_ES", "title": "Español", "selected": false, "shortname": "es" }
+  },
+  "socials": {},
+  "currencies": [
+    { "id": 1, "name": "USD", "mask": "$%s", "symbol": "$", "is_default": true, "min_investment": 1 },
+    { "id": 2, "name": "EUR", "mask": "€%s", "symbol": "€", "is_default": false, "min_investment": 1 },
+    { "id": 3, "name": "BRL", "mask": "R$ %s", "symbol": "R$", "is_default": false, "min_investment": 1 }
+  ],
+  "language_stamp": "1",
+  "deposit_amount": 0,
+  "deposit_count": 0,
+  "country": 30,
+  "is_regulated": false,
+  "is_activated": true,
+  "flag": "BR",
+  "feed_top_traders_post_ussr_countries": [],
+  "default_group_id": 1,
+  "brand": { "name": "Local", "image": "", "icon": "", "turnstile_site_key": "" },
+  "company": {
+    "id": 1,
+    "name": "Local Development",
+    "domain": "localhost",
+    "subdomain": "",
+    "email": "dev@localhost",
+    "terms": "",
+    "privacy_policy": "",
+    "aml": "",
+    "payment_policy": "",
+    "order_execution_policy": "",
+    "general_fees": ""
+  }
+}

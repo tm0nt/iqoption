@@ -1,0 +1,18 @@
+{
+  "id": 1,
+  "name": "Local Development",
+  "is_regulated": false,
+  "address": "localhost",
+  "terms": "http://localhost:3000",
+  "privacy_policy": "http://localhost:3000",
+  "domain": "localhost",
+  "subdomain": "",
+  "aml": "http://localhost:3000",
+  "payment_policy": "http://localhost:3000",
+  "order_execution_policy": "http://localhost:3000",
+  "email": "dev@localhost",
+  "general_fees": "http://localhost:3000",
+  "tournaments_terms": "",
+  "islamic_terms": "",
+  "is_promo": false
+}

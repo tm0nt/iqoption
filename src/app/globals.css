@@ -5,6 +5,36 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  /* --- Avalon (trade.avalonbroker.com) palette — exact values from getComputedStyle --- */
+  --color-avalon-primary: #09af8e;
+  --color-avalon-primary-hover: #00aa89;
+  --color-avalon-signup-hover: #009f7f;
+  --color-avalon-text: #5a595b;
+  --color-avalon-text-strong: #1f1f21;
+  --color-avalon-placeholder: #757575;
+  --color-avalon-border: #919091;
+  --color-avalon-border-focus: #232425;
+  --color-avalon-border-muted: #acabac;
+  --color-avalon-surface: #fbf9fa;
+  --color-avalon-surface-hover: #f5f3f4;
+  --color-avalon-info: #0063b3;
+  --font-avalon: var(--font-montserrat), "Montserrat", sans-serif;
+  --shadow-avalon: 0 0 16px 1px rgb(0 0 0 / 0.05);
+  /* --- Avalon traderoom (WebGL app, measured from 1:1 screenshots) --- */
+  --color-tr-bg: #000000;
+  --color-tr-surface: #17181a;
+  --color-tr-surface-2: #131416;
+  --color-tr-bar: #2c2d31;
+  --color-tr-hover: #212123;
+  --color-tr-line: #2b2b2d;
+  --color-tr-line-strong: #484848;
+  --color-tr-text: #ffffff;
+  --color-tr-muted: #8b8c8e;
+  --color-tr-dim: #6a6b6d;
+  --color-tr-buy: #09af8e;
+  --color-tr-sell: #f6465d;
+  --color-tr-support: #f94b64;
+  --color-tr-gold: #f29423;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
@@ -127,4 +157,105 @@
   html {
     @apply font-sans;
   }
+}
+
+/* ---------------------------------------------------------------------------
+   Avalon login clone — page-scoped styles.
+   Everything lives under .avalon-root so the shadcn tokens above and any other
+   route in this app are untouched.
+   --------------------------------------------------------------------------- */
+.avalon-root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  background-color: #fff;
+  color: var(--color-avalon-text);
+  font-family: var(--font-avalon);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 23.2px;
+}
+
+/* The input frame darkens while focused and stays dark once the field has a value,
+   matching `:focus-within, :not(:placeholder-shown)` on the live site. */
+.avalon-field {
+  border: 1px solid var(--color-avalon-border);
+  border-radius: 4px;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+.avalon-field:focus-within,
+.avalon-field:has(input:not(:placeholder-shown)) {
+  border-color: var(--color-avalon-border-focus);
+}
+/* The register phone control is a split field: the dial select keeps only its left
+   corners and the number input only its right ones, so the shared edge is one hairline. */
+.avalon-field-start {
+  border-radius: 4px 0 0 4px;
+}
+.avalon-field-end {
+  border-radius: 0 4px 4px 0;
+}
+
+.avalon-field input::placeholder {
+  color: var(--color-avalon-placeholder);
+  opacity: 1;
+}
+
+/* Language dropdown: the live panel transitions opacity and transform on different
+   durations. Tailwind v4 emits its translate utilities via the `translate` property,
+   so both are named here rather than relying on a `transition-[...]` utility. */
+.avalon-dropdown {
+  transition:
+    opacity 0.15s,
+    transform 0.2s,
+    translate 0.2s;
+}
+
+/* "or use a social account" — a 1px rule behind a white-backed label. */
+.avalon-divider::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  border-bottom: 1px solid var(--color-avalon-border-muted);
+  transform: translateY(-1px);
+}
+
+/* ---------------------------------------------------------------------------
+   Avalon traderoom clone.
+   The original is a single WebGL canvas, so these values were measured from
+   1:1 screenshots rather than read from the DOM. Structural edges are exact
+   (±1px); colours are sampled and snapped to the brand palette already
+   extracted exactly from the auth pages.
+   --------------------------------------------------------------------------- */
+.traderoom-root {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  overflow: hidden;
+  background-color: var(--color-tr-bg);
+  color: var(--color-tr-text);
+  font-family: var(--font-avalon);
+  font-size: 12px;
+  line-height: 1.3;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Thin dark scrollbars, matching the canvas app's own. */
+.traderoom-root *::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.traderoom-root *::-webkit-scrollbar-track {
+  background: transparent;
+}
+.traderoom-root *::-webkit-scrollbar-thumb {
+  background: #3a3b3f;
+  border-radius: 3px;
+}
+.traderoom-root *::-webkit-scrollbar-thumb:hover {
+  background: #4a4b4f;
 }

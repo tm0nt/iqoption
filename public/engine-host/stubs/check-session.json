@@ -1,0 +1,15 @@
+{
+  "id": "local-development-session",
+  "data": {
+    "user_id": 196366061,
+    "brand_id": 1,
+    "company_id": 1,
+    "country_id": 30,
+    "modified": 0,
+    "platform": 9,
+    "ip": "127.0.0.1",
+    "user_agent": "local"
+  },
+  "expires_at": 4102444800,
+  "expires_cache_at": 4102444800
+}

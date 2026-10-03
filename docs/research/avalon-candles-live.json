@@ -1,0 +1,1437 @@
+{
+ "note": "Captured from a live trade.avalonbroker.com traderoom. Candle frames carry no account data.",
+ "requests": [
+  {
+   "name": "get-first-candles",
+   "version": "1.0",
+   "body": {
+    "active_id": 2270,
+    "split_normalization": true
+   }
+  },
+  {
+   "name": "get-first-candles",
+   "version": "1.0",
+   "body": {
+    "active_id": 1972,
+    "split_normalization": true
+   }
+  },
+  {
+   "name": "get-first-candles",
+   "version": "1.0",
+   "body": {
+    "active_id": 2516,
+    "split_normalization": true
+   }
+  },
+  {
+   "name": "get-first-candles",
+   "version": "1.0",
+   "body": {
+    "active_id": 2270,
+    "split_normalization": true
+   }
+  },
+  {
+   "name": "candle-generated",
+   "params": {
+    "routingFilters": {
+     "active_id": 2270,
+     "size": 5
+    }
+   }
+  },
+  {
+   "name": "candle-generated",
+   "params": {
+    "routingFilters": {
+     "active_id": 1972,
+     "size": 1
+    }
+   }
+  },
+  {
+   "name": "candle-generated",
+   "params": {
+    "routingFilters": {
+     "active_id": 2516,
+     "size": 3600
+    }
+   }
+  },
+  {
+   "name": "get-candles",
+   "version": "2.0",
+   "body": {
+    "active_id": 2270,
+    "size": 5,
+    "from_id": 10069640,
+    "to_id": 10069689,
+    "split_normalization": true,
+    "only_closed": true
+   }
+  },
+  {
+   "name": "get-candles",
+   "version": "2.0",
+   "body": {
+    "active_id": 2270,
+    "size": 5,
+    "from_id": 10069639,
+    "to_id": 10069639,
+    "split_normalization": true,
+    "only_closed": true
+   }
+  },
+  {
+   "name": "get-candles",
+   "version": "2.0",
+   "body": {
+    "active_id": 1972,
+    "size": 1,
+    "from_id": 79982289,
+    "to_id": 79982531,
+    "split_normalization": true,
+    "only_closed": true
+   }
+  },
+  {
+   "name": "get-candles",
+   "version": "2.0",
+   "body": {
+    "active_id": 1972,
+    "size": 1,
+    "from_id": 79982131,
+    "to_id": 79982288,
+    "split_normalization": true,
+    "only_closed": true
+   }
+  },
+  {
+   "name": "get-candles",
+   "version": "2.0",
+   "body": {
+    "active_id": 1972,
+    "size": 1,
+    "from_id": 79982089,
+    "to_id": 79982130,
+    "split_normalization": true,
+    "only_closed": true
+   }
+  },
+  {
+   "name": "get-candles",
+   "version": "2.0",
+   "body": {
+    "active_id": 2516,
+    "size": 3600,
+    "from_id": 401,
+    "to_id": 414,
+    "split_normalization": true,
+    "only_closed": true
+   }
+  },
+  {
+   "name": "get-candles",
+   "version": "2.0",
+   "body": {
+    "active_id": 2516,
+    "size": 3600,
+    "from_id": 201,
+    "to_id": 400,
+    "split_normalization": true,
+    "only_closed": true
+   }
+  },
+  {
+   "name": "get-candles",
+   "version": "2.0",
+   "body": {
+    "active_id": 2516,
+    "size": 3600,
+    "from_id": 101,
+    "to_id": 200,
+    "split_normalization": true,
+    "only_closed": true
+   }
+  },
+  {
+   "name": "get-candles",
+   "version": "2.0",
+   "body": {
+    "active_id": 1972,
+    "size": 1,
+    "from_id": 79982601,
+    "to_id": 79982605,
+    "split_normalization": true,
+    "only_closed": true
+   }
+  },
+  {
+   "name": "get-candles",
+   "version": "2.0",
+   "body": {
+    "active_id": 1972,
+    "size": 1,
+    "from_id": 79982606,
+    "to_id": 79982607,
+    "split_normalization": true,
+    "only_closed": true
+   }
+  },
+  {
+   "name": "get-candles",
+   "version": "2.0",
+   "body": {
+    "active_id": 1972,
+    "size": 1,
+    "from_id": 79982607,
+    "to_id": 79982611,
+    "split_normalization": true,
+    "only_closed": true
+   }
+  },
+  {
+   "name": "get-candles",
+   "version": "2.0",
+   "body": {
+    "active_id": 1972,
+    "size": 1,
+    "from_id": 79982612,
+    "to_id": 79982613,
+    "split_normalization": true,
+    "only_closed": true
+   }
+  },
+  {
+   "name": "get-candles",
+   "version": "2.0",
+   "body": {
+    "active_id": 1972,
+    "size": 1,
+    "from_id": 79982613,
+    "to_id": 79982617,
+    "split_normalization": true,
+    "only_closed": true
+   }
+  },
+  {
+   "name": "get-candles",
+   "version": "2.0",
+   "body": {
+    "active_id": 1972,
+    "size": 1,
+    "from_id": 79982618,
+    "to_id": 79982619,
+    "split_normalization": true,
+    "only_closed": true
+   }
+  },
+  {
+   "name": "get-candles",
+   "version": "2.0",
+   "body": {
+    "active_id": 1972,
+    "size": 1,
+    "from_id": 79982619,
+    "to_id": 79982623,
+    "split_normalization": true,
+    "only_closed": true
+   }
+  },
+  {
+   "name": "get-candles",
+   "version": "2.0",
+   "body": {
+    "active_id": 1972,
+    "size": 1,
+    "from_id": 79982624,
+    "to_id": 79982624,
+    "split_normalization": true,
+    "only_closed": true
+   }
+  },
+  {
+   "name": "get-candles",
+   "version": "2.0",
+   "body": {
+    "active_id": 1972,
+    "size": 1,
+    "from_id": 79982625,
+    "to_id": 79982629,
+    "split_normalization": true,
+    "only_closed": true
+   }
+  },
+  {
+   "name": "get-candles",
+   "version": "2.0",
+   "body": {
+    "active_id": 1972,
+    "size": 1,
+    "from_id": 79982630,
+    "to_id": 79982630,
+    "split_normalization": true,
+    "only_closed": true
+   }
+  },
+  {
+   "name": "get-candles",
+   "version": "2.0",
+   "body": {
+    "active_id": 1972,
+    "size": 1,
+    "from_id": 79982631,
+    "to_id": 79982631,
+    "split_normalization": true,
+    "only_closed": true
+   }
+  },
+  {
+   "name": "candles-generated",
+   "params": {
+    "routingFilters": {
+     "active_id": 2270
+    }
+   }
+  },
+  {
+   "name": "candle-generated",
+   "params": {
+    "routingFilters": {
+     "active_id": 2270,
+     "size": 5
+    }
+   }
+  },
+  {
+   "name": "get-candles",
+   "version": "2.0",
+   "body": {
+    "active_id": 2270,
+    "size": 60,
+    "to": 1791040687,
+    "count": 1,
+    "split_normalization": true,
+    "only_closed": true
+   }
+  },
+  {
+   "name": "get-candles",
+   "version": "2.0",
+   "body": {
+    "active_id": 2270,
+    "size": 60,
+    "to": 1791040942,
+    "count": 1,
+    "split_normalization": true,
+    "only_closed": true
+   }
+  }
+ ],
+ "first_candles": [
+  {
+   "candles_by_size": {
+    "1": {
+     "id": 49708838,
+     "from": 1790398801,
+     "to": 1790398802,
+     "open": 75343.5195,
+     "close": 75343.5175,
+     "min": 75343.5175,
+     "max": 75343.5205,
+     "volume": 0
+    },
+    "5": {
+     "id": 9941769,
+     "from": 1790398805,
+     "to": 1790398810,
+     "open": 75346.9365,
+     "close": 75348.3455,
+     "min": 75346.9365,
+     "max": 75366.0875,
+     "volume": 0
+    },
+    "10": {
+     "id": 4945055,
+     "from": 1790139610,
+     "to": 1790139620,
+     "open": 89208.1965,
+     "close": 89249.9365,
+     "min": 89208.1925,
+     "max": 89257.3425,
+     "volume": 0
+    },
+    "15": {
+     "id": 3273744,
+     "from": 1789794015,
+     "to": 1789794030,
+     "open": 80436.1495,
+     "close": 80411.3875,
+     "min": 80411.3845,
+     "max": 80445.6125,
+     "volume": 0
+    },
+    "30": {
+     "id": 1616783,
+     "from": 1789189230,
+     "to": 1789189260,
+     "open": 78962.7215,
+     "close": 78943.0355,
+     "min": 78922.5975,
+     "max": 78969.3945,
+     "volume": 0
+    },
+    "60": {
+     "id": 752427,
+     "from": 1785819660,
+     "to": 1785819720,
+     "open": 61024.1765,
+     "close": 61035.3285,
+     "min": 60994.4145,
+     "max": 61035.3285,
+     "volume": 0
+    },
+    "120": {
+     "id": 333466,
+     "from": 1780635720,
+     "to": 1780635840,
+     "open": 67393.5895,
+     "close": 67272.7645,
+     "min": 67272.7495,
+     "max": 67412.2185,
+     "volume": 0
+    },
+    "300": {
+     "id": 81607,
+     "from": 1765083900,
+     "to": 1765084200,
+     "open": 98447.9345,
+     "close": 98216.2015,
+     "min": 98074.2275,
+     "max": 98476.9955,
+     "volume": 0
+    },
+    "600": {
+     "id": 0,
+     "from": 1740474600,
+     "to": 1740475200,
+     "open": 89901.9715,
+     "close": 89893.4605,
+     "min": 89811.2605,
+     "max": 89914.5805,
+     "volume": 0
+    },
+    "900": {
+     "id": 0,
+     "from": 1740474000,
+     "to": 1740474900,
+     "open": 89901.9715,
+     "close": 89907.3235,
+     "min": 89883.5985,
+     "max": 89914.5805,
+     "volume": 0
+    },
+    "1800": {
+     "id": 0,
+     "from": 1740474000,
+     "to": 1740475800,
+     "open": 89901.9715,
+     "close": 89710.5115,
+     "min": 89663.9075,
+     "max": 89914.5805,
+     "volume": 0
+    },
+    "3600": {
+     "id": 0,
+     "from": 1740474000,
+     "to": 1740477600,
+     "open": 89901.9715,
+     "close": 90382.0975,
+     "min": 89663.9075,
+     "max": 90382.0975,
+     "volume": 0
+    },
+    "7200": {
+     "id": 0,
+     "from": 1740470400,
+     "to": 1740477600,
+     "open": 89901.9715,
+     "close": 90382.0975,
+     "min": 89663.9075,
+     "max": 90382.0975,
+     "volume": 0
+    },
+    "14400": {
+     "id": 0,
+     "from": 1740470400,
+     "to": 1740484800,
+     "open": 89901.9715,
+     "close": 90841.2875,
+     "min": 89663.9075,
+     "max": 90925.9215,
+     "volume": 0
+    },
+    "28800": {
+     "id": 0,
+     "from": 1740470400,
+     "to": 1740499200,
+     "open": 89901.9715,
+     "close": 87349.7215,
+     "min": 86991.5315,
+     "max": 90989.1605,
+     "volume": 0
+    },
+    "43200": {
+     "id": 0,
+     "from": 1740441600,
+     "to": 1740484800,
+     "open": 89901.9715,
+     "close": 90841.2875,
+     "min": 89663.9075,
+     "max": 90925.9215,
+     "volume": 0
+    },
+    "86400": {
+     "id": 0,
+     "from": 1740441600,
+     "to": 1740528000,
+     "open": 89901.9715,
+     "close": 87301.3465,
+     "min": 86991.5315,
+     "max": 90989.1605,
+     "volume": 0
+    },
+    "604800": {
+     "id": 0,
+     "from": 1740355200,
+     "to": 1740960000,
+     "open": 89901.9715,
+     "close": 86482.8695,
+     "min": 77378.3835,
+     "max": 91356.4095,
+     "volume": 0
+    },
+    "2592000": {
+     "id": 0,
+     "from": 1738368000,
+     "to": 1740787200,
+     "open": 89901.9715,
+     "close": 80618.0645,
+     "min": 77378.3835,
+     "max": 91356.4095,
+     "volume": 0
+    }
+   }
+  }
+ ],
+ "candles_history": [
+  {
+   "n": 49,
+   "sample": {
+    "id": 10069640,
+    "from": 1791040560,
+    "to": 1791040565,
+    "open": 85003.0905,
+    "close": 85001.1745,
+    "min": 85001.1745,
+    "max": 85011.0285,
+    "volume": 0
+   }
+  },
+  {
+   "n": 1,
+   "sample": {
+    "id": 10069639,
+    "from": 1791040555,
+    "to": 1791040560,
+    "open": 85021.0125,
+    "close": 85017.3415,
+    "min": 85017.3415,
+    "max": 85029.6385,
+    "volume": 0
+   }
+  },
+  {
+   "n": 13,
+   "sample": {
+    "id": 401,
+    "from": 1790992800,
+    "to": 1790996400,
+    "open": 206.075,
+    "close": 206.015,
+    "min": 206.005,
+    "max": 206.435,
+    "volume": 0
+   }
+  },
+  {
+   "n": 42,
+   "sample": {
+    "id": 79982089,
+    "from": 1791040366,
+    "to": 1791040367,
+    "open": 31037.972965,
+    "close": 31037.076845,
+    "min": 31036.706615,
+    "max": 31038.956195,
+    "volume": 0
+   }
+  },
+  {
+   "n": 242,
+   "sample": {
+    "id": 79982289,
+    "from": 1791040566,
+    "to": 1791040567,
+    "open": 31041.937285,
+    "close": 31042.271655,
+    "min": 31041.937285,
+    "max": 31043.074515,
+    "volume": 0
+   }
+  },
+  {
+   "n": 158,
+   "sample": {
+    "id": 79982131,
+    "from": 1791040408,
+    "to": 1791040409,
+    "open": 31011.820155,
+    "close": 31012.871925,
+    "min": 31011.703515,
+    "max": 31012.875235,
+    "volume": 0
+   }
+  },
+  {
+   "n": 200,
+   "sample": {
+    "id": 201,
+    "from": 1790272800,
+    "to": 1790276400,
+    "open": 199.37,
+    "close": 199.505,
+    "min": 198.27,
+    "max": 199.595,
+    "volume": 0
+   }
+  },
+  {
+   "n": 100,
+   "sample": {
+    "id": 101,
+    "from": 1789912800,
+    "to": 1789916400,
+    "open": 187.42,
+    "close": 187.395,
+    "min": 187.235,
+    "max": 187.52,
+    "volume": 0
+   }
+  }
+ ],
+ "candle_generated": [
+  {
+   "name": "candle-generated",
+   "microserviceName": "quotes",
+   "msg": {
+    "active_id": 1972,
+    "size": 1,
+    "at": 1791040809000000000,
+    "from": 1791040808,
+    "to": 1791040809,
+    "id": 79982531,
+    "open": 31029.573045,
+    "close": 31030.665945,
+    "min": 31029.573045,
+    "max": 31030.728265,
+    "ask": 31030.66595,
+    "bid": 31030.66594,
+    "volume": 0,
+    "phase": "T"
+   }
+  },
+  {
+   "name": "candle-generated",
+   "microserviceName": "quotes",
+   "msg": {
+    "active_id": 2270,
+    "size": 5,
+    "at": 1791040809000000000,
+    "from": 1791040805,
+    "to": 1791040810,
+    "id": 10069689,
+    "open": 84927.2825,
+    "close": 84928.8385,
+    "min": 84925.2335,
+    "max": 84929.3145,
+    "ask": 84928.839,
+    "bid": 84928.838,
+    "volume": 0,
+    "phase": "T"
+   }
+  },
+  {
+   "name": "candle-generated",
+   "microserviceName": "quotes",
+   "msg": {
+    "active_id": 2516,
+    "size": 3600,
+    "at": 1791040809000000000,
+    "from": 1791039600,
+    "to": 1791043200,
+    "id": 414,
+    "open": 205.615,
+    "close": 205.675,
+    "min": 205.555,
+    "max": 205.725,
+    "ask": 205.68,
+    "bid": 205.67,
+    "volume": 0,
+    "phase": "T"
+   }
+  },
+  {
+   "name": "candle-generated",
+   "microserviceName": "quotes",
+   "msg": {
+    "active_id": 2270,
+    "size": 5,
+    "at": 1791040809092903200,
+    "from": 1791040805,
+    "to": 1791040810,
+    "id": 10069689,
+    "open": 84927.2825,
+    "close": 84928.8375,
+    "min": 84925.2335,
+    "max": 84929.3145,
+    "ask": 84928.838,
+    "bid": 84928.837,
+    "volume": 0,
+    "phase": "T"
+   }
+  },
+  {
+   "name": "candle-generated",
+   "microserviceName": "quotes",
+   "msg": {
+    "active_id": 1972,
+    "size": 1,
+    "at": 1791040809289002000,
+    "from": 1791040809,
+    "to": 1791040810,
+    "id": 79982532,
+    "open": 31030.797425,
+    "close": 31030.526815,
+    "min": 31030.526815,
+    "max": 31030.797425,
+    "ask": 31030.52682,
+    "bid": 31030.52681,
+    "volume": 0,
+    "phase": "T"
+   }
+  },
+  {
+   "name": "candle-generated",
+   "microserviceName": "quotes",
+   "msg": {
+    "active_id": 2270,
+    "size": 5,
+    "at": 1791040809337569000,
+    "from": 1791040805,
+    "to": 1791040810,
+    "id": 10069689,
+    "open": 84927.2825,
+    "close": 84928.8415,
+    "min": 84925.2335,
+    "max": 84929.3145,
+    "ask": 84928.842,
+    "bid": 84928.841,
+    "volume": 0,
+    "phase": "T"
+   }
+  },
+  {
+   "name": "candle-generated",
+   "microserviceName": "quotes",
+   "msg": {
+    "active_id": 1972,
+    "size": 1,
+    "at": 1791040809626930700,
+    "from": 1791040809,
+    "to": 1791040810,
+    "id": 79982532,
+    "open": 31030.797425,
+    "close": 31032.211495,
+    "min": 31030.526815,
+    "max": 31032.211495,
+    "ask": 31032.2115,
+    "bid": 31032.21149,
+    "volume": 0,
+    "phase": "T"
+   }
+  },
+  {
+   "name": "candle-generated",
+   "microserviceName": "quotes",
+   "msg": {
+    "active_id": 1972,
+    "size": 1,
+    "at": 1791040810000000000,
+    "from": 1791040809,
+    "to": 1791040810,
+    "id": 79982532,
+    "open": 31030.797425,
+    "close": 31032.211495,
+    "min": 31030.526815,
+    "max": 31032.211495,
+    "ask": 31032.2115,
+    "bid": 31032.21149,
+    "volume": 0,
+    "phase": "T"
+   }
+  },
+  {
+   "name": "candle-generated",
+   "microserviceName": "quotes",
+   "msg": {
+    "active_id": 2270,
+    "size": 5,
+    "at": 1791040810000000000,
+    "from": 1791040805,
+    "to": 1791040810,
+    "id": 10069689,
+    "open": 84927.2825,
+    "close": 84924.7735,
+    "min": 84924.7735,
+    "max": 84929.3145,
+    "ask": 84924.774,
+    "bid": 84924.773,
+    "volume": 0,
+    "phase": "T"
+   }
+  },
+  {
+   "name": "candle-generated",
+   "microserviceName": "quotes",
+   "msg": {
+    "active_id": 2516,
+    "size": 3600,
+    "at": 1791040810000000000,
+    "from": 1791039600,
+    "to": 1791043200,
+    "id": 414,
+    "open": 205.615,
+    "close": 205.675,
+    "min": 205.555,
+    "max": 205.725,
+    "ask": 205.68,
+    "bid": 205.67,
+    "volume": 0,
+    "phase": "T"
+   }
+  },
+  {
+   "name": "candle-generated",
+   "microserviceName": "quotes",
+   "msg": {
+    "active_id": 2270,
+    "size": 5,
+    "at": 1791040810021907200,
+    "from": 1791040810,
+    "to": 1791040815,
+    "id": 10069690,
+    "open": 84924.7775,
+    "close": 84924.7775,
+    "min": 84924.7775,
+    "max": 84924.7775,
+    "ask": 84924.778,
+    "bid": 84924.777,
+    "volume": 0,
+    "phase": "T"
+   }
+  },
+  {
+   "name": "candle-generated",
+   "microserviceName": "quotes",
+   "msg": {
+    "active_id": 1972,
+    "size": 1,
+    "at": 1791040810184055300,
+    "from": 1791040810,
+    "to": 1791040811,
+    "id": 79982533,
+    "open": 31034.193145,
+    "close": 31034.373685,
+    "min": 31034.193145,
+    "max": 31034.373685,
+    "ask": 31034.37369,
+    "bid": 31034.37368,
+    "volume": 0,
+    "phase": "T"
+   }
+  },
+  {
+   "name": "candle-generated",
+   "microserviceName": "quotes",
+   "msg": {
+    "active_id": 2270,
+    "size": 5,
+    "at": 1791040810234892500,
+    "from": 1791040810,
+    "to": 1791040815,
+    "id": 10069690,
+    "open": 84924.7775,
+    "close": 84924.7795,
+    "min": 84924.7775,
+    "max": 84924.7795,
+    "ask": 84924.78,
+    "bid": 84924.779,
+    "volume": 0,
+    "phase": "T"
+   }
+  },
+  {
+   "name": "candle-generated",
+   "microserviceName": "quotes",
+   "msg": {
+    "active_id": 2270,
+    "size": 5,
+    "at": 1791040810384337000,
+    "from": 1791040810,
+    "to": 1791040815,
+    "id": 10069690,
+    "open": 84924.7775,
+    "close": 84924.7805,
+    "min": 84924.7775,
+    "max": 84924.7805,
+    "ask": 84924.781,
+    "bid": 84924.78,
+    "volume": 0,
+    "phase": "T"
+   }
+  },
+  {
+   "name": "candle-generated",
+   "microserviceName": "quotes",
+   "msg": {
+    "active_id": 1972,
+    "size": 1,
+    "at": 1791040810616819700,
+    "from": 1791040810,
+    "to": 1791040811,
+    "id": 79982533,
+    "open": 31034.193145,
+    "close": 31034.384355,
+    "min": 31034.193145,
+    "max": 31034.384355,
+    "ask": 31034.38436,
+    "bid": 31034.38435,
+    "volume": 0,
+    "phase": "T"
+   }
+  },
+  {
+   "name": "candle-generated",
+   "microserviceName": "quotes",
+   "msg": {
+    "active_id": 2270,
+    "size": 5,
+    "at": 1791040810690385700,
+    "from": 1791040810,
+    "to": 1791040815,
+    "id": 10069690,
+    "open": 84924.7775,
+    "close": 84924.7815,
+    "min": 84924.7775,
+    "max": 84924.7815,
+    "ask": 84924.782,
+    "bid": 84924.781,
+    "volume": 0,
+    "phase": "T"
+   }
+  },
+  {
+   "name": "candle-generated",
+   "microserviceName": "quotes",
+   "msg": {
+    "active_id": 1972,
+    "size": 1,
+    "at": 1791040811000000000,
+    "from": 1791040810,
+    "to": 1791040811,
+    "id": 79982533,
+    "open": 31034.193145,
+    "close": 31034.384355,
+    "min": 31034.193145,
+    "max": 31034.384355,
+    "ask": 31034.38436,
+    "bid": 31034.38435,
+    "volume": 0,
+    "phase": "T"
+   }
+  },
+  {
+   "name": "candle-generated",
+   "microserviceName": "quotes",
+   "msg": {
+    "active_id": 2270,
+    "size": 5,
+    "at": 1791040811005643300,
+    "from": 1791040810,
+    "to": 1791040815,
+    "id": 10069690,
+    "open": 84924.7775,
+    "close": 84924.7815,
+    "min": 84924.7775,
+    "max": 84924.7815,
+    "ask": 84924.782,
+    "bid": 84924.781,
+    "volume": 0,
+    "phase": "T"
+   }
+  },
+  {
+   "name": "candle-generated",
+   "microserviceName": "quotes",
+   "msg": {
+    "active_id": 2516,
+    "size": 3600,
+    "at": 1791040811000000000,
+    "from": 1791039600,
+    "to": 1791043200,
+    "id": 414,
+    "open": 205.615,
+    "close": 205.675,
+    "min": 205.555,
+    "max": 205.725,
+    "ask": 205.68,
+    "bid": 205.67,
+    "volume": 0,
+    "phase": "T"
+   }
+  },
+  {
+   "name": "candle-generated",
+   "microserviceName": "quotes",
+   "msg": {
+    "active_id": 2270,
+    "size": 5,
+    "at": 1791040811005643300,
+    "from": 1791040810,
+    "to": 1791040815,
+    "id": 10069690,
+    "open": 84924.7775,
+    "close": 84924.7845,
+    "min": 84924.7775,
+    "max": 84924.7845,
+    "ask": 84924.785,
+    "bid": 84924.784,
+    "volume": 0,
+    "phase": "T"
+   }
+  },
+  {
+   "name": "candle-generated",
+   "microserviceName": "quotes",
+   "msg": {
+    "active_id": 1972,
+    "size": 1,
+    "at": 1791040811136108800,
+    "from": 1791040811,
+    "to": 1791040812,
+    "id": 79982534,
+    "open": 31033.391185,
+    "close": 31033.408445,
+    "min": 31033.391185,
+    "max": 31033.408445,
+    "ask": 31033.40845,
+    "bid": 31033.40844,
+    "volume": 0,
+    "phase": "T"
+   }
+  },
+  {
+   "name": "candle-generated",
+   "microserviceName": "quotes",
+   "msg": {
+    "active_id": 2270,
+    "size": 5,
+    "at": 1791040811325787000,
+    "from": 1791040810,
+    "to": 1791040815,
+    "id": 10069690,
+    "open": 84924.7775,
+    "close": 84924.7865,
+    "min": 84924.7775,
+    "max": 84924.7865,
+    "ask": 84924.787,
+    "bid": 84924.786,
+    "volume": 0,
+    "phase": "T"
+   }
+  },
+  {
+   "name": "candle-generated",
+   "microserviceName": "quotes",
+   "msg": {
+    "active_id": 2270,
+    "size": 5,
+    "at": 1791040811687888600,
+    "from": 1791040810,
+    "to": 1791040815,
+    "id": 10069690,
+    "open": 84924.7775,
+    "close": 84924.7855,
+    "min": 84924.7775,
+    "max": 84924.7865,
+    "ask": 84924.786,
+    "bid": 84924.785,
+    "volume": 0,
+    "phase": "T"
+   }
+  },
+  {
+   "name": "candle-generated",
+   "microserviceName": "quotes",
+   "msg": {
+    "active_id": 1972,
+    "size": 1,
+    "at": 1791040811739607600,
+    "from": 1791040811,
+    "to": 1791040812,
+    "id": 79982534,
+    "open": 31033.391185,
+    "close": 31032.556655,
+    "min": 31032.556655,
+    "max": 31033.408445,
+    "ask": 31032.55666,
+    "bid": 31032.55665,
+    "volume": 0,
+    "phase": "T"
+   }
+  },
+  {
+   "name": "candle-generated",
+   "microserviceName": "quotes",
+   "msg": {
+    "active_id": 1972,
+    "size": 1,
+    "at": 1791040812000000000,
+    "from": 1791040811,
+    "to": 1791040812,
+    "id": 79982534,
+    "open": 31033.391185,
+    "close": 31032.556655,
+    "min": 31032.556655,
+    "max": 31033.408445,
+    "ask": 31032.55666,
+    "bid": 31032.55665,
+    "volume": 0,
+    "phase": "T"
+   }
+  },
+  {
+   "name": "candle-generated",
+   "microserviceName": "quotes",
+   "msg": {
+    "active_id": 2270,
+    "size": 5,
+    "at": 1791040812000000000,
+    "from": 1791040810,
+    "to": 1791040815,
+    "id": 10069690,
+    "open": 84924.7775,
+    "close": 84918.0365,
+    "min": 84918.0365,
+    "max": 84924.7865,
+    "ask": 84918.037,
+    "bid": 84918.036,
+    "volume": 0,
+    "phase": "T"
+   }
+  },
+  {
+   "name": "candle-generated",
+   "microserviceName": "quotes",
+   "msg": {
+    "active_id": 2516,
+    "size": 3600,
+    "at": 1791040812000000000,
+    "from": 1791039600,
+    "to": 1791043200,
+    "id": 414,
+    "open": 205.615,
+    "close": 205.675,
+    "min": 205.555,
+    "max": 205.725,
+    "ask": 205.68,
+    "bid": 205.67,
+    "volume": 0,
+    "phase": "T"
+   }
+  },
+  {
+   "name": "candle-generated",
+   "microserviceName": "quotes",
+   "msg": {
+    "active_id": 2270,
+    "size": 5,
+    "at": 1791040812032217000,
+    "from": 1791040810,
+    "to": 1791040815,
+    "id": 10069690,
+    "open": 84924.7775,
+    "close": 84918.0415,
+    "min": 84918.0365,
+    "max": 84924.7865,
+    "ask": 84918.042,
+    "bid": 84918.041,
+    "volume": 0,
+    "phase": "T"
+   }
+  },
+  {
+   "name": "candle-generated",
+   "microserviceName": "quotes",
+   "msg": {
+    "active_id": 1972,
+    "size": 1,
+    "at": 1791040812374627000,
+    "from": 1791040812,
+    "to": 1791040813,
+    "id": 79982535,
+    "open": 31033.683605,
+    "close": 31034.502805,
+    "min": 31033.683605,
+    "max": 31034.502805,
+    "ask": 31034.50281,
+    "bid": 31034.5028,
+    "volume": 0,
+    "phase": "T"
+   }
+  },
+  {
+   "name": "candle-generated",
+   "microserviceName": "quotes",
+   "msg": {
+    "active_id": 2270,
+    "size": 5,
+    "at": 1791040812363385900,
+    "from": 1791040810,
+    "to": 1791040815,
+    "id": 10069690,
+    "open": 84924.7775,
+    "close": 84918.0375,
+    "min": 84918.0365,
+    "max": 84924.7865,
+    "ask": 84918.038,
+    "bid": 84918.037,
+    "volume": 0,
+    "phase": "T"
+   }
+  },
+  {
+   "name": "candle-generated",
+   "microserviceName": "quotes",
+   "msg": {
+    "active_id": 1972,
+    "size": 1,
+    "at": 1791040812701199000,
+    "from": 1791040812,
+    "to": 1791040813,
+    "id": 79982535,
+    "open": 31033.683605,
+    "close": 31036.908625,
+    "min": 31033.683605,
+    "max": 31036.908625,
+    "ask": 31036.90863,
+    "bid": 31036.90862,
+    "volume": 0,
+    "phase": "T"
+   }
+  },
+  {
+   "name": "candle-generated",
+   "microserviceName": "quotes",
+   "msg": {
+    "active_id": 1972,
+    "size": 1,
+    "at": 1791040813000000000,
+    "from": 1791040812,
+    "to": 1791040813,
+    "id": 79982535,
+    "open": 31033.683605,
+    "close": 31036.908625,
+    "min": 31033.683605,
+    "max": 31036.908625,
+    "ask": 31036.90863,
+    "bid": 31036.90862,
+    "volume": 0,
+    "phase": "T"
+   }
+  },
+  {
+   "name": "candle-generated",
+   "microserviceName": "quotes",
+   "msg": {
+    "active_id": 2270,
+    "size": 5,
+    "at": 1791040813000000000,
+    "from": 1791040810,
+    "to": 1791040815,
+    "id": 10069690,
+    "open": 84924.7775,
+    "close": 84918.0375,
+    "min": 84918.0365,
+    "max": 84924.7865,
+    "ask": 84918.038,
+    "bid": 84918.037,
+    "volume": 0,
+    "phase": "T"
+   }
+  },
+  {
+   "name": "candle-generated",
+   "microserviceName": "quotes",
+   "msg": {
+    "active_id": 2516,
+    "size": 3600,
+    "at": 1791040813000000000,
+    "from": 1791039600,
+    "to": 1791043200,
+    "id": 414,
+    "open": 205.615,
+    "close": 205.675,
+    "min": 205.555,
+    "max": 205.725,
+    "ask": 205.68,
+    "bid": 205.67,
+    "volume": 0,
+    "phase": "T"
+   }
+  },
+  {
+   "name": "candle-generated",
+   "microserviceName": "quotes",
+   "msg": {
+    "active_id": 1972,
+    "size": 1,
+    "at": 1791040813022627600,
+    "from": 1791040813,
+    "to": 1791040814,
+    "id": 79982536,
+    "open": 31039.273235,
+    "close": 31040.519125,
+    "min": 31039.273235,
+    "max": 31040.519125,
+    "ask": 31040.51913,
+    "bid": 31040.51912,
+    "volume": 0,
+    "phase": "T"
+   }
+  },
+  {
+   "name": "candle-generated",
+   "microserviceName": "quotes",
+   "msg": {
+    "active_id": 2270,
+    "size": 5,
+    "at": 1791040813130775300,
+    "from": 1791040810,
+    "to": 1791040815,
+    "id": 10069690,
+    "open": 84924.7775,
+    "close": 84918.0335,
+    "min": 84918.0335,
+    "max": 84924.7865,
+    "ask": 84918.034,
+    "bid": 84918.033,
+    "volume": 0,
+    "phase": "T"
+   }
+  },
+  {
+   "name": "candle-generated",
+   "microserviceName": "quotes",
+   "msg": {
+    "active_id": 2270,
+    "size": 5,
+    "at": 1791040813397066500,
+    "from": 1791040810,
+    "to": 1791040815,
+    "id": 10069690,
+    "open": 84924.7775,
+    "close": 84913.6775,
+    "min": 84913.6775,
+    "max": 84924.7865,
+    "ask": 84913.678,
+    "bid": 84913.677,
+    "volume": 0,
+    "phase": "T"
+   }
+  },
+  {
+   "name": "candle-generated",
+   "microserviceName": "quotes",
+   "msg": {
+    "active_id": 1972,
+    "size": 1,
+    "at": 1791040813516498400,
+    "from": 1791040813,
+    "to": 1791040814,
+    "id": 79982536,
+    "open": 31039.273235,
+    "close": 31041.528425,
+    "min": 31039.273235,
+    "max": 31041.528425,
+    "ask": 31041.52843,
+    "bid": 31041.52842,
+    "volume": 0,
+    "phase": "T"
+   }
+  },
+  {
+   "name": "candle-generated",
+   "microserviceName": "quotes",
+   "msg": {
+    "active_id": 1972,
+    "size": 1,
+    "at": 1791040814000000000,
+    "from": 1791040813,
+    "to": 1791040814,
+    "id": 79982536,
+    "open": 31039.273235,
+    "close": 31041.528425,
+    "min": 31039.273235,
+    "max": 31041.528425,
+    "ask": 31041.52843,
+    "bid": 31041.52842,
+    "volume": 0,
+    "phase": "T"
+   }
+  },
+  {
+   "name": "candle-generated",
+   "microserviceName": "quotes",
+   "msg": {
+    "active_id": 2270,
+    "size": 5,
+    "at": 1791040814000000000,
+    "from": 1791040810,
+    "to": 1791040815,
+    "id": 10069690,
+    "open": 84924.7775,
+    "close": 84939.0415,
+    "min": 84913.6775,
+    "max": 84939.0415,
+    "ask": 84939.042,
+    "bid": 84939.041,
+    "volume": 0,
+    "phase": "T"
+   }
+  }
+ ]
+}

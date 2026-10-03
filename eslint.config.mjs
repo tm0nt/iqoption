@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Mirrored third-party engine build; not ours to lint.
+    "public/engine/**",
   ]),
 ]);
 

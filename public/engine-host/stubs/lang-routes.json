@@ -1,0 +1,9 @@
+{
+  "isSuccessful": true,
+  "message": [],
+  "result": [
+    { "locale_id": 2, "name": "en", "locale_name": "en_US", "title": "English", "country_id": 0, "country_name": null },
+    { "locale_id": 5, "name": "pt", "locale_name": "pt_PT", "title": "Português", "country_id": 0, "country_name": null },
+    { "locale_id": 4, "name": "es", "locale_name": "es_ES", "title": "Español", "country_id": 0, "country_name": null }
+  ]
+}

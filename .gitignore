@@ -47,3 +47,12 @@ next-env.d.ts
 
 # Local temp files
 temp/
+
+# Mirrored third-party engine build, refetched by scripts/download-engine.mjs
+public/engine/
+
+# Frame transcript from npm run server:trace
+server/.transcript.jsonl
+
+# Browser network captures may contain session credentials
+*.har

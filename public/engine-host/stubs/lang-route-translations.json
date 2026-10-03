@@ -1,0 +1,28 @@
+{
+  "isSuccessful": true,
+  "message": [],
+  "result": {
+    "en": {
+      "desktop.buy": "Buy",
+      "desktop.sell": "Sell",
+      "desktop.balance": "Balance",
+      "desktop.chart": "Chart",
+      "desktop.assets": "Assets",
+      "desktop.profit": "Profit",
+      "desktop.investment": "Investment",
+      "desktop.expiration": "Expiration",
+      "desktop.portfolio": "Portfolio",
+      "desktop.history": "History",
+      "desktop.settings": "Settings",
+      "desktop.deposit": "Deposit",
+      "desktop.withdraw": "Withdraw",
+      "desktop.support": "Support",
+      "desktop.close": "Close",
+      "desktop.cancel": "Cancel",
+      "desktop.confirm": "Confirm",
+      "desktop.loading": "Loading",
+      "desktop.demo": "Demo",
+      "desktop.real": "Real"
+    }
+  }
+}

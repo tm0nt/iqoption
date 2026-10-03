@@ -1,0 +1,940 @@
+{
+ "features": [
+  {
+   "id": 1,
+   "name": "tournaments",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 2,
+   "name": "select-balance-dialog",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 3,
+   "name": "oneclick-deposit-dialog",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 4,
+   "name": "email-activation",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 5,
+   "name": "chat",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 6,
+   "name": "manager-feedback",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 7,
+   "name": "faq",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 8,
+   "name": "deposit-dialog",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 9,
+   "name": "deposit-panel-payment-form",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 10,
+   "name": "leaderboard-notification",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 11,
+   "name": "api-to-websocket",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 12,
+   "name": "social-user-profile",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 13,
+   "name": "deposit-bonus-disabled",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 14,
+   "name": "social-user-profile-active-asset-show",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 15,
+   "name": "chat-support",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 16,
+   "name": "chat-feedback",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 17,
+   "name": "chat-online-users",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 18,
+   "name": "chat-send-heartbeat",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 19,
+   "name": "chat-send-text-typing",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 20,
+   "name": "profit-scale",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 21,
+   "name": "portfolio",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 22,
+   "name": "economic-calendar",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 23,
+   "name": "volume-indicator",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 24,
+   "name": "chat-support-demo-users",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 25,
+   "name": "chat-message-like",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 26,
+   "name": "chat-public-attachments",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 27,
+   "name": "news-browser",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 28,
+   "name": "cfd-available-onopen",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 29,
+   "name": "overnight-schedule",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 30,
+   "name": "callput-ab",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 31,
+   "name": "buy-sell-price",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 32,
+   "name": "welcome-todo",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 33,
+   "name": "cfd-expiration",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 34,
+   "name": "earnings-calendar",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 35,
+   "name": "asset-small-profile",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 36,
+   "name": "indicator-templates",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 37,
+   "name": "push-notifications-by-default",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 38,
+   "name": "fx-min-deal-amount",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 39,
+   "name": "spread-by-leverage",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 40,
+   "name": "strikes-hidden",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 41,
+   "name": "script-indicators",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 42,
+   "name": "only-closed-candles",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 43,
+   "name": "asset-profile",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 44,
+   "name": "fx-option-payout-limit",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 45,
+   "name": "fx-spread",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 46,
+   "name": "personal-manager",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 47,
+   "name": "support-phones",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 48,
+   "name": "avatars",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 49,
+   "name": "indicators-info-tab",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 50,
+   "name": "video-tutorials",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 51,
+   "name": "chat-send-typing",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 52,
+   "name": "trading-phases",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 53,
+   "name": "analytics",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 54,
+   "name": "asset-technical-signals",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 55,
+   "name": "tutorial-balance",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 56,
+   "name": "custodial-fee",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 57,
+   "name": "info-btns-visible",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 58,
+   "name": "price-alerts",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 59,
+   "name": "spread-in-pips",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 60,
+   "name": "new-api-reg",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 61,
+   "name": "pips-price-right-panel",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 62,
+   "name": "block-withdraw-wo-docs",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 63,
+   "name": "deposit-border-style",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 64,
+   "name": "margin-forex-instrument",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 65,
+   "name": "margin-cfd-instrument",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 66,
+   "name": "margin-crypto-instrument",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 67,
+   "name": "cashbox-v3",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 68,
+   "name": "retention-popup",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 69,
+   "name": "tournaments-do",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 70,
+   "name": "pricing-v2",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 71,
+   "name": "user-script-indicators",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 72,
+   "name": "overnights-write-off",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 73,
+   "name": "exchange-rate-v2",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 74,
+   "name": "desktop-registration",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 75,
+   "name": "popup-server",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 76,
+   "name": "leaderboard-v2",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 77,
+   "name": "disable-phone-registration",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 78,
+   "name": "graph-improvements",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 79,
+   "name": "deposit-crypto-commission-rules-checkbox",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 80,
+   "name": "deposit-terms-and-conditions-checkbox",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 81,
+   "name": "bg-map",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 82,
+   "name": "cashier-new-card-flow",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 83,
+   "name": "post-split-graph-correction",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 84,
+   "name": "show-support-pictures-in-chats",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 85,
+   "name": "cfd-forex-ux-ui-improv-tips",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 86,
+   "name": "cfd-forex-ux-ui-improv-tpsl",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 87,
+   "name": "pending-on-closed-market",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 88,
+   "name": "unavailable-country-registration",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 89,
+   "name": "hide-video-categories",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 90,
+   "name": "traders-mood-redesign",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 91,
+   "name": "kyc-flow-in-traderoom",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 92,
+   "name": "deposit-checkout-redesign",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 93,
+   "name": "web-dependencies",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 94,
+   "name": "kyc-questionnaire-type",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 95,
+   "name": "trading-settings-cluster-bo",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 96,
+   "name": "kyc-verification-before-deposit",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 97,
+   "name": "deposit-soft-restrictions",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 98,
+   "name": "deposit-checkout-redesign-improvements",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 99,
+   "name": "user-availability",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 100,
+   "name": "promo-codes",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 101,
+   "name": "promo-centre",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 102,
+   "name": "cashier-promo-codes",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 103,
+   "name": "hide-chat-room",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 104,
+   "name": "trading-settings-cluster-do-v2",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 105,
+   "name": "trading-settings-cluster-bo-v2",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 106,
+   "name": "trading-settings-cluster-turbo-v2",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 107,
+   "name": "trading-settings-cluster-blitz-v2",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 108,
+   "name": "trading-settings-cluster-fx-v2",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 109,
+   "name": "delete-old-fav-assets",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 110,
+   "name": "return-wd",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 111,
+   "name": "webinars",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 112,
+   "name": "hide-otc",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 113,
+   "name": "mandatory-phone-field-on-registration",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 114,
+   "name": "options-assets-group",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 115,
+   "name": "show-callput-price",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 116,
+   "name": "show-trial-cookies-and-disclaimer-notifications",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  },
+  {
+   "id": 117,
+   "name": "binary-instrument",
+   "category": "platform-4",
+   "params": null,
+   "version": 1,
+   "status": "enabled"
+  }
+ ]
+}

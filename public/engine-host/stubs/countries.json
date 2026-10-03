@@ -1,0 +1,7 @@
+{
+  "countries": [
+    { "id": 30, "name": "Brazil", "name_short": "BR", "name_iso": "BRA", "phone_codes": [55], "is_visible": true, "is_regulated": false, "is_registration_restricted": false, "region_id": 1, "currency_id": 1 },
+    { "id": 76, "name": "United Kingdom", "name_short": "GB", "name_iso": "GBR", "phone_codes": [44], "is_visible": true, "is_regulated": true, "is_registration_restricted": false, "region_id": 2, "currency_id": 1 },
+    { "id": 212, "name": "United States", "name_short": "US", "name_iso": "USA", "phone_codes": [1], "is_visible": false, "is_regulated": true, "is_registration_restricted": true, "region_id": 3, "currency_id": 1 }
+  ]
+}

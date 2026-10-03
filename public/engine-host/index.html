@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<title>Engine host</title>
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #000; }
+  body { position: fixed; overflow: hidden; }
+  #host-status {
+    position: fixed; left: 12px; bottom: 12px; z-index: 9999;
+    font: 11px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: #8b8c8e; background: rgba(0,0,0,.78); padding: 8px 10px;
+    border-radius: 6px; max-width: 64ch; max-height: 42vh; overflow: auto;
+    white-space: pre-wrap; margin: 0;
+  }
+  #host-status b { color: #f6465d; font-weight: 600; }
+  #host-status i { color: #09af8e; font-style: normal; }
+</style>
+</head>
+<body>
+<pre id="host-status">booting…</pre>
+
+<script>
+/*
+ * Hosts the traderoom's WebGL engine against our own back end.
+ *
+ * The engine is a 103 MB Emscripten build. It is not configurable: the feed URL
+ * is a string inside the WASM, built from the hostname it asks JS for. But the
+ * socket is opened by glue code in page scope —
+ *
+ *     socket = new WebSocket(UTF8ToString($1))
+ *
+ * — so replacing `window.WebSocket` before the engine boots redirects it with no
+ * patching of the binary.
+ *
+ * The HTTP surface is handled by rewriting URLs to static files under `stubs/`,
+ * rather than by fabricating Response objects. That way one shim covers both
+ * `fetch` and `XMLHttpRequest` (the engine uses both), and nothing has to
+ * reimplement XHR's event machinery.
+ *
+ * Mirror the engine first:  node scripts/download-engine.mjs
+ * Then open:                /engine-host/index.html?ws=ws://localhost:3100/echo/websocket
+ */
+
+(function () {
+  "use strict";
+
+  var params = new URLSearchParams(location.search);
+  var WS_TARGET = params.get("ws") || "ws://localhost:3100/echo/websocket";
+  var SSID = params.get("ssid") || "dev-session";
+  var RES_HOST = "/engine";
+  var STUBS = "/engine-host/stubs";
+  var RES_VERSION = 1788361536;
+
+  /* ----------------------------------------------------------------- status */
+  var statusEl = document.getElementById("host-status");
+  var lines = [];
+  var seen = Object.create(null);
+
+  function status(line, kind) {
+    lines.push({ line: line, kind: kind });
+    if (lines.length > 40) lines.shift();
+    statusEl.innerHTML = lines
+      .map(function (entry) {
+        var text = entry.line.replace(/[&<>]/g, function (c) {
+          return { "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c];
+        });
+        if (entry.kind === "bad") return "<b>" + text + "</b>";
+        if (entry.kind === "good") return "<i>" + text + "</i>";
+        return text;
+      })
+      .join("\n");
+    statusEl.scrollTop = statusEl.scrollHeight;
+    console.log("[host]", line);
+  }
+
+  /** Reports each distinct request once, so a polling loop cannot flood. */
+  function statusOnce(key, line, kind) {
+    if (seen[key]) return;
+    seen[key] = true;
+    status(line, kind);
+  }
+
+  status("feed  " + WS_TARGET, "good");
+
+  /* ---------------------------------------------------------------- cookies */
+  // The engine reads document.cookie wholesale and pulls `ssid` out of it.
+  document.cookie = "ssid=" + encodeURIComponent(SSID) + "; path=/";
+  document.cookie = "lang=en; path=/";
+  window.ssid = SSID;
+
+  /* ------------------------------------------------------------- websockets */
+  (function () {
+    var Native = window.WebSocket;
+
+    function Redirected(url, protocols) {
+      var original = String(url);
+      // Everything the engine opens is the feed; anything else is unexpected
+      // and worth seeing in the log rather than silently rewriting.
+      var target = /\/echo\/websocket/.test(original) ? WS_TARGET : original;
+      status(target === original ? "ws    " + original + " (not redirected)" : "ws    " + original + " -> " + target);
+      return protocols === undefined ? new Native(target) : new Native(target, protocols);
+    }
+
+    Redirected.prototype = Native.prototype;
+    Redirected.CONNECTING = 0;
+    Redirected.OPEN = 1;
+    Redirected.CLOSING = 2;
+    Redirected.CLOSED = 3;
+    window.WebSocket = Redirected;
+    window.MozWebSocket = Redirected;
+  })();
+
+  /* --------------------------------------------------------- the HTTP shim  */
+  /**
+   * Endpoints the engine and its shell call during boot, mapped to a canned
+   * answer. Paths were read out of the WASM's string table and out of
+   * bundle.js; the payloads are placeholders, narrow enough to get past each
+   * check and wide enough to see what the engine does next.
+   */
+  var ROUTES = [
+    [/^\/api\/appinit$/, "/engine-host/appinit.json"],
+    [/\/api\/v\d+\/check-session$/, STUBS + "/check-session.json"],
+    [/\/api\/v2\/features$/, STUBS + "/features.json"],
+    [/\/api\/geoip\/getmycountry/, STUBS + "/geoip.json"],
+    [/\/api\/v1\/get\/company$/, STUBS + "/company.json"],
+    [/\/api\/configuration/, STUBS + "/configuration.json"],
+    [/\/api\/trading-accounts\//, STUBS + "/trading-accounts.json"],
+    [/\/api\/lang\/routes$/, STUBS + "/lang-routes.json"],
+    [/\/api\/lang\/route-translations$/, STUBS + "/lang-route-translations.json"],
+    [/\/api\/regulation$/, STUBS + "/regulation.json"],
+    [/\/web-client-versions\//, STUBS + "/versions.json"],
+    [/\/api\/v1\/versions\//, STUBS + "/versions.json"],
+    // Country table. `countries-list` rejects anything without a `countries`
+    // array, and each entry needs the six mandatory attributes of
+    // `F2::services::CountryInformation` (id, name, phone_codes, name_short,
+    // name_iso, is_visible, is_regulated, is_registration_restricted).
+    [/\/api\/v\d+\/countries$/, STUBS + "/countries.json"],
+    [/\/api\/support\/phones/, STUBS + "/support-phones.json"],
+    // The `/v1/` endpoints are an older API generation and answer with a bare
+    // array rather than the `{isSuccessful, message, result}` envelope.
+    [/\/v1\/webinars$/, STUBS + "/webinars.json"],
+    [/\/v1\/brand\/icons$/, STUBS + "/brand-icons.json"],
+    // Telemetry. Swallowed rather than answered.
+    [/\/api\/v1\/events$/, STUBS + "/empty.json"],
+    // Brand and category artwork, served from the broker's CDN. A transparent
+    // pixel satisfies the engine's image loader without mirroring any of it.
+    [/^\/storage\/public\//, STUBS + "/pixel.png"],
+  ];
+
+  /** The engine's own assets and our stubs pass through untouched. */
+  function isLocalAsset(pathname) {
+    return (
+      pathname.indexOf(RES_HOST + "/") === 0 ||
+      pathname.indexOf("/engine-host/") === 0 ||
+      pathname.indexOf("/_next/") === 0
+    );
+  }
+
+  /**
+   * Decides what a request should actually hit.
+   * @returns {string} the URL to use instead
+   */
+  function reroute(rawUrl, method) {
+    // The shell builds some URLs as `location.protocol + hostname + path`,
+    // with the `//` missing. Parsed on its own that is an absolute URL on
+    // another origin; parsed against the page it is a relative path. The shell
+    // hands the first form straight to `new URL()`, so try that reading first
+    // and only fall back to resolving against the page.
+    var absolute = null;
+    try {
+      absolute = new URL(rawUrl);
+    } catch (error) {
+      try {
+        absolute = new URL(rawUrl, location.href);
+      } catch (nested) {
+        return rawUrl;
+      }
+    }
+
+    var pathname = absolute.pathname;
+    if (isLocalAsset(pathname)) return rawUrl;
+
+    for (var i = 0; i < ROUTES.length; i += 1) {
+      if (ROUTES[i][0].test(pathname)) {
+        statusOnce("r:" + pathname, "stub  " + method + " " + pathname);
+        return ROUTES[i][1];
+      }
+    }
+
+    // Nothing else leaves this origin: the shell carries analytics, crash
+    // reporting and push registration that would otherwise phone home.
+    if (absolute.origin !== location.origin) {
+      statusOnce("b:" + absolute.host + pathname, "block " + absolute.host + pathname);
+      return STUBS + "/empty.json";
+    }
+
+    // Anything else same-origin that is not one of the engine's own files.
+    // Reporting only `/api/` paths hid the translations service, which asks on
+    // a path of its own, so every unmatched request is named here.
+    statusOnce(
+      "u:" + pathname,
+      "UNSTUBBED " + method + " " + pathname + absolute.search.slice(0, 80),
+      "bad",
+    );
+    // Only `/api/` gets a canned body; the rest is left to fail honestly, so a
+    // wrong guess here cannot look like a working endpoint.
+    return pathname.indexOf("/api/") === 0 ? STUBS + "/empty.json" : rawUrl;
+  }
+
+  /** Accepts the three things fetch takes: a string, a URL, or a Request. */
+  function urlOf(input) {
+    if (typeof input === "string") return input;
+    if (input instanceof URL) return input.href;
+    if (input && typeof input.url === "string") return input.url;
+    return String(input);
+  }
+
+  (function () {
+    var nativeFetch = window.fetch.bind(window);
+
+    // The engine reports each boot stage as an analytics event. Those bodies
+    // are the only place it says which stage it reached, so they are kept.
+    window.__events = [];
+
+    window.fetch = function (input, init) {
+      var original = urlOf(input);
+      var method = (init && init.method) || (input && input.method) || "GET";
+
+      if (/\/api\/v1\/events$/.test(original) && init && typeof init.body === "string") {
+        try {
+          var parsed = JSON.parse(init.body);
+          (Array.isArray(parsed) ? parsed : [parsed]).forEach(function (event) {
+            window.__events.push(event);
+          });
+          if (window.__events.length > 500) window.__events.splice(0, 250);
+        } catch (error) {
+          window.__events.push({ raw: String(init.body).slice(0, 200) });
+        }
+      }
+
+      var target = reroute(original, method);
+      if (target === original) return nativeFetch(input, init);
+      // A rerouted call always becomes a plain GET of a static file.
+      return nativeFetch(target);
+    };
+  })();
+
+  if (navigator.sendBeacon) {
+    navigator.sendBeacon = function (url) {
+      statusOnce("beacon:" + url, "beacon blocked " + String(url).slice(0, 60), "bad");
+      return false;
+    };
+  }
+
+  (function () {
+    var open = XMLHttpRequest.prototype.open;
+    var send = XMLHttpRequest.prototype.send;
+
+    XMLHttpRequest.prototype.open = function (method, url) {
+      var original = String(url);
+      // Remembered so `send` can tell an analytics post from anything else,
+      // after the URL has already been rewritten.
+      this.__wasEvents = /\/api\/v1\/events$/.test(original);
+      var target = reroute(original, method);
+      var args = Array.prototype.slice.call(arguments);
+      if (target !== original) {
+        args[0] = "GET";
+        args[1] = target;
+      }
+      return open.apply(this, args);
+    };
+
+    // The engine reports its boot stages here, over XHR rather than fetch.
+    XMLHttpRequest.prototype.send = function (body) {
+      if (this.__wasEvents && typeof body === "string") {
+        try {
+          var parsed = JSON.parse(body);
+          (Array.isArray(parsed) ? parsed : [parsed]).forEach(function (event) {
+            window.__events.push(event);
+          });
+          if (window.__events.length > 500) window.__events.splice(0, 250);
+        } catch (error) {
+          window.__events.push({ raw: body.slice(0, 200) });
+        }
+      }
+      return send.apply(this, arguments);
+    };
+  })();
+
+  /* ---------------------------------------------------------- shell globals */
+  /**
+   * Resolves a host for a given subdomain. The engine has the same routine in
+   * C++ and compares results, so the behaviour has to match: a bare or
+   * `trade.`-prefixed host gains the subdomain, a deeper one has its first
+   * label replaced, and an empty subdomain drops that label.
+   */
+  window.replaceHostSubdomain = function (url, subdomain) {
+    var labels = String(url).split(".");
+    var shallow =
+      labels.length <= 2 ||
+      labels[0] === "int" ||
+      labels[0] === "trade" ||
+      labels[0].indexOf("build") === 0;
+
+    if (shallow) {
+      if (subdomain.length > 0) labels.unshift(subdomain);
+    } else if (subdomain.length > 0) {
+      labels[0] = subdomain;
+    } else {
+      labels.shift();
+    }
+    return labels.join(".");
+  };
+
+  window.getCookie = function (name) {
+    var match = document.cookie.match(
+      new RegExp("(?:^|; )" + name.replace(/([.$?*|{}()\[\]\\\/+^])/g, "\\$1") + "=([^;]*)")
+    );
+    return match ? decodeURIComponent(match[1]) : undefined;
+  };
+
+  window.setupCookie = function (name, value, options) {
+    var cookie = name + "=" + encodeURIComponent(value);
+    Object.keys(options || {}).forEach(function (key) {
+      cookie += "; " + key + (options[key] === true ? "" : "=" + options[key]);
+    });
+    document.cookie = cookie;
+  };
+
+  // Read by the shell and by toLoad.js when it builds every asset URL.
+  window.resHost = RES_HOST;
+  window.orignHost = RES_HOST;
+  window.resV = RES_VERSION;
+  window.urlhash = location.hash;
+  // Swallows the shell's analytics pushes without loading a tag manager.
+  window.dataLayer = { push: function () {} };
+
+  /* ------------------------------------------------------------------- boot */
+  window.addEventListener("error", function (event) {
+    status("error " + event.message, "bad");
+  });
+  window.addEventListener("unhandledrejection", function (event) {
+    status("reject " + (event.reason && event.reason.message ? event.reason.message : event.reason), "bad");
+  });
+
+  /**
+   * Mirrors the engine's own log into the overlay.
+   *
+   * The engine reports through `GLEngineModule.appendLogMessage`, which the
+   * shell only prints when the line contains `[error]` — everything else goes
+   * into a 32-entry ring buffer and is never seen. Wrapping it surfaces the
+   * engine's view of its own boot, which is the only place that says why it
+   * stopped.
+   */
+  (function waitForEngine(attempt) {
+    var engine = window.GLEngineModule;
+    if (!engine || typeof engine.appendLogMessage !== "function") {
+      if (attempt < 600) setTimeout(function () { waitForEngine(attempt + 1); }, 100);
+      return;
+    }
+
+    status("engine module ready, mirroring its log", "good");
+
+    // The overlay stays readable, but the full stream is kept for querying:
+    // the engine's last events are what say where a boot stopped.
+    window.__gl = [];
+    var inner = engine.appendLogMessage;
+    engine.appendLogMessage = function (message) {
+      var text = String(message);
+      window.__gl.push(text);
+      if (window.__gl.length > 4000) window.__gl.splice(0, 2000);
+      // The engine traces every dispatched event. Those lines crowd out the
+      // ones that carry information, so they are kept out of the overlay.
+      if (text.indexOf("Executing EVENT:") > -1 || text.indexOf("EventMVMessage") > -1) {
+        return inner.apply(this, arguments);
+      }
+      // Drop the engine's own timestamp prefix; the overlay is already ordered.
+      var trimmed = text.replace(/^\[[\d\-: .]+\]\s*/, "");
+      status("gl    " + trimmed, text.indexOf("[error]") > -1 ? "bad" : undefined);
+      return inner.apply(this, arguments);
+    };
+
+    var progress = engine.setInitProgress;
+    if (typeof progress === "function") {
+      engine.setInitProgress = function (done, total) {
+        if (done === total) status("init complete (" + total + " steps)", "good");
+        return progress.apply(this, arguments);
+      };
+    }
+  })(0);
+
+  // Click anywhere on the overlay to copy the whole log.
+  statusEl.style.pointerEvents = "auto";
+  statusEl.style.cursor = "copy";
+  statusEl.title = "click to copy this log";
+  statusEl.addEventListener("click", function () {
+    var report = lines.map(function (entry) { return entry.line; }).join("\n");
+    var engine = window.GLEngineModule;
+    try {
+      var buffer = engine && engine.logBuffer;
+      if (buffer) {
+        // It is a ring buffer, not an array, so take whichever shape it offers.
+        var entries = Array.isArray(buffer)
+          ? buffer
+          : typeof buffer.toArray === "function"
+            ? buffer.toArray()
+            : Array.prototype.slice.call(buffer);
+        if (entries.length) report += "\n\n--- engine log buffer ---\n" + entries.join("\n");
+      }
+    } catch (error) {
+      report += "\n\n(engine log buffer unavailable: " + error.message + ")";
+    }
+    navigator.clipboard.writeText(report).then(function () {
+      status("log copied to clipboard", "good");
+    });
+  });
+
+  var manifest = document.createElement("script");
+  manifest.src = RES_HOST + "/toLoad.js?v=" + RES_VERSION;
+  manifest.onerror = function () {
+    status("could not load " + manifest.src + "\nrun: node scripts/download-engine.mjs", "bad");
+  };
+  manifest.onload = function () {
+    status("manifest loaded, engine starting", "good");
+  };
+  document.head.appendChild(manifest);
+})();
+</script>
+</body>
+</html>

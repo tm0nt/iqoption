@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="496px" height="496px" viewBox="0 0 496 496" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 64 (93537) - https://sketch.com -->
+    <title>Group 15</title>
+    <desc>Created with Sketch.</desc>
+    <defs>
+        <rect id="path-1" x="0" y="0" width="496" height="496"></rect>
+    </defs>
+    <g id="new-web-confirmation" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="Group-15">
+            <mask id="mask-2" fill="white">
+                <use xlink:href="#path-1"></use>
+            </mask>
+            <use id="Rectangle" fill="#FFFFFF" xlink:href="#path-1"></use>
+            <rect id="rect726" fill="#DF0000" mask="url(#mask-2)" x="164.18" y="0" width="167.74" height="496.06"></rect>
+            <rect id="rect727" fill="#00319C" mask="url(#mask-2)" x="-124" y="164.16" width="744.09" height="167.74"></rect>
+            <polygon id="path663" fill="#FFFFFF" mask="url(#mask-2)" points="196.35 270.32 181.74 259.53 167.2 269.93 172.97 253.45 158.35 242.69 175.91 242.57 182.06 226.35 187.65 242.68 205.39 242.51 191.33 253.46 196.35 270.32"></polygon>
+            <polygon id="path712" fill="#FFFFFF" mask="url(#mask-2)" points="327.96 270.32 313.34 259.53 298.8 269.93 304.57 253.45 289.96 242.69 307.52 242.57 313.67 226.35 319.26 242.68 337 242.51 322.93 253.46 327.96 270.32"></polygon>
+            <polygon id="path713" fill="#FFFFFF" mask="url(#mask-2)" points="262.99 221.46 248.37 210.66 233.83 221.07 239.6 204.58 224.99 193.83 242.55 193.7 248.7 177.48 254.29 193.81 272.03 193.64 257.96 204.6 262.99 221.46"></polygon>
+            <polygon id="path714" fill="#FFFFFF" mask="url(#mask-2)" points="262.99 221.46 248.37 210.66 233.83 221.07 239.6 204.58 224.99 193.83 242.55 193.7 248.7 177.48 254.29 193.81 272.03 193.64 257.96 204.6 262.99 221.46"></polygon>
+            <polygon id="path719" fill="#FFFFFF" mask="url(#mask-2)" points="262.99 320.4 248.37 309.61 233.83 320.02 239.6 303.53 224.99 292.78 242.55 292.65 248.7 276.43 254.29 292.76 272.03 292.59 257.96 303.54 262.99 320.4"></polygon>
+        </g>
+    </g>
+</svg>

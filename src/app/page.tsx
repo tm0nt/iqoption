@@ -1,9 +1,7 @@
+import { redirect } from "next/navigation";
+import { DEFAULT_LOCALE } from "@/i18n/avalon";
+
+/** The clone's entry point mirrors the source site: the default-locale login page. */
 export default function Home() {
-  return (
-    <main className="flex min-h-screen items-center justify-center">
-      <p className="text-muted-foreground">
-        Clone target not yet built. Run <code className="font-mono text-foreground">/clone-website</code> to start.
-      </p>
-    </main>
-  );
+  redirect(`/${DEFAULT_LOCALE}/login`);
 }
