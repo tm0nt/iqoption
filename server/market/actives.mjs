@@ -16,7 +16,7 @@
  * plain ESM that starts with no build step; one read query is not worth a
  * compiler in front of the market feed.
  */
-import mariadb from "mariadb";
+import { pool, readJson } from "../db/pool.mjs";
 
 /**
  * @typedef {object} Active
@@ -50,37 +50,6 @@ export const ACTIVE_GROUPS = {};
 /** Settings rows, by key — whatever the admin has set. */
 export const SETTINGS = {};
 
-let pool = null;
-
-function connect() {
-  if (pool) return pool;
-  pool = mariadb.createPool({
-    host: process.env.MYSQL_HOST ?? "127.0.0.1",
-    port: Number(process.env.MYSQL_PORT ?? 3306),
-    user: process.env.MYSQL_USER,
-    password: process.env.MYSQL_PASSWORD,
-    database: process.env.MYSQL_DATABASE,
-    connectionLimit: 3,
-    // The driver returns BigInt for MySQL's 64-bit integers by default, which
-    // then fails to JSON-stringify. Every id here fits a double.
-    insertIdAsNumber: true,
-    decimalAsNumber: true,
-    bigIntAsNumber: true,
-  });
-  return pool;
-}
-
-/** MySQL hands JSON columns back as text on some driver versions. */
-function readJson(value, fallback) {
-  if (value === null || value === undefined) return fallback;
-  if (typeof value === "object") return value;
-  try {
-    return JSON.parse(String(value));
-  } catch {
-    return fallback;
-  }
-}
-
 /**
  * Reads the catalogue and fills the exported collections in place.
  *
@@ -90,7 +59,7 @@ function readJson(value, fallback) {
  * @returns {Promise<{assets: number, groups: number}>}
  */
 export async function loadCatalog() {
-  const db = connect();
+  const db = pool();
   const [groups, assets, settings] = await Promise.all([
     db.query("SELECT id, `key`, name, priority FROM asset_groups WHERE enabled = 1 ORDER BY priority"),
     db.query("SELECT * FROM assets WHERE enabled = 1 ORDER BY priority, id"),
@@ -147,11 +116,6 @@ export async function loadCatalog() {
   for (const active of ACTIVES) BY_ID.set(active.id, active);
 
   return { assets: ACTIVES.length, groups: Object.keys(ACTIVE_GROUPS).length };
-}
-
-export async function closeCatalog() {
-  if (pool) await pool.end();
-  pool = null;
 }
 
 export function groupIdFor(active) {

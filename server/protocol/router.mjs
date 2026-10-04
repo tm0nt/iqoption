@@ -9,7 +9,13 @@
  */
 
 import { ACTIVES, ACTIVE_GROUPS, activeById, groupIdFor } from "../market/actives.mjs";
-import { balanceChangedFrame, balancesFrame, marginalBalanceFrame, profileFrame } from "../accounts.mjs";
+import {
+  balanceChangedFrame,
+  balancesFrame,
+  marginalBalanceFrame,
+  profileFrame,
+  saveBalance,
+} from "../accounts.mjs";
 import { featureRows } from "../data/features.mjs";
 import { defaultUserConfig } from "../data/user-settings.mjs";
 import { halfSpread, priceAt, round } from "../market/prices.mjs";
@@ -662,6 +668,9 @@ export const CALLS = {
      * opens, not when it settles.
      */
     const wallet = walletOf(account, position.user_balance_id);
+    // The stake has already left the wallet in memory; this is what makes it
+    // survive a restart.
+    saveBalance(wallet);
     pushEvent("internal-billing.balance-changed", balanceChangedFrame(account, wallet));
     // The header reads the margin view, not the billing one: a recorded stake
     // moves both, and pushing only the first leaves the corner balance stale.

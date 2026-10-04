@@ -62,17 +62,17 @@ model Asset {
   sourceSymbol String?     @map("source_symbol")
 
   /// Price decimals. Binance reports its own; this is what the chart draws.
-  precision Int
-  pipScale  Int   @default(2) @map("pip_scale")
+  precision   Int
+  pipScale    Int   @default(2) @map("pip_scale")
   /// Half-spreads, in pips, added to and subtracted from the mid price.
   spreadPlus  Float @default(0.4) @map("spread_plus")
   spreadMinus Float @default(0.1) @map("spread_minus")
 
   /// Payout percent for a winning binary option. The wire carries
   /// `commission: 100 - profit`.
-  profit   Int @default(80)
+  profit      Int  @default(80)
   /// Seconds before expiry when the deal panel stops accepting orders.
-  deadtime Int @default(2)
+  deadtime    Int  @default(2)
   /// Expiries the panel offers, in seconds.
   expirations Json
 
@@ -82,13 +82,13 @@ model Asset {
   currencyRight String @default("USD") @map("currency_right")
 
   /// Equal times mean around the clock.
-  timeFrom       String  @default("00:00:00") @map("time_from")
-  timeTo         String  @default("00:00:00") @map("time_to")
+  timeFrom       String @default("00:00:00") @map("time_from")
+  timeTo         String @default("00:00:00") @map("time_to")
   /// Seven flags, Monday first.
-  expirationDays Json    @map("expiration_days")
-  exchange       String  @default("na")
-  image          String  @default("") @db.VarChar(512)
-  priority       Int     @default(100)
+  expirationDays Json   @map("expiration_days")
+  exchange       String @default("na")
+  image          String @default("") @db.VarChar(512)
+  priority       Int    @default(100)
 
   isOtc       Boolean @default(false) @map("is_otc")
   isVisible   Boolean @default(true) @map("is_visible")
@@ -125,4 +125,91 @@ model PlatformSetting {
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   @@map("platform_settings")
+}
+
+/// Someone who can sign in and trade.
+///
+/// The id is the `user_id` the protocol carries, not a surrogate: it travels in
+/// `check-session`, in every portfolio event and in every deal, and the client
+/// compares the one it was told at login against the one the feed reports. A
+/// separate public id would mean translating at every boundary and getting it
+/// wrong once. The counter starts high (see the migration) so an id is never
+/// mistaken for a row number.
+model User {
+  id Int @id @default(autoincrement())
+
+  email         String    @unique
+  /// Set when the address has been confirmed. Null means unconfirmed, which is
+  /// allowed to trade on practice and nothing else.
+  emailVerified DateTime? @map("email_verified")
+  passwordHash  String    @map("password_hash")
+
+  name String?
+
+  /// E.164, the only form that is unambiguous across countries.
+  phone         String    @unique
+  /// ISO 3166-1 alpha-2, kept beside the number so a form can show it back in
+  /// the national format the person typed.
+  phoneCountry  String    @map("phone_country") @db.Char(2)
+  phoneVerified DateTime? @map("phone_verified")
+
+  locale   String  @default("en")
+  /// A disabled account keeps its history and cannot sign in.
+  isActive Boolean @default(true) @map("is_active")
+
+  balances        Balance[]
+  tradingSessions TradingSession[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+/// One wallet. The id is `user_balance_id` on the wire, for the same reason.
+model Balance {
+  id Int @id @default(autoincrement())
+
+  userId Int  @map("user_id")
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// `IQBalanceType`: 1 is real money, 4 is the practice balance.
+  type Int @default(4)
+
+  /// Decimal, not a float. A stake and a payout are money, and a binary option
+  /// settles on a comparison that a rounding error can invert.
+  amount   Decimal @db.Decimal(18, 2)
+  currency String  @default("USD")
+  isFiat   Boolean @default(true) @map("is_fiat")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  /// One wallet of each kind per person.
+  @@unique([userId, type])
+  @@map("balances")
+}
+
+/// The ssid the engine presents, and who it belongs to.
+///
+/// The engine reads an opaque session id out of `document.cookie` and sends it
+/// in `authenticate`. The market server is a separate process with no access to
+/// the web app's session, so this table is the handover: the traderoom page
+/// mints a row for the signed-in person, and the feed resolves it here instead
+/// of trusting whatever it is handed.
+model TradingSession {
+  /// The ssid itself. Random, and never derived from anything about the user.
+  id String @id @db.Char(64)
+
+  userId Int  @map("user_id")
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  expiresAt  DateTime  @map("expires_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  /// Touched on each `authenticate`, so an abandoned session is visible.
+  lastSeenAt DateTime? @map("last_seen_at")
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("trading_sessions")
 }

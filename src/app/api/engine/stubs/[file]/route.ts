@@ -15,6 +15,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { NextResponse } from "next/server";
+import { auth } from "@/auth";
 import { engineConfig } from "@/lib/engine/settings";
 
 /*
@@ -39,6 +40,14 @@ async function dynamicBody(file: string) {
 
   if (file === "check-session.json") {
     /*
+     * The signed-in person's own id, not a fixed one. The client compares what
+     * this says against the `user_id` the feed reports for the ssid it was
+     * given; if they differ it stays on its login view and never builds the
+     * traderoom. The setting is the fallback for a request with no session,
+     * which is what an engine booted outside the app looks like.
+     */
+    const session = await auth();
+    /*
      * `user_id` has to match the account the market server hands the first
      * session, or the client compares the two, finds them different and stays
      * on its login view with the traderoom never built. Both sides default to
@@ -47,7 +56,7 @@ async function dynamicBody(file: string) {
     return {
       id: "local-development-session",
       data: {
-        user_id: config.session.userId,
+        user_id: session?.user?.platformId ?? config.session.userId,
         brand_id: 1,
         company_id: 1,
         country_id: config.brand.countryId,

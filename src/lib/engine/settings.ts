@@ -12,6 +12,7 @@ export type EngineResource = { host: string; version: number };
 export type EngineFeed = { wsUrl: string };
 export type Brand = { name: string; supportEmail: string; countryId: number; countryFlag: string };
 export type EngineSession = { userId: number };
+export type DemoBalance = { amount: number; currency: string };
 
 const DEFAULTS = {
   "engine.resource": { host: "/engine", version: 1788361536 } satisfies EngineResource,
@@ -23,6 +24,7 @@ const DEFAULTS = {
     countryId: 30,
     countryFlag: "BR",
   } satisfies Brand,
+  "trading.demoBalance": { amount: 10000, currency: "USD" } satisfies DemoBalance,
 };
 
 type SettingKey = keyof typeof DEFAULTS;

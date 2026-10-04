@@ -9,6 +9,7 @@
  */
 
 import { randomUUID } from "node:crypto";
+import { pool } from "./db/pool.mjs";
 
 /** Practice money, in the account currency. */
 const DEMO_START_BALANCE = 10_000;
@@ -78,20 +79,117 @@ export function openSession({ name, currency } = {}) {
 }
 
 /**
- * Resolves a session id to its account, creating one on first sight.
+ * Whether a session id nobody issued is allowed to become an account.
+ *
+ * It is how this server worked before accounts existed, and it is convenient:
+ * the engine can be booted against the feed with no web app running at all. It
+ * is also an open door, so it is off unless asked for.
+ */
+const ALLOW_ANONYMOUS = process.env.AVALON_ALLOW_ANONYMOUS === "1";
+
+/**
+ * Resolves the ssid the engine presented to the person it belongs to.
+ *
+ * The web app mints a row in `trading_sessions` for a signed-in person and
+ * hands the engine its id; this is the other half of that handover. An ssid
+ * that is unknown, expired or disabled is refused — the feed does not decide
+ * who exists, it only looks the answer up.
+ *
+ * The account is cached per user for the life of the process, because open
+ * positions live in memory on it: a reconnect has to find the same object or
+ * every running deal disappears.
  *
  * @param {string} sessionId
- * @param {{ allowUnknown?: boolean }} [options] set false to reject instead
+ * @returns {Promise<object|null>}
  */
-export function resolveSession(sessionId, { allowUnknown = true } = {}) {
+export async function resolveSession(sessionId) {
   if (!sessionId) return null;
-  const userId = sessions.get(sessionId);
-  if (userId !== undefined) return accounts.get(userId) ?? null;
-  if (!allowUnknown) return null;
+
+  const known = sessions.get(sessionId);
+  if (known !== undefined) {
+    const cached = accounts.get(known);
+    if (cached) return cached;
+  }
+
+  const rows = await pool().query(
+    `SELECT u.id, u.email, u.name, u.locale, u.is_active, s.expires_at
+       FROM trading_sessions s
+       JOIN users u ON u.id = s.user_id
+      WHERE s.id = ? LIMIT 1`,
+    [sessionId],
+  );
+
+  const row = rows[0];
+  if (row && row.is_active && new Date(row.expires_at) > new Date()) {
+    // Marks the session as in use, so an abandoned one is visible.
+    pool()
+      .query("UPDATE trading_sessions SET last_seen_at = NOW() WHERE id = ?", [sessionId])
+      .catch(() => {});
+
+    const account = await loadAccount(row);
+    sessions.set(sessionId, account.userId);
+    accounts.set(account.userId, account);
+    return account;
+  }
+
+  if (!ALLOW_ANONYMOUS) return null;
 
   const account = createAccount();
   sessions.set(sessionId, account.userId);
   return account;
+}
+
+/** Builds the in-memory account for a person, wallets and all. */
+async function loadAccount(row) {
+  const userId = Number(row.id);
+  const existing = accounts.get(userId);
+  if (existing) return existing;
+
+  const wallets = await pool().query(
+    "SELECT id, type, amount, currency, is_fiat FROM balances WHERE user_id = ? ORDER BY type",
+    [userId],
+  );
+
+  const account = {
+    userId,
+    name: row.name ?? "Trader",
+    email: row.email,
+    currency: wallets[0]?.currency ?? "USD",
+    country: "BR",
+    created: Date.now(),
+    balances: wallets.map((wallet) => ({
+      id: Number(wallet.id),
+      type: Number(wallet.type),
+      amount: Number(wallet.amount),
+      currency: wallet.currency,
+      is_fiat: Boolean(wallet.is_fiat),
+    })),
+    positions: [],
+  };
+
+  account.activeBalanceId = account.balances[0]?.id;
+  account.settings = new Map();
+  account.skey = randomUUID().replace(/-/g, "");
+  return account;
+}
+
+/**
+ * Writes a wallet's balance back.
+ *
+ * Called after a stake is taken and after a deal settles. It does not block the
+ * frame that caused it: the client is told the new balance by the event it is
+ * already waiting for, and a write that fails must be visible in the log rather
+ * than as a stalled traderoom.
+ */
+export function saveBalance(balance) {
+  pool()
+    .query("UPDATE balances SET amount = ? WHERE id = ?", [balance.amount, balance.id])
+    .catch((error) => console.error(`[avalon] could not save balance ${balance.id}:`, error.message));
+}
+
+/** Writes back every wallet of an account. */
+export function saveBalances(account) {
+  for (const balance of account.balances ?? []) saveBalance(balance);
 }
 
 /**

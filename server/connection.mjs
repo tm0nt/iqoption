@@ -9,7 +9,14 @@
 
 import { CALLS, PASSIVE_STREAMS, STATUS, STREAMS } from "./protocol/router.mjs";
 import { record } from "./transcript.mjs";
-import { balanceChangedFrame, balancesFrame, marginalBalanceFrame, profileFrame, resolveSession } from "./accounts.mjs";
+import {
+  balanceChangedFrame,
+  balancesFrame,
+  marginalBalanceFrame,
+  profileFrame,
+  resolveSession,
+  saveBalances,
+} from "./accounts.mjs";
 import { portfolioEvent, settleDue } from "./market/positions.mjs";
 
 const TIME_SYNC_MS = 1_000;
@@ -62,6 +69,9 @@ export class Connection {
            */
           if (position.profit_amount > 0) credited.add(position.user_balance_id);
         }
+        // Whatever settled changed a wallet, win or lose: a loss took its stake
+        // when the deal opened and the write for that may still be in flight.
+        saveBalances(this.account);
         if (!credited.size) return;
 
         // The same channel the deal panel listens on when a stake is taken.
@@ -116,7 +126,10 @@ export class Connection {
     switch (frame.name) {
       case "ssid":
       case "authenticate":
-        return this.authenticate(frame);
+        return this.authenticate(frame).catch((error) => {
+          console.error("[avalon] authenticate failed:", error.message);
+          this.socket.close(4011, "authentication error");
+        });
       case "heartbeat":
         // The client echoing our heartbeat; nothing to do but note it is alive.
         return;
@@ -141,14 +154,14 @@ export class Connection {
     }
   }
 
-  authenticate(frame) {
+  async authenticate(frame) {
     // Two spellings reach us. The older one carries the session id as the whole
     // message; the engine's `authenticate` wraps it in an object alongside a
     // protocol version. Both are logged until the shapes are pinned down.
     console.log(`[avalon] auth frame ${JSON.stringify(frame).slice(0, 400)}`);
     const sessionId =
       typeof frame.msg === "string" ? frame.msg : (frame.msg?.ssid ?? frame.msg?.session_id ?? "");
-    const account = resolveSession(String(sessionId));
+    const account = await resolveSession(String(sessionId));
     if (!account) {
       this.send({ name: "error", status: 4010, msg: { message: "invalid ssid" } });
       this.socket.close(4010, "invalid ssid");

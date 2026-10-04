@@ -14,6 +14,8 @@
   --color-avalon-placeholder: #757575;
   --color-avalon-border: #919091;
   --color-avalon-border-focus: #232425;
+  /* The red the traderoom uses for a losing position, reused for form errors. */
+  --color-avalon-danger: #f6465d;
   --color-avalon-border-muted: #acabac;
   --color-avalon-surface: #fbf9fa;
   --color-avalon-surface-hover: #f5f3f4;

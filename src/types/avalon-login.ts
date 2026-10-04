@@ -51,6 +51,13 @@ export interface AvalonLoginCopy {
   noAccountLead: string;
   noAccountLink: string;
   noAccountTail: string;
+  /** On the button while the request is in flight. */
+  submitting: string;
+  /**
+   * Shown for every sign-in failure, whatever it was. Naming which of the two
+   * was wrong turns the form into a way of discovering who has an account.
+   */
+  invalidCredentials: string;
 }
 
 export interface AvalonRegisterCopy {
@@ -74,6 +81,8 @@ export interface AvalonRegisterCopy {
   hasAccountLead: string;
   hasAccountLink: string;
   hasAccountTail: string;
+  /** On the button while the account is being created. */
+  submitting: string;
 }
 
 export interface AvalonChangePasswordCopy {

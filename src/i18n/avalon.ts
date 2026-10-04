@@ -46,6 +46,8 @@ export const DICTIONARIES: Record<AvalonLocale, AvalonDictionary> = {
       noAccountLead: "Don't have an account?",
       noAccountLink: "Sign Up",
       noAccountTail: "",
+      submitting: "Signing in…",
+      invalidCredentials: "Your email or password is incorrect."
     },
     register: {
       title: "Sign Up",
@@ -82,6 +84,7 @@ export const DICTIONARIES: Record<AvalonLocale, AvalonDictionary> = {
       hasAccountLead: "Already have an account?",
       hasAccountLink: "Log In",
       hasAccountTail: "now",
+      submitting: "Creating your account…"
     },
     changePassword: {
       title: "Password recovery",
@@ -118,6 +121,8 @@ export const DICTIONARIES: Record<AvalonLocale, AvalonDictionary> = {
       noAccountLead: "¿No tienes una cuenta?",
       noAccountLink: "Regístrate",
       noAccountTail: "",
+      submitting: "Iniciando sesión…",
+      invalidCredentials: "Tu correo electrónico o contraseña es incorrecto."
     },
     register: {
       title: "Regístrate",
@@ -154,6 +159,7 @@ export const DICTIONARIES: Record<AvalonLocale, AvalonDictionary> = {
       hasAccountLead: "¿Dispone ya de una cuenta?",
       hasAccountLink: "Iniciar sesión",
       hasAccountTail: "ahora",
+      submitting: "Creando tu cuenta…"
     },
     changePassword: {
       title: "Recuperar contraseña",
@@ -190,6 +196,8 @@ export const DICTIONARIES: Record<AvalonLocale, AvalonDictionary> = {
       noAccountLead: "Ainda não possui uma conta?",
       noAccountLink: "Inscrever-se",
       noAccountTail: "",
+      submitting: "Entrando…",
+      invalidCredentials: "Seu e-mail ou senha está incorreto."
     },
     register: {
       title: "Registrar-se",
@@ -226,6 +234,7 @@ export const DICTIONARIES: Record<AvalonLocale, AvalonDictionary> = {
       hasAccountLead: "Já possui uma conta?",
       hasAccountLink: "Entrar",
       hasAccountTail: "agora",
+      submitting: "Criando sua conta…"
     },
     changePassword: {
       title: "Recuperação de senha",

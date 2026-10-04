@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { auth } from "@/auth";
 import { EngineHost } from "@/components/traderoom/EngineHost";
+import { mintTradingSession } from "@/lib/auth/trading-session";
 import { engineConfig } from "@/lib/engine/settings";
 import { isLocale } from "@/i18n/avalon";
 
@@ -24,13 +26,25 @@ export default async function Page(props: PageProps<"/[lang]/traderoom">) {
   const { lang } = await props.params;
   if (!isLocale(lang)) notFound();
 
-  const config = await engineConfig();
+  /*
+   * The middleware already turned anonymous visitors away. This is the second
+   * check, and it is not redundant: it is what makes the session's user id
+   * available here, and a page that reached this far without one would boot a
+   * 103 MB engine against an account that does not exist.
+   */
+  const session = await auth();
+  if (!session?.user) redirect(`/${lang}/login?next=/${lang}/traderoom`);
+
+  const [config, ssid] = await Promise.all([
+    engineConfig(),
+    mintTradingSession(session.user.platformId),
+  ]);
 
   return (
     <main className="fixed inset-0 overflow-hidden bg-black">
       <EngineHost
         wsUrl={config.feed.wsUrl}
-        ssid={`session-${config.session.userId}`}
+        ssid={ssid}
         resourceHost={config.resource.host}
         resourceVersion={config.resource.version}
         stubBase="/api/engine/stubs"

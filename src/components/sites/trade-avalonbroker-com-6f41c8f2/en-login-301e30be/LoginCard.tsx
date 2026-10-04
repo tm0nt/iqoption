@@ -22,7 +22,7 @@ export function LoginCard({ locale, dict }: LoginCardProps) {
           </h1>
         </div>
 
-        <LoginForm copy={copy} />
+        <LoginForm copy={copy} locale={locale} />
         <SocialLogin
           dividerLabel={dict.common.divider}
           buttonLabel={copy.google}

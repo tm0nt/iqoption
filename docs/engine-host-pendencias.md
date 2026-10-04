@@ -11,16 +11,15 @@ pendências.
 
 ## Bloqueios reais
 
-### 1. A API de administração não tem autenticação
+### 1. A administração não distingue administrador de usuário comum
 
-`/api/admin/assets`, `/api/admin/assets/[id]`, `/api/admin/settings` e
-`/api/admin/reload` estão abertas. Quem alcançar a porta muda o que a
-plataforma negocia, com que pagamento, e para qual WebSocket cada sessão
-aponta.
+`/api/admin/*` agora exige sessão — o middleware recusa com 401 sem ela — mas
+**qualquer conta serve**. Quem se registrar na plataforma muda o que ela
+negocia, com que pagamento, e para qual WebSocket cada sessão aponta.
 
-**Não suba isso numa VPS antes de fechar.** O mínimo: uma sessão de
-administrador, e as rotas recusando qualquer requisição sem ela. O caminho mais
-curto é um middleware em `src/middleware.ts` cobrindo `/api/admin/:path*`.
+Falta um papel. O mínimo: uma coluna `role` em `users`, o middleware exigindo
+`admin` em `/api/admin/*`, e o primeiro administrador criado por script e não
+por formulário.
 
 ### 2. Não existe interface de administração
 
@@ -33,16 +32,18 @@ curl -s -X PATCH localhost:3000/api/admin/assets/860 \
 curl -s -X POST localhost:3000/api/admin/reload
 ```
 
-### 3. Usuários, saldos e posições não persistem
+### 3. As posições não persistem
 
-O servidor de mercado guarda contas, carteiras e negócios **em memória**
-(`server/accounts.mjs`, `server/market/positions.mjs`). Reiniciar apaga tudo, e
-qualquer sessão desconhecida recebe uma conta nova de treinamento — o que é
-deliberado em desenvolvimento e inaceitável implantado.
+Contas e carteiras agora vivem no banco: `resolveSession` resolve o ssid em
+`trading_sessions`, carrega o usuário e suas carteiras, e cada aposta e cada
+liquidação gravam o saldo de volta. Um ssid que ninguém emitiu é recusado com
+o código 4010 — a porta aberta que havia aqui está fechada, salvo quando
+`AVALON_ALLOW_ANONYMOUS=1` a reabre de propósito para desenvolvimento sem o app.
 
-O `schema.prisma` ainda não modela isso. Quando modelar, as formas já estão
-descritas em `avalon-backend.md`: o conjunto de campos de `DealBinary`, o
-envelope `{positions, total, limit}`, e os dois eventos de saldo.
+**Os negócios em si continuam em memória** (`server/market/positions.mjs`).
+Reiniciar o feed com posições abertas as apaga, e o histórico volta vazio.
+Falta um modelo `Position` — as formas estão em `avalon-backend.md`: o conjunto
+de campos de `DealBinary` e o envelope `{positions, total, limit}`.
 
 ### 4. Forex ainda é sintético
 
@@ -102,11 +103,10 @@ em C++ e compara os resultados. A página avisa em voz alta quando isso acontece
 
 ### `check-session` e o servidor precisam concordar no `user_id`
 
-A configuração `engine.session` diz qual `user_id` o stub de `check-session`
-reporta, e `FIRST_USER_ID` em `server/accounts.mjs` diz qual conta o servidor
-entrega à primeira sessão. Se divergirem, o cliente compara os dois, acha
-diferentes e fica na tela de login sem dizer por quê. Hoje os dois têm o mesmo
-padrão e nenhum mecanismo garante isso.
+O stub de `check-session` reporta o id do usuário da sessão, e o feed reporta o
+id que o ssid resolve. Com alguém logado os dois vêm da mesma linha de `users` e
+não têm como divergir. Sem sessão, o stub cai na configuração `engine.session` e
+o feed em `FIRST_USER_ID` — os dois têm o mesmo padrão e nada garante isso.
 
 ## Sobras do caminho
 
@@ -166,4 +166,5 @@ histórico seguem sem teste.
 6. Servir por **domínio**, não por IP (veja acima).
 7. `engine.feed` apontando para o WebSocket público do feed — `wss://` se o site
    for `https://`, senão o navegador recusa a conexão.
-8. Fechar `/api/admin/*` antes de qualquer uma das anteriores.
+8. `AUTH_SECRET` no `.env` — sem ele o Auth.js não assina cookie nenhum.
+9. Dar papel de administrador antes de expor `/api/admin/*` (item 1).
