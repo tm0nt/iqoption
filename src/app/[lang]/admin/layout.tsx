@@ -23,6 +23,7 @@ export default async function AdminLayout(props: LayoutProps<"/[lang]/admin">) {
   const tabs = [
     { href: `/${lang}/admin`, label: "Overview" },
     { href: `/${lang}/admin/assets`, label: "Instruments" },
+    { href: `/${lang}/admin/positions`, label: "Deals" },
     { href: `/${lang}/admin/settings`, label: "Settings" },
   ];
 

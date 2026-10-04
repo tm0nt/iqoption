@@ -27,6 +27,7 @@ import { MarketFeed } from "./market/feed.mjs";
 import { ACTIVES, activeById, loadCatalog } from "./market/actives.mjs";
 import * as binance from "./market/binance.mjs";
 import { loadNextPositionId } from "./market/position-store.mjs";
+import { startSettlement, stopSettlement } from "./market/settlement.mjs";
 import { openSession } from "./accounts.mjs";
 
 const PORT = Number(process.env.AVALON_SERVER_PORT ?? 3100);
@@ -73,6 +74,13 @@ const http = createServer((request, response) => {
         const { ready, failed } = await binance.warmUp(ACTIVES, log);
         binance.disconnect();
         binance.connect(ACTIVES, WebSocket, log);
+
+  /*
+   * One settlement loop for the process, not one per connection. A deal reaches
+   * its expiry whether or not its owner is watching, and the first sweep picks
+   * up anything that expired while this was down.
+   */
+  startSettlement(feed, log);
         console.log(`reloaded: ${assets} instruments in ${groups} groups`);
         json(response, 200, { assets, groups, feedsReady: ready, feedsFailed: failed });
       })
@@ -146,6 +154,13 @@ async function start() {
 
   binance.connect(ACTIVES, WebSocket, log);
 
+  /*
+   * One settlement loop for the process, not one per connection. A deal reaches
+   * its expiry whether or not its owner is watching, and the first sweep picks
+   * up anything that expired while this was down.
+   */
+  startSettlement(feed, log);
+
   http.listen(PORT, () => {
     console.log(`avalon back end listening on http://localhost:${PORT}`);
     console.log(`  websocket  ws://localhost:${PORT}${WS_PATH}`);
@@ -161,6 +176,7 @@ start().catch((error) => {
 for (const signal of ["SIGINT", "SIGTERM"]) {
   process.on(signal, () => {
     feed.stop();
+    stopSettlement();
     binance.disconnect();
     wss.close();
     http.close(() => process.exit(0));

@@ -140,6 +140,35 @@ export async function resolveSession(sessionId) {
   return account;
 }
 
+/** Every account this process currently holds. */
+export function accountsInMemory() {
+  return [...accounts.values()];
+}
+
+/**
+ * The account for a user id, loading it if this process has not seen them.
+ *
+ * Used by the settlement loop to reach someone who is not connected: their
+ * deals still reach their expiry, and the outcome is decided by the quote at
+ * that moment rather than by whether they were watching.
+ *
+ * @returns {Promise<object|null>}
+ */
+export async function loadAccountById(userId) {
+  const cached = accounts.get(userId);
+  if (cached) return cached;
+
+  const rows = await pool().query(
+    "SELECT id, email, name, locale, is_active FROM users WHERE id = ? LIMIT 1",
+    [userId],
+  );
+  if (!rows[0]) return null;
+
+  const account = await loadAccount(rows[0]);
+  accounts.set(account.userId, account);
+  return account;
+}
+
 /** Builds the in-memory account for a person, wallets and all. */
 async function loadAccount(row) {
   const userId = Number(row.id);
@@ -182,6 +211,9 @@ async function loadAccount(row) {
   return account;
 }
 
+/** balanceId -> the write in flight for it, and whether another is owed. */
+const inFlight = new Map();
+
 /**
  * Writes a wallet's balance back.
  *
@@ -189,11 +221,36 @@ async function loadAccount(row) {
  * frame that caused it: the client is told the new balance by the event it is
  * already waiting for, and a write that fails must be visible in the log rather
  * than as a stalled traderoom.
+ *
+ * One write per wallet at a time, and the value is read when the query runs
+ * rather than when it is asked for. Two deals bought in the same instant used
+ * to produce two concurrent updates carrying the amount as it stood at each
+ * call; on separate pool connections they could land in either order, and the
+ * earlier value landing last left the wallet one stake too high. Chaining them
+ * makes the last write always the current truth, and collapsing the queue to a
+ * single pending write means a burst of deals costs one update, not one each.
  */
 export function saveBalance(balance) {
+  const pending = inFlight.get(balance.id);
+  if (pending) {
+    pending.again = true;
+    return;
+  }
+  flushBalance(balance);
+}
+
+function flushBalance(balance) {
+  const state = { again: false };
+  inFlight.set(balance.id, state);
+
   pool()
     .query("UPDATE balances SET amount = ? WHERE id = ?", [balance.amount, balance.id])
-    .catch((error) => console.error(`[avalon] could not save balance ${balance.id}:`, error.message));
+    .catch((error) => console.error(`[avalon] could not save balance ${balance.id}:`, error.message))
+    .finally(() => {
+      inFlight.delete(balance.id);
+      // It moved again while that was in flight; write where it is now.
+      if (state.again) flushBalance(balance);
+    });
 }
 
 /** Writes back every wallet of an account. */

@@ -15,14 +15,12 @@ import {
   marginalBalanceFrame,
   profileFrame,
   resolveSession,
-  saveBalances,
 } from "./accounts.mjs";
-import { portfolioEvent, settleDue } from "./market/positions.mjs";
+import { portfolioEvent } from "./market/positions.mjs";
+import { unwatch, watch } from "./market/settlement.mjs";
 
 const TIME_SYNC_MS = 1_000;
 const HEARTBEAT_MS = 20_000;
-/** How often expired options are settled and announced. */
-const SETTLE_MS = 1_000;
 /** An unauthenticated socket is dropped rather than left to idle. */
 const AUTH_GRACE_MS = 30_000;
 
@@ -45,45 +43,15 @@ export class Connection {
     /** Acknowledged subscriptions that only ever carry server-sent events. */
     this.passive = [];
 
+    /*
+     * No settlement timer here. A deal's outcome is decided by the quote at its
+     * expiry, which is a fact about the market and not about whether this socket
+     * happens to be open — see server/market/settlement.mjs, which owns the one
+     * loop for the whole process and calls `announceSettlement` below.
+     */
     this.timers = [
       setInterval(() => this.send({ name: "timeSync", msg: Date.now() }), TIME_SYNC_MS),
       setInterval(() => this.send({ name: "heartbeat", msg: Date.now() }), HEARTBEAT_MS),
-      /*
-       * An option that has reached its expiry has to be settled and announced:
-       * the portfolio only learns a deal is over from `position-changed`, and
-       * the header balance only moves when the wallet is re-sent.
-       */
-      setInterval(() => {
-        if (!this.account) return;
-        const closed = settleDue(this.account, this.feed);
-        if (!closed.length) return;
-
-        const credited = new Set();
-        for (const position of closed) {
-          this.pushEvent("portfolio.position-changed", portfolioEvent(position));
-          /*
-           * Only a win moves the balance here. The stake left it when the deal
-           * opened, so a loss has nothing left to settle — and the live feed
-           * sends no `balance-changed` after a losing deal closes, which is how
-           * the client knows not to debit twice.
-           */
-          if (position.profit_amount > 0) credited.add(position.user_balance_id);
-        }
-        // Whatever settled changed a wallet, win or lose: a loss took its stake
-        // when the deal opened and the write for that may still be in flight.
-        saveBalances(this.account);
-        if (!credited.size) return;
-
-        // The same channel the deal panel listens on when a stake is taken.
-        for (const balance of this.account.balances) {
-          if (!credited.has(balance.id)) continue;
-          this.pushEvent("internal-billing.balance-changed", balanceChangedFrame(this.account, balance));
-          // The header follows the margin view; the billing event alone leaves
-          // the balance in the corner unchanged.
-          this.pushEvent("marginal-portfolio.balance-changed", marginalBalanceFrame(this.account, balance));
-        }
-        this.send({ name: "balances", msg: balancesFrame(this.account) });
-      }, SETTLE_MS),
     ];
     this.authTimer = setTimeout(() => {
       if (!this.account) {
@@ -154,6 +122,41 @@ export class Connection {
     }
   }
 
+  /**
+   * Tells this client about deals the settlement loop just closed.
+   *
+   * The portfolio only learns a deal is over from `position-changed`, and the
+   * balance in the corner only moves when both wallet events arrive — the
+   * billing one alone leaves it where it was.
+   *
+   * @param {object[]} closed
+   * @param {Set<number>} credited wallets a win paid into
+   */
+  announceSettlement(closed, credited) {
+    if (!this.account) return;
+
+    for (const position of closed) {
+      this.pushEvent("portfolio.position-changed", portfolioEvent(position));
+    }
+
+    /*
+     * Only a win moves the balance here. The stake left it when the deal
+     * opened, so a loss has nothing left to settle — and the live feed sends no
+     * `balance-changed` after a losing deal closes, which is how the client
+     * knows not to debit twice.
+     */
+    if (!credited.size) return;
+
+    for (const balance of this.account.balances) {
+      if (!credited.has(balance.id)) continue;
+      this.pushEvent("internal-billing.balance-changed", balanceChangedFrame(this.account, balance));
+      // The header follows the margin view; the billing event alone leaves the
+      // balance in the corner unchanged.
+      this.pushEvent("marginal-portfolio.balance-changed", marginalBalanceFrame(this.account, balance));
+    }
+    this.send({ name: "balances", msg: balancesFrame(this.account) });
+  }
+
   async authenticate(frame) {
     // Two spellings reach us. The older one carries the session id as the whole
     // message; the engine's `authenticate` wraps it in an object alongside a
@@ -170,6 +173,7 @@ export class Connection {
 
     this.account = account;
     clearTimeout(this.authTimer);
+    watch(account.userId, this);
     this.log(`authenticated user ${account.userId}`);
 
     // `authenticate` is answered with a plain boolean before anything else;
@@ -386,6 +390,9 @@ export class Connection {
   }
 
   dispose() {
+    // Stops the settlement loop talking to a socket that is gone. The deals
+    // themselves keep settling; only this listener goes away.
+    if (this.account) unwatch(this.account.userId, this);
     for (const timer of this.timers) clearInterval(timer);
     clearTimeout(this.authTimer);
     for (const teardown of this.streams.values()) teardown();

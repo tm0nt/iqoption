@@ -12,16 +12,21 @@ pendências.
 
 ## Bloqueios reais
 
-### 1. A administração não cobre contas nem negócios
+### 1. A administração não cobre contas, e não estorna
 
 O painel está em `/[lang]/admin`: visão geral com o estado do feed, catálogo de
-instrumentos editável, e as configurações como JSON. O que ele **não** faz:
+instrumentos editável, livro de negócios e as configurações como JSON. O que ele
+**não** faz:
 
 - **Contas.** Não lista usuários, não desativa ninguém, não mexe em saldo. Para
   dar ou tirar papel de administrador continua sendo `npm run admin:grant` — e
   isso é de propósito, não uma lacuna.
-- **Negócios.** Não há tela de posições: nem as abertas, nem o histórico, nem a
-  possibilidade de anular uma. Os dados estão em `positions`; falta a tela.
+- **Anular um negócio.** A tela de negócios existe e mostra tudo — abertas,
+  liquidadas, por conta, com o resultado da casa — mas é somente leitura. Não há
+  como estornar um negócio errado. Isso é deliberado: uma tela que muda o
+  resultado de um negócio liquidado é uma tela que pode ser usada para mudar o
+  resultado de um negócio liquidado, e o estorno certo é um lançamento contábil,
+  não uma reescrita do histórico. Falta esse lançamento.
 - **Instrumentos novos.** Dá para editar e ligar/desligar, não para criar nem
   apagar. A API aceita `POST` e `DELETE`; a tela não os expõe, porque criar um
   instrumento exige escolher um `active_id` que o engine conheça, e uma caixa de
@@ -31,7 +36,22 @@ Uma ressalva que vale repetir: o papel viaja no token assinado da sessão, que
 não é relido do banco a cada requisição. Quem já estava logado mantém o papel
 que tinha até sair e entrar de novo.
 
-### 2. Um único servidor de mercado por banco
+### 2. A liquidação não é transacional
+
+Um negócio que vence tem três efeitos: a linha em `positions` é atualizada, o
+saldo é gravado, e os eventos vão para quem estiver conectado. Os dois primeiros
+são gravações separadas, sem transação entre elas. Uma queda do processo no
+intervalo deixa o negócio fechado com o saldo não creditado, e nada percebe.
+
+As gravações de saldo pelo menos não se atropelam mais: elas são serializadas
+por carteira e leem o valor no momento em que a consulta roda. Antes, duas
+apostas no mesmo instante produziam duas atualizações concorrentes carregando o
+valor de cada chamada, e em conexões diferentes do pool podiam chegar em
+qualquer ordem — a mais antiga chegando por último deixava a carteira uma aposta
+mais alta. Foi encontrado conferindo o saldo contra o livro de negócios, e é o
+tipo de coisa que uma conferência periódica acharia de novo.
+
+### 3. Um único servidor de mercado por banco
 
 Os ids de negócio são alocados no processo, semeados pelo maior id da tabela no
 boot. Dois servidores apontando para o mesmo banco distribuiriam o mesmo id e
@@ -42,7 +62,7 @@ assíncrona por todo o roteador — `openOption` é chamada de dentro do tratame
 do frame e a resposta carrega o id. Enquanto for um processo só, isto é uma
 restrição anotada, não um defeito.
 
-### 3. Forex ainda é sintético
+### 4. Forex ainda é sintético
 
 Só `BINANCE` e `SIMULATED` existem como fontes. Os cinco pares de forex usam a
 curva determinística de `server/market/prices.mjs` — ela é convincente e não é
@@ -53,7 +73,7 @@ Para acrescentar um: `server/market/binance.mjs` é o modelo. O contrato é
 pequeno — `warmUp`, `connect`, `priceAt`, `candleAt` — e o despacho por fonte
 está em `prices.mjs`.
 
-### 4. O `/reload` não é automático
+### 5. O `/reload` não é automático
 
 Mudar um instrumento pelo admin não alcança o feed até alguém chamar
 `POST /api/admin/reload`. Os dois processos compartilham o banco, não a
