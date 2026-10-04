@@ -56,3 +56,10 @@ server/.transcript.jsonl
 
 # Browser network captures may contain session credentials
 *.har
+
+/src/generated/prisma
+
+# Per-editor mirrors of the Prisma skills. The canonical copy is the one under
+# .agents/skills/, which AGENTS.md names; `prisma skills sync` regenerates the
+# rest for whichever tool is in use.
+/.windsurf

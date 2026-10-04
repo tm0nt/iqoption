@@ -34,15 +34,25 @@
     "typecheck": "tsc --noEmit",
     "check": "npm run lint && npm run typecheck && npm run build",
     "server": "node server/index.mjs",
-    "server:trace": "AVALON_TRANSCRIPT=server/.transcript.jsonl node server/index.mjs"
+    "server:trace": "AVALON_TRANSCRIPT=server/.transcript.jsonl node server/index.mjs",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:studio": "prisma studio",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@base-ui/react": "^1.3.0",
+    "@prisma/adapter-mariadb": "^7.10.0",
+    "@prisma/client": "^7.10.0",
     "@types/ws": "^8.18.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "dotenv": "^18.0.5",
     "lucide-react": "^1.6.0",
+    "mariadb": "^3.5.4",
     "next": "16.3.5",
+    "prisma": "^7.10.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "shadcn": "^4.1.0",
@@ -58,6 +68,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.5",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "typescript": "^5"
   }
 }

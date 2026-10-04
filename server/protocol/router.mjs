@@ -169,7 +169,8 @@ function underlyingItem(active, service) {
     active_id: active.id,
     active_group_id: groupIdFor(active),
     active_type: activeTypeOf(service),
-    image: "",
+    // Never empty: see the note in prisma/seed.ts.
+    image: active.image,
     image_prefix: "",
     is_suspended: false,
     localization_key: `front.${active.ticker}`,
@@ -1048,7 +1049,10 @@ function binaryActive(active, now) {
     ticker: active.ticker,
     description: `front.${active.ticker} ${active.name}`,
     group_id: groupIdFor(active),
-    image: "",
+    // Never empty: an empty path makes the engine ask its resources endpoint
+    // for nothing and report the icon as a failed 0x0 image. See the note in
+    // prisma/seed.ts.
+    image: active.image,
     exchange: "",
     provider: "",
     precision: active.precision,

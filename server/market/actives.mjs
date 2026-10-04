@@ -1,15 +1,22 @@
 /**
- * Instrument catalog.
+ * Instrument catalog, loaded from the database.
  *
  * The ids follow the ones the Avalon/Quadcode feed uses so a client can be
  * repointed between this server and the real one by changing a URL and nothing
- * else. They are provisional until `get-initialization-data` is read from a
- * live session — see docs/avalon-backend.md.
+ * else — which only works if the instrument ids agree. See
+ * docs/avalon-backend.md.
  *
- * `base` and `volatility` only drive the simulator: `base` is the price the
- * random walk oscillates around, `volatility` the fraction of it the walk
- * covers over one `period`.
+ * `ACTIVES` and `ACTIVE_GROUPS` are filled in place by `loadCatalog()` rather
+ * than replaced, because the router, the feed and the position book all hold a
+ * reference to them from their own imports. Reassigning the binding would leave
+ * every one of them looking at the empty array this module starts with.
+ *
+ * This reads MySQL directly instead of through Prisma. Prisma owns the schema
+ * and the admin API, but its generated client is TypeScript and this server is
+ * plain ESM that starts with no build step; one read query is not worth a
+ * compiler in front of the market feed.
  */
+import mariadb from "mariadb";
 
 /**
  * @typedef {object} Active
@@ -17,25 +24,18 @@
  * @property {string} ticker
  * @property {string} name
  * @property {number} precision     price decimals
- * @property {number} base          starting price
- * @property {number} volatility    peak-to-peak swing as a fraction of `base`
- * @property {number} period        seconds for one full swing of the slowest octave
  * @property {number} profit        payout percent for a binary option
- * @property {"forex"|"crypto"|"index"|"stock"} kind
+ * @property {"BINANCE"|"SIMULATED"} source
+ * @property {string|null} sourceSymbol
+ * @property {"forex"|"crypto"|"index"|"stock"|"commodity"} kind
+ * @property {number} groupId
+ * @property {number} base          simulator only: centre of the curve
+ * @property {number} volatility    simulator only: swing as a fraction of base
+ * @property {number} period        simulator only: seconds per slow swing
  */
 
 /** @type {Active[]} */
-export const ACTIVES = [
-  { id: 1, ticker: "EURUSD", name: "EUR/USD", precision: 5, base: 1.0842, volatility: 0.004, period: 900, profit: 82, kind: "forex" },
-  { id: 2, ticker: "GBPUSD", name: "GBP/USD", precision: 5, base: 1.2671, volatility: 0.005, period: 900, profit: 80, kind: "forex" },
-  { id: 3, ticker: "USDJPY", name: "USD/JPY", precision: 3, base: 151.420, volatility: 0.006, period: 900, profit: 80, kind: "forex" },
-  { id: 4, ticker: "AUDUSD", name: "AUD/USD", precision: 5, base: 0.6584, volatility: 0.005, period: 900, profit: 78, kind: "forex" },
-  { id: 5, ticker: "USDCAD", name: "USD/CAD", precision: 5, base: 1.3612, volatility: 0.004, period: 900, profit: 78, kind: "forex" },
-  { id: 816, ticker: "BTCUSD", name: "Bitcoin", precision: 2, base: 82500, volatility: 0.035, period: 1200, profit: 85, kind: "crypto" },
-  { id: 817, ticker: "ETHUSD", name: "Ethereum", precision: 2, base: 3180, volatility: 0.045, period: 1200, profit: 85, kind: "crypto" },
-  { id: 959, ticker: "US100", name: "US 100", precision: 2, base: 20480, volatility: 0.02, period: 1800, profit: 83, kind: "index" },
-  { id: 183, ticker: "SSNLF", name: "Samsung-Pe…", precision: 2, base: 1486, volatility: 0.025, period: 1800, profit: 75, kind: "stock" },
-];
+export const ACTIVES = [];
 
 /**
  * Asset groups, by id.
@@ -45,22 +45,120 @@ export const ACTIVES = [
  * stalls the `login_step_assets` stage and holds the whole interface on its
  * login view.
  */
-export const ACTIVE_GROUPS = {
-  1: "front.forex",
-  2: "front.crypto",
-  3: "front.index",
-  4: "front.stock",
-  5: "front.commodity",
-};
+export const ACTIVE_GROUPS = {};
 
-/** Which group each instrument family belongs to. */
-const GROUP_BY_KIND = { forex: 1, crypto: 2, index: 3, stock: 4, commodity: 5 };
+/** Settings rows, by key — whatever the admin has set. */
+export const SETTINGS = {};
 
-export function groupIdFor(active) {
-  return GROUP_BY_KIND[active.kind] ?? 1;
+let pool = null;
+
+function connect() {
+  if (pool) return pool;
+  pool = mariadb.createPool({
+    host: process.env.MYSQL_HOST ?? "127.0.0.1",
+    port: Number(process.env.MYSQL_PORT ?? 3306),
+    user: process.env.MYSQL_USER,
+    password: process.env.MYSQL_PASSWORD,
+    database: process.env.MYSQL_DATABASE,
+    connectionLimit: 3,
+    // The driver returns BigInt for MySQL's 64-bit integers by default, which
+    // then fails to JSON-stringify. Every id here fits a double.
+    insertIdAsNumber: true,
+    decimalAsNumber: true,
+    bigIntAsNumber: true,
+  });
+  return pool;
 }
 
-const BY_ID = new Map(ACTIVES.map((active) => [active.id, active]));
+/** MySQL hands JSON columns back as text on some driver versions. */
+function readJson(value, fallback) {
+  if (value === null || value === undefined) return fallback;
+  if (typeof value === "object") return value;
+  try {
+    return JSON.parse(String(value));
+  } catch {
+    return fallback;
+  }
+}
+
+/**
+ * Reads the catalogue and fills the exported collections in place.
+ *
+ * Safe to call again: an administrator changing an instrument takes effect on
+ * the next refresh without restarting the feed.
+ *
+ * @returns {Promise<{assets: number, groups: number}>}
+ */
+export async function loadCatalog() {
+  const db = connect();
+  const [groups, assets, settings] = await Promise.all([
+    db.query("SELECT id, `key`, name, priority FROM asset_groups WHERE enabled = 1 ORDER BY priority"),
+    db.query("SELECT * FROM assets WHERE enabled = 1 ORDER BY priority, id"),
+    db.query("SELECT `key`, value FROM platform_settings"),
+  ]);
+
+  for (const key of Object.keys(ACTIVE_GROUPS)) delete ACTIVE_GROUPS[key];
+  for (const group of groups) ACTIVE_GROUPS[Number(group.id)] = group.key;
+
+  ACTIVES.length = 0;
+  for (const row of assets) {
+    ACTIVES.push({
+      id: Number(row.id),
+      ticker: row.ticker,
+      name: row.name,
+      kind: row.kind,
+      groupId: Number(row.group_id),
+      precision: Number(row.precision),
+      profit: Number(row.profit),
+      source: row.source,
+      sourceSymbol: row.source_symbol,
+      pipScale: Number(row.pip_scale),
+      spreadPlus: Number(row.spread_plus),
+      spreadMinus: Number(row.spread_minus),
+      deadtime: Number(row.deadtime),
+      expirations: readJson(row.expirations, [60, 120, 300]),
+      expirationDays: readJson(row.expiration_days, [1, 1, 1, 1, 1, 1, 1]),
+      minQty: Number(row.min_qty),
+      qtyStep: Number(row.qty_step),
+      currencyLeft: row.currency_left,
+      currencyRight: row.currency_right,
+      timeFrom: row.time_from,
+      timeTo: row.time_to,
+      exchange: row.exchange,
+      image: row.image,
+      priority: Number(row.priority),
+      isOtc: Boolean(row.is_otc),
+      isVisible: Boolean(row.is_visible),
+      isPaused: Boolean(row.is_paused),
+      isSuspended: Boolean(row.is_suspended),
+      // Simulator inputs. Null for an instrument with a feed; `priceAt` only
+      // reads them when the feed has nothing, and `index.mjs` fills `base` from
+      // the first real price so even that fallback lands near the truth.
+      base: row.sim_base === null ? 0 : Number(row.sim_base),
+      volatility: row.sim_volatility === null ? 0.01 : Number(row.sim_volatility),
+      period: row.sim_period === null ? 900 : Number(row.sim_period),
+    });
+  }
+
+  for (const key of Object.keys(SETTINGS)) delete SETTINGS[key];
+  for (const row of settings) SETTINGS[row.key] = readJson(row.value, null);
+
+  BY_ID.clear();
+  for (const active of ACTIVES) BY_ID.set(active.id, active);
+
+  return { assets: ACTIVES.length, groups: Object.keys(ACTIVE_GROUPS).length };
+}
+
+export async function closeCatalog() {
+  if (pool) await pool.end();
+  pool = null;
+}
+
+export function groupIdFor(active) {
+  return active.groupId ?? 1;
+}
+
+const BY_ID = new Map();
 
 /** @returns {Active | undefined} */
 export function activeById(id) {

@@ -14,7 +14,22 @@
  */
 import { ACTIVES } from "../market/actives.mjs";
 
-const DEFAULTS = {
+/**
+ * Built on demand, not at module scope: the instrument catalogue is loaded from
+ * the database after this module is imported, so reading it eagerly saw an
+ * empty array and crashed on the first boot that had a database behind it.
+ */
+function buildDefaults() {
+  /*
+   * The chart opens on an instrument that has a real feed behind it, so a fresh
+   * session shows live prices rather than the synthetic curve a forex pair
+   * still falls back to. Falls back to whatever is first when nothing is
+   * sourced.
+   */
+  const preferred = ACTIVES.find((active) => active.source === "BINANCE") ?? ACTIVES[0];
+  const plotted = (i) => ACTIVES[i] ?? preferred;
+
+  return {
   "traderoom_gl_common": {
     "balanceId": 900000001,
     "theme": "black",
@@ -241,10 +256,12 @@ const DEFAULTS = {
     "gridSchemeRows": [100],
     "gridSchemeColumns": [100],
     "fixedNumberOfPlotters": 1,
-    "selectedActiveId": ACTIVES[0].id,
+    "selectedActiveId": preferred.id,
     "selectedActiveType": "digital-option",
     "plotters": [0, 1, 2].map((i) => ({
-      "activeId": ACTIVES[i].id,
+      // One plotter per open tab; a short catalogue repeats an instrument
+      // rather than leaving a tab with no asset at all.
+      "activeId": i === 0 ? preferred.id : plotted(i).id,
       "activeType": "digital-option",
       "isMinimized": false,
       "plotType": "candles",
@@ -276,11 +293,12 @@ const DEFAULTS = {
       "chartPriceType": "mid"
     }))
   }
-};
+  };
+}
 
 /** @returns the stored shape for a config name, or `{}` when unknown. */
 export function defaultUserConfig(name, account) {
-  const value = DEFAULTS[name];
+  const value = buildDefaults()[name];
   if (!value) return {};
   const copy = structuredClone(value);
   // The wallet is per account, so it cannot live in a static default.

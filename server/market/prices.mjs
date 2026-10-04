@@ -12,6 +12,8 @@
  * trends with believable chop on top instead of white noise.
  */
 
+import * as binance from "./binance.mjs";
+
 const OCTAVES = 6;
 /** Each octave is this much faster than the one before. */
 const LACUNARITY = 2.37;
@@ -58,14 +60,34 @@ function fbm(seed, x) {
  * @param {number} timeSeconds unix seconds, fractional is fine
  */
 export function priceAt(active, timeSeconds) {
+  if (active.source === "BINANCE") {
+    const real = binance.priceAt(active, timeSeconds);
+    // Null means the feed has nothing covering that instant — at boot, or after
+    // a drop. Falling through to the curve keeps the platform answering rather
+    // than serving a zero the chart would draw as a cliff.
+    if (real !== null) return real;
+  }
+  return simulatedPriceAt(active, timeSeconds);
+}
+
+/** The deterministic curve, for an instrument with no feed behind it. */
+function simulatedPriceAt(active, timeSeconds) {
   const wave = fbm(active.id * 2654435761, timeSeconds / active.period);
   const price = active.base * (1 + wave * active.volatility);
   return round(price, active.precision);
 }
 
-/** Half the bid/ask spread, as a price delta. */
+/**
+ * Half the bid/ask spread, as a price delta.
+ *
+ * Scaled off the instrument's own price rather than a configured constant: a
+ * spread that is sensible on a 1.08 currency pair is invisible on a 90,000
+ * bitcoin. An instrument with a feed has no `base` column at all, so the live
+ * price stands in for it.
+ */
 export function halfSpread(active) {
-  return round(Math.max(active.base * 0.00004, 10 ** -active.precision), active.precision + 2) / 2;
+  const reference = active.base || binance.priceAt(active, Date.now() / 1000) || 1;
+  return round(Math.max(reference * 0.00004, 10 ** -active.precision), active.precision + 2) / 2;
 }
 
 export function round(value, precision) {
@@ -85,6 +107,15 @@ export function round(value, precision) {
  * @param {number} [until] clamp the right edge here, for the bucket still open
  */
 export function candleAt(active, from, size, until) {
+  if (active.source === "BINANCE") {
+    const real = binance.candleAt(active, from, size);
+    if (real) return { id: Math.floor(from / size), from, to: from + size, ...real };
+  }
+  return simulatedCandleAt(active, from, size, until);
+}
+
+/** A bar sampled off the deterministic curve, for an instrument with no feed. */
+function simulatedCandleAt(active, from, size, until) {
   const end = Math.min(from + size, until ?? from + size);
   // Enough samples that a wick is not missed, few enough to stay cheap.
   const samples = Math.max(Math.min(Math.round(size / 2), 24), 4);

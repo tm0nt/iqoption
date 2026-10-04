@@ -1,0 +1,128 @@
+// The platform's data contract.
+//
+// The shapes here are not free inventions: an `Asset` row has to be able to
+// produce the `active` descriptor the engine reads, field for field, because
+// the client validates it and drops an instrument it cannot parse. Anything the
+// protocol reads is a column, so an administrator can change it without a
+// deploy; anything the protocol derives (`commission` from `profit`, the group
+// key from the group) stays derived.
+//
+// See docs/avalon-backend.md for what each field means on the wire.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+/// A row in the asset selector. The engine reads `key` as a localization id.
+model AssetGroup {
+  /// Matches `active_group_id` on every asset in it.
+  id       Int     @id
+  /// The engine translates this, e.g. `front.crypto`.
+  key      String  @unique
+  name     String
+  priority Int     @default(100)
+  enabled  Boolean @default(true)
+
+  assets Asset[]
+
+  @@map("asset_groups")
+}
+
+/// Where an instrument's prices come from.
+enum PriceSource {
+  /// Binance klines and live trades, keyed by `sourceSymbol`.
+  BINANCE
+  /// The deterministic curve in server/market/prices.mjs. The fallback for a
+  /// family with no feed yet — forex, until one is wired.
+  SIMULATED
+}
+
+/// One tradable instrument.
+model Asset {
+  /// The `active_id` on the wire. Deliberately not auto-increment: the ids
+  /// follow the feed's own numbering so a client can be repointed between this
+  /// server and the live one without changing anything but a URL.
+  id     Int    @id
+  ticker String @unique
+  /// Shown in the selector: "Bitcoin", "EUR/USD".
+  name   String
+  /// forex | crypto | index | stock | commodity. Drives the default group.
+  kind   String
+
+  groupId Int        @map("group_id")
+  group   AssetGroup @relation(fields: [groupId], references: [id])
+
+  source       PriceSource @default(SIMULATED)
+  /// The symbol at the source: `BTCUSDT` for Binance. Null for SIMULATED.
+  sourceSymbol String?     @map("source_symbol")
+
+  /// Price decimals. Binance reports its own; this is what the chart draws.
+  precision Int
+  pipScale  Int   @default(2) @map("pip_scale")
+  /// Half-spreads, in pips, added to and subtracted from the mid price.
+  spreadPlus  Float @default(0.4) @map("spread_plus")
+  spreadMinus Float @default(0.1) @map("spread_minus")
+
+  /// Payout percent for a winning binary option. The wire carries
+  /// `commission: 100 - profit`.
+  profit   Int @default(80)
+  /// Seconds before expiry when the deal panel stops accepting orders.
+  deadtime Int @default(2)
+  /// Expiries the panel offers, in seconds.
+  expirations Json
+
+  minQty        Float  @default(1) @map("min_qty")
+  qtyStep       Float  @default(1) @map("qty_step")
+  currencyLeft  String @map("currency_left")
+  currencyRight String @default("USD") @map("currency_right")
+
+  /// Equal times mean around the clock.
+  timeFrom       String  @default("00:00:00") @map("time_from")
+  timeTo         String  @default("00:00:00") @map("time_to")
+  /// Seven flags, Monday first.
+  expirationDays Json    @map("expiration_days")
+  exchange       String  @default("na")
+  image          String  @default("") @db.VarChar(512)
+  priority       Int     @default(100)
+
+  isOtc       Boolean @default(false) @map("is_otc")
+  isVisible   Boolean @default(true) @map("is_visible")
+  isPaused    Boolean @default(false) @map("is_paused")
+  isSuspended Boolean @default(false) @map("is_suspended")
+  /// An asset that is off is not sent at all, as though it did not exist.
+  enabled     Boolean @default(true)
+
+  /// Only read when `source` is SIMULATED: the curve's centre, its
+  /// peak-to-peak swing as a fraction of the centre, and the seconds one full
+  /// swing of the slowest octave takes.
+  simBase       Float? @map("sim_base")
+  simVolatility Float? @map("sim_volatility")
+  simPeriod     Int?   @map("sim_period")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([groupId])
+  @@index([enabled])
+  @@map("assets")
+}
+
+/// Anything else an administrator can change without a deploy.
+///
+/// One row per setting rather than one table of columns, because the engine's
+/// own configuration is a moving set: the stubs it reads at boot each carry a
+/// different shape, and they are served from here.
+model PlatformSetting {
+  key         String   @id
+  value       Json
+  /// What this controls, for whoever opens the admin and has never seen it.
+  description String?  @db.Text
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("platform_settings")
+}
