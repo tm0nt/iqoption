@@ -10,10 +10,35 @@
 
 import { randomUUID } from "node:crypto";
 import { pool } from "./db/pool.mjs";
+import { SETTINGS } from "./market/actives.mjs";
 import { loadPositions } from "./market/position-store.mjs";
 
-/** Practice money, in the account currency. */
+/**
+ * `IQBalanceType`, the two kinds of wallet an account has.
+ *
+ * Every person gets both. The practice one is money that is not money and can
+ * be topped back up at will; the real one only moves when a deposit is
+ * reconciled, which is why it starts empty.
+ */
+export const REAL = 1;
+export const PRACTICE = 4;
+
+/** Practice money, in the account currency, when nothing has been configured. */
 const DEMO_START_BALANCE = 10_000;
+
+/**
+ * What a practice wallet is filled to, both when it is created and when
+ * someone tops it up.
+ *
+ * Read from `platform_settings` so it is an administrator's decision rather
+ * than this file's, and it is read per call rather than cached: the admin
+ * screen can change it between one top-up and the next.
+ */
+export function practiceStartAmount() {
+  const configured = SETTINGS["trading.demoBalance"];
+  const amount = Number(configured?.amount);
+  return Number.isFinite(amount) && amount > 0 ? amount : DEMO_START_BALANCE;
+}
 
 /**
  * The first account always gets this id.
@@ -40,6 +65,37 @@ const sessions = new Map();
 /** userId -> account */
 const accounts = new Map();
 
+/**
+ * The wallet an account opens on.
+ *
+ * Their own recorded choice first — the traderoom lets people switch and the
+ * choice has to survive a reload. Failing that, practice: a new account's real
+ * wallet is empty, money reaches it through a deposit someone reconciles, and
+ * dropping a person into an empty wallet reads as a broken account rather than
+ * as an invitation to fund it.
+ */
+function activeWalletOf(account, chosenId) {
+  const chosen = chosenId == null ? undefined : account.balances.find((b) => b.id === Number(chosenId));
+  return chosen ?? account.balances.find((balance) => balance.type === PRACTICE) ?? account.balances[0];
+}
+
+/**
+ * Records which wallet someone is trading on.
+ *
+ * Called when the client reports its choice. Like `saveBalance` it does not
+ * block the frame that caused it: the client already switched and is not
+ * waiting to be told it may.
+ */
+export function setActiveBalance(account, balanceId) {
+  const wallet = account.balances.find((balance) => balance.id === Number(balanceId));
+  if (!wallet || wallet.id === account.activeBalanceId) return;
+
+  account.activeBalanceId = wallet.id;
+  pool()
+    .query("UPDATE users SET active_balance_id = ? WHERE id = ?", [wallet.id, account.userId])
+    .catch((error) => console.error("[avalon] could not save the active balance:", error.message));
+}
+
 function createAccount({ name = "Demo Trader", currency = "USD" } = {}) {
   const userId = nextUserId++;
   const account = {
@@ -50,20 +106,20 @@ function createAccount({ name = "Demo Trader", currency = "USD" } = {}) {
     country: "BR",
     created: Date.now(),
     /**
-     * One wallet, deliberately.
+     * Both wallets, in the order the live feed sends them.
      *
      * `BalancesService::isInitialized()` requires both that balances arrived
      * *and* that one is selected, and `CMain` only reaches its traderoom once
-     * that holds. Offering a real and a practice wallet leaves the choice to a
-     * select-account dialog, so a single wallet removes the decision.
-     *
-     * Type 4 is the practice one, which is what this server is for.
+     * that holds — so the selection below is not a nicety, it is what lets the
+     * traderoom open. Given a selection the client draws its own switcher and
+     * never asks which account type to use.
      */
     balances: [
-      { id: nextBalanceId++, type: 4, amount: DEMO_START_BALANCE, currency: "USD", is_fiat: true },
+      { id: nextBalanceId++, type: REAL, amount: 0, currency, is_fiat: true },
+      { id: nextBalanceId++, type: PRACTICE, amount: practiceStartAmount(), currency, is_fiat: true },
     ],
   };
-  account.activeBalanceId = account.balances[0].id;
+  account.activeBalanceId = activeWalletOf(account).id;
   /** UI preferences the client writes back with `set-user-settings`. */
   account.settings = new Map();
   /** Session key the client echoes back on some calls. */
@@ -164,7 +220,7 @@ export async function loadAccountById(userId) {
   if (cached) return cached;
 
   const rows = await pool().query(
-    "SELECT id, email, name, locale, is_active FROM users WHERE id = ? LIMIT 1",
+    "SELECT id, email, name, locale, is_active, active_balance_id FROM users WHERE id = ? LIMIT 1",
     [userId],
   );
   if (!rows[0]) return null;
@@ -210,7 +266,7 @@ async function loadAccount(row) {
     positions,
   };
 
-  account.activeBalanceId = account.balances[0]?.id;
+  account.activeBalanceId = activeWalletOf(account, row.active_balance_id)?.id;
   account.settings = new Map();
   account.skey = randomUUID().replace(/-/g, "");
   return account;

@@ -5,6 +5,7 @@ import { CabinetShell } from "@/components/cabinet/CabinetShell";
 import { DepositPanel } from "@/components/cabinet/DepositPanel";
 import { cashierSettings } from "@/lib/cabinet/cashier";
 import { prisma } from "@/lib/db";
+import { activeWallet } from "@/lib/cabinet/wallet";
 import { isLocale } from "@/i18n/avalon";
 
 export const metadata: Metadata = { title: "Deposit" };
@@ -51,14 +52,15 @@ export default async function DepositPage(props: PageProps<"/[lang]/counting">) 
       select: {
         email: true,
         kycStatus: true,
-        balances: { select: { amount: true, currency: true, type: true }, orderBy: { type: "asc" } },
+        activeBalanceId: true,
+        balances: { select: { id: true, amount: true, currency: true, type: true }, orderBy: { type: "asc" } },
       },
     }),
     cashierSettings(),
   ]);
   if (!user) redirect(`/${lang}/login`);
 
-  const wallet = user.balances[0];
+  const wallet = activeWallet(user.balances, user.activeBalanceId);
   const currency = wallet?.currency ?? "USD";
 
   return (

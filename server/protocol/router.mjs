@@ -10,11 +10,14 @@
 
 import { ACTIVES, ACTIVE_GROUPS, activeById, groupIdFor } from "../market/actives.mjs";
 import {
+  PRACTICE,
   balanceChangedFrame,
   balancesFrame,
   marginalBalanceFrame,
+  practiceStartAmount,
   profileFrame,
   saveBalance,
+  setActiveBalance,
 } from "../accounts.mjs";
 import { featureRows } from "../data/features.mjs";
 import { defaultUserConfig } from "../data/user-settings.mjs";
@@ -390,6 +393,53 @@ export const CALLS = {
       (balance) => !wanted || wanted.includes(balance.type),
     );
     return { name: "balances", payload: balances };
+  },
+
+  /**
+   * Topping the practice wallet back up.
+   *
+   * "Top up" on a practice account is not a deposit — it refills the wallet to
+   * the amount it started at, which is what makes a practice account practice.
+   * `CommandRequestPracticeBalanceReset` in the binary sends this, and the
+   * reply it waits for is `training-balance-reset`; both names are in the
+   * string table beside each other.
+   *
+   * Only the practice wallet. A call naming the real one is refused rather than
+   * ignored: silently doing nothing would read, to whoever asked, as money that
+   * arrived and then vanished.
+   */
+  "internal-billing.reset-training-balance": (body, { account, pushEvent, send }) => {
+    const id = Number(body?.user_balance_id ?? account.activeBalanceId);
+    const wallet = account.balances.find((balance) => balance.id === id);
+    if (!wallet) return { error: "unknown balance", status: STATUS.NOT_FOUND };
+    if (wallet.type !== PRACTICE) {
+      return { error: "only a practice balance can be topped up", status: STATUS.BAD_REQUEST };
+    }
+
+    /*
+     * A top-up fills the wallet back up; it never takes money away. Someone who
+     * traded their practice balance above the starting amount and then pressed
+     * the button would otherwise watch their profits deleted. The client greys
+     * the button out above the threshold — "you can top up your practice
+     * account for free if its balance is less than $10,000" — but the rule
+     * belongs on this side of the socket too.
+     */
+    const target = practiceStartAmount();
+    if (wallet.amount >= target) {
+      return { name: "training-balance-reset", payload: { user_balance_id: wallet.id, amount: wallet.amount } };
+    }
+
+    wallet.amount = target;
+    saveBalance(wallet);
+
+    // The same three the stake path sends, for the same reason: the header
+    // reads the margin view, the deal panel reads the billing event, and the
+    // snapshot is what everything else compared against at login.
+    pushEvent("internal-billing.balance-changed", balanceChangedFrame(account, wallet));
+    pushEvent("marginal-portfolio.balance-changed", marginalBalanceFrame(account, wallet));
+    send({ name: "balances", msg: balancesFrame(account) });
+
+    return { name: "training-balance-reset", payload: { user_balance_id: wallet.id, amount: wallet.amount } };
   },
 
   /**
@@ -916,6 +966,19 @@ export const CALLS = {
     if (body?.name) {
       account.settings.set(body.name, { version: body.version, config: body.config ?? {} });
     }
+    /*
+     * Switching wallets is reported here and nowhere else.
+     *
+     * The engine's own "change account type" is a client-side command — it
+     * picks a different wallet out of the ones it already has — and the only
+     * thing that reaches the feed afterwards is this settings write carrying
+     * the new `balanceId`. Reading it is what lets the choice outlive the
+     * client's own memory of it, and what keeps the cabinet showing the same
+     * balance the traderoom does.
+     */
+    if (body?.name === "traderoom_gl_common" && body?.config?.balanceId) {
+      setActiveBalance(account, body.config.balanceId);
+    }
     // A write is acknowledged under its own name, not the one a read uses.
     return {
       name: "set-user-settings-reply",
@@ -926,6 +989,41 @@ export const CALLS = {
   "get-currency": (body) => {
     const currency = CURRENCIES.find((item) => item.name === body?.name) ?? CURRENCIES[0];
     return { name: "currency", payload: currency };
+  },
+
+  /**
+   * What a wallet has running.
+   *
+   * `DealsService::getStats(long long)` asks this per wallet as the account
+   * panel opens, and asks again every time it reopens. Answering 4040 is not
+   * fatal — the panel draws either way — but it asks twice per open, so an
+   * unanswered call is a steady drip of errors in a log that is supposed to be
+   * readable.
+   *
+   * The numbers are the open deals on that wallet, which is the only thing
+   * this feed knows that the name could mean.
+   */
+  "portfolio.get-stats": (body, { account }) => {
+    const id = Number(body?.user_balance_id ?? account.activeBalanceId);
+    const open = openPositions(account).filter((position) => position.user_balance_id === id);
+    const invested = open.reduce((sum, position) => sum + Number(position.invest ?? 0), 0);
+
+    return {
+      name: "stats",
+      payload: {
+        user_balance_id: id,
+        count: open.length,
+        invested: round(invested, 2),
+        // One entry per family the wallet has something open in, which is the
+        // shape every other portfolio read here answers in.
+        instrument_types: [...new Set(open.map((position) => portfolioTypeOf(position.option_type_id)))].map(
+          (instrument_type) => ({
+            instrument_type,
+            count: open.filter((position) => portfolioTypeOf(position.option_type_id) === instrument_type).length,
+          }),
+        ),
+      },
+    };
   },
 
   /** Open trades. A development account starts flat. */

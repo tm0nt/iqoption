@@ -186,6 +186,20 @@ model User {
   /// Where the uploaded photo lives; null means the blank avatar.
   avatarUrl   String?   @map("avatar_url") @db.VarChar(512)
 
+  /**
+   * The wallet this person is trading on.
+   *
+   * Everyone has a real and a practice wallet, and the traderoom lets them
+   * switch between the two. The engine keeps its own copy of the choice in its
+   * client settings, but those live only as long as the process that answered
+   * for them; this is what makes the choice survive a sign-out or a restart.
+   *
+   * Null means nobody has chosen yet, which resolves to the practice wallet —
+   * a new account's real one is empty, and opening there reads as a broken
+   * account rather than as an invitation to fund it.
+   */
+  activeBalanceId Int? @map("active_balance_id")
+
   /// E.164, the only form that is unambiguous across countries.
   phone         String    @unique
   /// ISO 3166-1 alpha-2, kept beside the number so a form can show it back in

@@ -11,6 +11,7 @@ import { NextResponse } from "next/server";
 import { Prisma } from "@/generated/prisma/client";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
+import { REAL } from "@/lib/cabinet/wallet";
 import { cashierSettings } from "@/lib/cabinet/cashier";
 
 export const dynamic = "force-dynamic";
@@ -45,11 +46,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "invalid submission", errors }, { status: 400 });
   }
 
+  /*
+   * The real wallet, named rather than taken as the first of the list. Practice
+   * money is not money: it cannot be paid out and a deposit does not land in
+   * it, and leaving the choice to an ordering means the day a third wallet is
+   * added the cashier quietly starts moving the wrong one.
+   */
   const wallet = await prisma.balance.findFirst({
-    where: { userId: session.user.platformId },
-    orderBy: { type: "asc" },
+    where: { userId: session.user.platformId, type: REAL },
   });
-  if (!wallet) return NextResponse.json({ error: "no wallet" }, { status: 400 });
+  if (!wallet) return NextResponse.json({ error: "no real wallet" }, { status: 400 });
 
   const transaction = await prisma.transaction.create({
     data: {

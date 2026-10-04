@@ -21,7 +21,14 @@ export const dynamic = "force-dynamic";
 /** Cost 12: a few hundred milliseconds per attempt, which is the point. */
 const BCRYPT_ROUNDS = 12;
 
-/** `IQBalanceType`: 4 is the practice balance. */
+/**
+ * `IQBalanceType`, the two wallets every account gets.
+ *
+ * The real one starts empty on purpose: money reaches it through a deposit
+ * somebody reconciles, never through registering. The practice one is funded
+ * from `trading.demoBalance` and can be topped back up from the traderoom.
+ */
+const REAL = 1;
 const PRACTICE = 4;
 
 export async function POST(request: Request) {
@@ -54,11 +61,10 @@ export async function POST(request: Request) {
         phone,
         phoneCountry,
         balances: {
-          create: {
-            type: PRACTICE,
-            amount: new Prisma.Decimal(demo.amount),
-            currency: demo.currency,
-          },
+          create: [
+            { type: REAL, amount: new Prisma.Decimal(0), currency: demo.currency },
+            { type: PRACTICE, amount: new Prisma.Decimal(demo.amount), currency: demo.currency },
+          ],
         },
       },
       select: { id: true, email: true, name: true },

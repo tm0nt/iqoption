@@ -6,6 +6,7 @@ import { PersonalDetailsForm } from "@/components/cabinet/PersonalDetailsForm";
 import { VerificationStepper, type Step } from "@/components/cabinet/VerificationStepper";
 import { prisma } from "@/lib/db";
 import { countryName } from "@/lib/cabinet/countries";
+import { activeWallet } from "@/lib/cabinet/wallet";
 import { isLocale } from "@/i18n/avalon";
 
 export const metadata: Metadata = { title: "Account Verification" };
@@ -52,12 +53,13 @@ export default async function VerificationPage(props: PageProps<"/[lang]/verific
       isUsPerson: true,
       kycStatus: true,
       phoneCountry: true,
-      balances: { select: { amount: true, currency: true, type: true }, orderBy: { type: "asc" } },
+      activeBalanceId: true,
+      balances: { select: { id: true, amount: true, currency: true, type: true }, orderBy: { type: "asc" } },
     },
   });
   if (!user) redirect(`/${lang}/login`);
 
-  const wallet = user.balances[0];
+  const wallet = activeWallet(user.balances, user.activeBalanceId);
   const detailsDone = user.kycStatus !== "NONE";
 
   /*

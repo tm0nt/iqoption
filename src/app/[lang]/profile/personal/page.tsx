@@ -6,6 +6,7 @@ import { CabinetShell } from "@/components/cabinet/CabinetShell";
 import { ProfileNav } from "@/components/cabinet/ProfileNav";
 import { ProfilePhotoModal } from "@/components/cabinet/ProfilePhotoModal";
 import { prisma } from "@/lib/db";
+import { activeWallet } from "@/lib/cabinet/wallet";
 import { isLocale } from "@/i18n/avalon";
 
 export const metadata: Metadata = { title: "Personal Data" };
@@ -52,12 +53,13 @@ export default async function PersonalDataPage(props: PageProps<"/[lang]/profile
       phone: true,
       avatarUrl: true,
       createdAt: true,
-      balances: { select: { amount: true, currency: true, type: true }, orderBy: { type: "asc" } },
+      activeBalanceId: true,
+      balances: { select: { id: true, amount: true, currency: true, type: true }, orderBy: { type: "asc" } },
     },
   });
   if (!user) redirect(`/${lang}/login`);
 
-  const wallet = user.balances[0];
+  const wallet = activeWallet(user.balances, user.activeBalanceId);
   const balance = wallet ? `${MONEY.format(Number(wallet.amount))} ${wallet.currency}` : "0.00";
   /* The statement defaults to the day before yesterday through today, which is
      the window the live page opens on. */

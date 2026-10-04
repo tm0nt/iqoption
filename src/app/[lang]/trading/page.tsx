@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { CabinetShell } from "@/components/cabinet/CabinetShell";
 import { HistoryFilters } from "@/components/cabinet/HistoryFilters";
 import { prisma } from "@/lib/db";
+import { activeWallet } from "@/lib/cabinet/wallet";
 import { isLocale } from "@/i18n/avalon";
 
 export const metadata: Metadata = { title: "Trading History" };
@@ -51,6 +52,7 @@ export default async function TradingHistoryPage(props: PageProps<"/[lang]/tradi
       select: {
         email: true,
         kycStatus: true,
+        activeBalanceId: true,
         balances: { select: { id: true, amount: true, currency: true, type: true }, orderBy: { type: "asc" } },
       },
     }),
@@ -58,7 +60,7 @@ export default async function TradingHistoryPage(props: PageProps<"/[lang]/tradi
   ]);
   if (!user) redirect(`/${lang}/login`);
 
-  const wallet = user.balances[0];
+  const wallet = activeWallet(user.balances, user.activeBalanceId);
   const currency = wallet?.currency ?? "USD";
   const walletIds = user.balances
     .filter((balance) => !account || account === "all" || balance.type === Number(account))

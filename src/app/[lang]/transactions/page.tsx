@@ -5,6 +5,7 @@ import { CabinetShell } from "@/components/cabinet/CabinetShell";
 import { HistoryFilters } from "@/components/cabinet/HistoryFilters";
 import { balanceHistory, type HistoryFilter } from "@/lib/cabinet/balance-history";
 import { prisma } from "@/lib/db";
+import { activeWallet } from "@/lib/cabinet/wallet";
 import { isLocale } from "@/i18n/avalon";
 
 export const metadata: Metadata = { title: "Balance History" };
@@ -60,14 +61,15 @@ export default async function TransactionsPage(props: PageProps<"/[lang]/transac
       select: {
         email: true,
         kycStatus: true,
-        balances: { select: { amount: true, currency: true, type: true }, orderBy: { type: "asc" } },
+        activeBalanceId: true,
+        balances: { select: { id: true, amount: true, currency: true, type: true }, orderBy: { type: "asc" } },
       },
     }),
     balanceHistory(session.user.platformId, filter),
   ]);
   if (!user) redirect(`/${lang}/login`);
 
-  const wallet = user.balances[0];
+  const wallet = activeWallet(user.balances, user.activeBalanceId);
   const currency = wallet?.currency ?? "USD";
 
   const current: Record<string, string> = {};
