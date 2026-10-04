@@ -1,9 +1,9 @@
 # Engine host — o que falta
 
 Estado em 4 de outubro de 2026. O traderoom roda em `/[lang]/traderoom`, servido
-pelo Next, com o catálogo de instrumentos vindo do MySQL e os preços de cripto
-vindo da Binance. O que está abaixo é o que ainda não está pronto, em ordem do
-que mais dói.
+pelo Next, atrás de login: contas, carteiras e negócios vivem no MySQL, o
+catálogo de instrumentos também, e os preços de cripto vêm da Binance. O que
+está abaixo é o que ainda não está pronto, em ordem do que mais dói.
 
 Para o protocolo em si — o que cada frame carrega e por quê — veja
 [`avalon-backend.md`](./avalon-backend.md). Este arquivo é só a lista de
@@ -11,41 +11,33 @@ pendências.
 
 ## Bloqueios reais
 
-### 1. A administração não distingue administrador de usuário comum
+### 1. Não existe interface de administração
 
-`/api/admin/*` agora exige sessão — o middleware recusa com 401 sem ela — mas
-**qualquer conta serve**. Quem se registrar na plataforma muda o que ela
-negocia, com que pagamento, e para qual WebSocket cada sessão aponta.
+As rotas existem, exigem um administrador e respondem JSON; a tela não. Hoje se
+mexe por `curl`, autenticado.
 
-Falta um papel. O mínimo: uma coluna `role` em `users`, o middleware exigindo
-`admin` em `/api/admin/*`, e o primeiro administrador criado por script e não
-por formulário.
+O papel em si está feito: `users.role`, o middleware recusando com 401 sem
+sessão e 403 sem `ADMIN`, e um script que é o único caminho para conceder —
+`npm run admin:grant -- alguem@exemplo.com`. Não há formulário nem regra de
+"primeiro usuário vira dono", porque qualquer uma dessas é um caminho de
+"consegue se registrar" até "muda o que a plataforma negocia".
 
-### 2. Não existe interface de administração
+Uma ressalva: o papel viaja no token da sessão, que é assinado e não relido do
+banco a cada requisição. Quem já estava logado mantém o papel que tinha até
+sair e entrar de novo.
 
-As rotas existem e respondem JSON; a tela não. Hoje se mexe por `curl`:
+### 2. Um único servidor de mercado por banco
 
-```sh
-curl -s localhost:3000/api/admin/assets | jq '.assets[] | {id, ticker, source, enabled}'
-curl -s -X PATCH localhost:3000/api/admin/assets/860 \
-  -H 'content-type: application/json' -d '{"enabled":false,"profit":80}'
-curl -s -X POST localhost:3000/api/admin/reload
-```
+Os ids de negócio são alocados no processo, semeados pelo maior id da tabela no
+boot. Dois servidores apontando para o mesmo banco distribuiriam o mesmo id e
+colidiriam na primeira gravação.
 
-### 3. As posições não persistem
+A alternativa é deixar o banco alocar, o que tornaria a abertura de um negócio
+assíncrona por todo o roteador — `openOption` é chamada de dentro do tratamento
+do frame e a resposta carrega o id. Enquanto for um processo só, isto é uma
+restrição anotada, não um defeito.
 
-Contas e carteiras agora vivem no banco: `resolveSession` resolve o ssid em
-`trading_sessions`, carrega o usuário e suas carteiras, e cada aposta e cada
-liquidação gravam o saldo de volta. Um ssid que ninguém emitiu é recusado com
-o código 4010 — a porta aberta que havia aqui está fechada, salvo quando
-`AVALON_ALLOW_ANONYMOUS=1` a reabre de propósito para desenvolvimento sem o app.
-
-**Os negócios em si continuam em memória** (`server/market/positions.mjs`).
-Reiniciar o feed com posições abertas as apaga, e o histórico volta vazio.
-Falta um modelo `Position` — as formas estão em `avalon-backend.md`: o conjunto
-de campos de `DealBinary` e o envelope `{positions, total, limit}`.
-
-### 4. Forex ainda é sintético
+### 3. Forex ainda é sintético
 
 Só `BINANCE` e `SIMULATED` existem como fontes. Os cinco pares de forex usam a
 curva determinística de `server/market/prices.mjs` — ela é convincente e não é
@@ -56,7 +48,7 @@ Para acrescentar um: `server/market/binance.mjs` é o modelo. O contrato é
 pequeno — `warmUp`, `connect`, `priceAt`, `candleAt` — e o despacho por fonte
 está em `prices.mjs`.
 
-### 5. O `/reload` não é automático
+### 4. O `/reload` não é automático
 
 Mudar um instrumento pelo admin não alcança o feed até alguém chamar
 `POST /api/admin/reload`. Os dois processos compartilham o banco, não a
@@ -167,4 +159,4 @@ histórico seguem sem teste.
 7. `engine.feed` apontando para o WebSocket público do feed — `wss://` se o site
    for `https://`, senão o navegador recusa a conexão.
 8. `AUTH_SECRET` no `.env` — sem ele o Auth.js não assina cookie nenhum.
-9. Dar papel de administrador antes de expor `/api/admin/*` (item 1).
+9. `npm run admin:grant -- <email>` para o primeiro administrador.

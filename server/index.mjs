@@ -26,6 +26,7 @@ import { Connection } from "./connection.mjs";
 import { MarketFeed } from "./market/feed.mjs";
 import { ACTIVES, activeById, loadCatalog } from "./market/actives.mjs";
 import * as binance from "./market/binance.mjs";
+import { loadNextPositionId } from "./market/position-store.mjs";
 import { openSession } from "./accounts.mjs";
 
 const PORT = Number(process.env.AVALON_SERVER_PORT ?? 3100);
@@ -119,6 +120,11 @@ wss.on("connection", (socket, request) => {
 async function start() {
   const { assets, groups } = await loadCatalog();
   console.log(`catalogue: ${assets} instruments in ${groups} groups`);
+
+  // Deals carry ids allocated here; without the high-water mark the first write
+  // after a restart collides on the primary key.
+  const nextDeal = await loadNextPositionId();
+  console.log(`deals: next id ${nextDeal}`);
 
   const { ready, failed } = await binance.warmUp(ACTIVES, log);
   if (ready.length) console.log(`binance: warmed ${ready.join(", ")}`);

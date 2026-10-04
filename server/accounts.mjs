@@ -10,6 +10,7 @@
 
 import { randomUUID } from "node:crypto";
 import { pool } from "./db/pool.mjs";
+import { loadPositions } from "./market/position-store.mjs";
 
 /** Practice money, in the account currency. */
 const DEMO_START_BALANCE = 10_000;
@@ -145,10 +146,18 @@ async function loadAccount(row) {
   const existing = accounts.get(userId);
   if (existing) return existing;
 
-  const wallets = await pool().query(
-    "SELECT id, type, amount, currency, is_fiat FROM balances WHERE user_id = ? ORDER BY type",
-    [userId],
-  );
+  const [wallets, positions] = await Promise.all([
+    pool().query(
+      "SELECT id, type, amount, currency, is_fiat FROM balances WHERE user_id = ? ORDER BY type",
+      [userId],
+    ),
+    /*
+     * Open deals and recent history both. A deal that expired while nobody was
+     * connected comes back open and settles on the next tick — the expiry has
+     * passed and the quote at that moment is what decides it.
+     */
+    loadPositions(userId),
+  ]);
 
   const account = {
     userId,
@@ -164,7 +173,7 @@ async function loadAccount(row) {
       currency: wallet.currency,
       is_fiat: Boolean(wallet.is_fiat),
     })),
-    positions: [],
+    positions,
   };
 
   account.activeBalanceId = account.balances[0]?.id;

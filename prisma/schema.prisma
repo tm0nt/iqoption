@@ -127,6 +127,16 @@ model PlatformSetting {
   @@map("platform_settings")
 }
 
+/// What someone is allowed to do.
+///
+/// Deliberately not a boolean: the next distinction after "can change the
+/// instrument catalogue" is never another boolean, and a column of flags is how
+/// permission checks end up disagreeing with each other.
+enum Role {
+  USER
+  ADMIN
+}
+
 /// Someone who can sign in and trade.
 ///
 /// The id is the `user_id` the protocol carries, not a surrogate: it travels in
@@ -153,11 +163,16 @@ model User {
   phoneCountry  String    @map("phone_country") @db.Char(2)
   phoneVerified DateTime? @map("phone_verified")
 
-  locale   String  @default("en")
+  locale String @default("en")
+
+  /// Only ADMIN reaches /api/admin/*. There is no way to grant this through
+  /// the application; `npm run admin:grant` is the only path, on purpose.
+  role     Role    @default(USER)
   /// A disabled account keeps its history and cannot sign in.
   isActive Boolean @default(true) @map("is_active")
 
   balances        Balance[]
+  positions       Position[]
   tradingSessions TradingSession[]
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -212,4 +227,67 @@ model TradingSession {
   @@index([userId])
   @@index([expiresAt])
   @@map("trading_sessions")
+}
+
+/// A binary option, from the moment it is bought.
+///
+/// The market server holds running deals in memory because it settles them on a
+/// one-second timer and answers `positions-state` from them, but memory is not
+/// where they live: a restart with deals open used to lose them, and the
+/// history panel had nothing to show. Every change is written here, and a
+/// reconnecting session reads its open deals back.
+///
+/// The field set is the one `F2::DealBinary::parseAsPortfolioResponse` reads,
+/// minus what can be derived — the instrument descriptor comes from the
+/// catalogue, and `raw_event` is rebuilt from these columns. See
+/// docs/avalon-backend.md.
+model Position {
+  /// The `external_id` the client reads, and the id it sends back.
+  id Int @id @default(autoincrement())
+
+  userId Int  @map("user_id")
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// `user_balance_id`. Not a relation: a wallet can be deleted and a closed
+  /// deal is still a record of what happened.
+  balanceId Int @map("balance_id")
+
+  activeId     Int    @map("active_id")
+  /// 1 binary, 3 turbo, 12 blitz — `IQOptionType` by id.
+  optionTypeId Int    @map("option_type_id")
+  direction    String @db.VarChar(8)
+
+  /// Money, as decimals. A binary option settles on a comparison, and a
+  /// rounding error in a float inverts the result rather than nudging it.
+  invest        Decimal  @db.Decimal(18, 2)
+  profitPercent Int      @map("profit_percent")
+  profitAmount  Decimal? @map("profit_amount") @db.Decimal(18, 2)
+  closeProfit   Decimal? @map("close_profit") @db.Decimal(18, 2)
+  currency      String   @default("USD")
+
+  /// Quotes carry more decimals than money: five on a currency pair.
+  openQuote  Decimal  @map("open_quote") @db.Decimal(18, 8)
+  closeQuote Decimal? @map("close_quote") @db.Decimal(18, 8)
+
+  /// Whole seconds, as the wire carries them.
+  openTime       Int    @map("open_time")
+  /// Milliseconds, which the portfolio's own events use instead.
+  openTimeMs     BigInt @map("open_time_ms")
+  expirationTime Int    @map("expiration_time")
+  expirationSize Int    @map("expiration_size")
+  /// Zero while the deal runs, which is how the wire says "still open".
+  closedAt       Int    @default(0) @map("closed_at")
+
+  /// `IQDealStatus`: open, win, loose, equal.
+  status      String @default("open") @db.VarChar(16)
+  /// `IQPositionCloseReason`: default while running, then win/loose/equal.
+  closeReason String @default("default") @map("close_reason") @db.VarChar(16)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  /// The two reads this table serves: a session's open deals, and its history.
+  @@index([userId, closedAt])
+  @@index([userId, expirationTime])
+  @@map("positions")
 }

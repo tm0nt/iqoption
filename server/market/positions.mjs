@@ -12,9 +12,8 @@
  */
 import { activeById } from "./actives.mjs";
 import { optionActive } from "../protocol/active.mjs";
+import { closePosition, savePosition, takePositionId } from "./position-store.mjs";
 import { priceAt, round } from "./prices.mjs";
-
-let nextId = 7_000_000;
 
 /** A binary option expires on a boundary, not a fixed span from now. */
 function expiryAfter(now, size) {
@@ -95,20 +94,23 @@ export function openOption(account, body, feed) {
   wallet.amount = round(wallet.amount - invest, 2);
 
   const openedAt = now * 1_000;
+  // Allocated from the high-water mark the store read at boot, so a restart
+  // does not start handing out ids that already exist.
+  const id = takePositionId();
   const position = {
-    id: (nextId += 1),
+    id,
     /*
      * The broker's own id for the option, which is what `raw_event` reports and
      * what the `option` reply hands back. The portfolio's `id` is a separate,
      * string-shaped identifier.
      */
-    option_id: nextId,
+    option_id: id,
     /*
      * This is what `DealBinary::getId()` reads: the parser stores `external_id`
      * as a 64-bit integer at the offset `isValid()` checks for a non-zero id.
      * A string reads back as zero and the deal is rejected.
      */
-    external_id: nextId,
+    external_id: id,
     user_id: account.userId,
     user_balance_id: wallet.id,
     active_id: active.id,
@@ -171,6 +173,7 @@ export function openOption(account, body, feed) {
 
   if (!account.positions) account.positions = [];
   account.positions.push(position);
+  savePosition(position);
   return position;
 }
 
@@ -214,6 +217,7 @@ export function settleDue(account, feed) {
 
     const wallet = walletOf(account, position.user_balance_id);
     wallet.amount = round(wallet.amount + position.profit_amount, 2);
+    closePosition(position);
     closed.push(position);
   }
 
@@ -256,6 +260,20 @@ export function positionState(position, feed) {
 /** The positions still running, newest first, as the portfolio lists them. */
 export function openPositions(account) {
   return (account.positions ?? []).filter((position) => !position.closed).reverse();
+}
+
+/**
+ * The settled ones, most recently closed first.
+ *
+ * Read from the same list rather than from the database: the account's deals
+ * were loaded when the session opened, and anything that settled since is
+ * already here. The history panel asks for a page at a time, so the limit is
+ * applied where it is asked for rather than here.
+ */
+export function closedPositions(account) {
+  return (account.positions ?? [])
+    .filter((position) => position.closed)
+    .sort((a, b) => b.closed - a.closed);
 }
 
 /**

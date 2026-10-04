@@ -19,7 +19,14 @@ import {
 import { featureRows } from "../data/features.mjs";
 import { defaultUserConfig } from "../data/user-settings.mjs";
 import { halfSpread, priceAt, round } from "../market/prices.mjs";
-import { openOption, openPositions, optionReply, portfolioEvent, positionState } from "../market/positions.mjs";
+import {
+  closedPositions,
+  openOption,
+  openPositions,
+  optionReply,
+  portfolioEvent,
+  positionState,
+} from "../market/positions.mjs";
 import { optionActive } from "./active.mjs";
 
 /** Status codes, mirroring the ones the live feed uses. */
@@ -706,10 +713,22 @@ export const CALLS = {
   "get-video-categories": () => ({ name: "video-categories", payload: [] }),
   "get-video-tags": () => ({ name: "video-tags", payload: [] }),
 
-  "portfolio.get-history-positions": (body) => ({
-    name: "history-positions",
-    payload: { positions: [], limit: Number(body?.limit) || 300 },
-  }),
+  /**
+   * Settled deals, for the history panel.
+   *
+   * The envelope is `{positions, limit}` — narrower than `get-positions`, which
+   * also carries `total` and `offset`. Recorded from the live feed, where every
+   * answer happened to be empty, so the entries are sent in the same shape
+   * `positions` uses; both are portfolio reads of the same deal.
+   */
+  "portfolio.get-history-positions": (body, { account }) => {
+    const limit = Number(body?.limit) || 300;
+    const offset = Number(body?.offset) || 0;
+    return {
+      name: "history-positions",
+      payload: { positions: closedPositions(account).slice(offset, offset + limit), limit },
+    };
+  },
 
   "request-chat-message": () => ({
     name: "chat-message",

@@ -39,7 +39,10 @@
     "db:deploy": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "admin:grant": "tsx scripts/grant-admin.ts grant",
+    "admin:revoke": "tsx scripts/grant-admin.ts revoke",
+    "admin:list": "tsx scripts/grant-admin.ts list"
   },
   "dependencies": {
     "@base-ui/react": "^1.3.0",

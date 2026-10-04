@@ -34,12 +34,14 @@ declare module "next-auth" {
       /** The `user_id` the trading protocol carries. */
       platformId: number;
       emailConfirmed: boolean;
+      isAdmin: boolean;
     } & DefaultSession["user"];
   }
 
   interface User {
     platformId: number;
     emailConfirmed: boolean;
+    isAdmin: boolean;
   }
 }
 
@@ -47,6 +49,7 @@ declare module "next-auth/jwt" {
   interface JWT {
     platformId: number;
     emailConfirmed: boolean;
+    isAdmin: boolean;
   }
 }
 
@@ -81,7 +84,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         const user = await prisma.user.findUnique({
           where: { email: email.data },
-          select: { id: true, email: true, name: true, passwordHash: true, emailVerified: true, isActive: true },
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            passwordHash: true,
+            emailVerified: true,
+            isActive: true,
+            role: true,
+          },
         });
 
         // Always hashes, even with no account, so the answer takes the same
@@ -95,6 +106,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           email: user.email,
           name: user.name,
           emailConfirmed: user.emailVerified !== null,
+          isAdmin: user.role === "ADMIN",
         };
       },
     }),
@@ -106,6 +118,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (user) {
         token.platformId = user.platformId;
         token.emailConfirmed = user.emailConfirmed;
+        token.isAdmin = user.isAdmin;
       }
       return token;
     },
@@ -113,6 +126,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     session({ session, token }) {
       session.user.platformId = token.platformId;
       session.user.emailConfirmed = token.emailConfirmed;
+      session.user.isAdmin = token.isAdmin;
       return session;
     },
   },
