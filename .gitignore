@@ -63,3 +63,8 @@ server/.transcript.jsonl
 # .agents/skills/, which AGENTS.md names; `prisma skills sync` regenerates the
 # rest for whichever tool is in use.
 /.windsurf
+
+# Page captures pulled from the live site while cloning. They carry the
+# account's own data — email, profile id, balances — and exist to be read
+# during the work, not to be kept.
+/docs/research/captures
