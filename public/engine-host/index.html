@@ -7,7 +7,13 @@
 <style>
   html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #000; }
   body { position: fixed; overflow: hidden; }
+  /*
+   * Hidden by default so the traderoom is seen whole; the backquote key brings
+   * it back. It keeps recording either way, and `window.__gl` holds the
+   * engine's own log regardless of whether this is on screen.
+   */
   #host-status {
+    display: none;
     position: fixed; left: 12px; bottom: 12px; z-index: 9999;
     font: 11px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
     color: #8b8c8e; background: rgba(0,0,0,.78); padding: 8px 10px;
@@ -390,6 +396,13 @@
       };
     }
   })(0);
+
+  // The overlay covers a corner of the traderoom, so it starts hidden and the
+  // backquote key toggles it.
+  window.addEventListener("keydown", function (event) {
+    if (event.key !== "`" && event.key !== "~") return;
+    statusEl.style.display = statusEl.style.display === "block" ? "none" : "block";
+  });
 
   // Click anywhere on the overlay to copy the whole log.
   statusEl.style.pointerEvents = "auto";

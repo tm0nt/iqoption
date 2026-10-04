@@ -20,7 +20,7 @@ const DEFAULTS = {
     "theme": "black",
     "isSoundDisabled": false,
     "openedLeftPanelSections": "",
-    "isPlotCandleWidthAutoChanged": true,
+    "isPlotCandleWidthAutoChanged": false,
     "assetSortConfig": {
       "binary|": "commission_turbo_desc",
       "blitz-option|": "volume_desc",
@@ -36,7 +36,7 @@ const DEFAULTS = {
     "lastSelectedActiveCategory": "",
     "customSettings": {},
     "isPosDashedLineVisible": true,
-    "notAutoSelectClosestStrike": false,
+    "notAutoSelectClosestStrike": true,
     "isNewOptionInCurrentTab": false,
     "isShowPendingOption": false,
     "isHideBalance": false,
@@ -45,7 +45,7 @@ const DEFAULTS = {
     "isShowDottedOptionLine": true,
     "isHideChangePositionNotification": false,
     "isShowOptionAmountOnPlot": true,
-    "notHideAllStrike": false,
+    "notHideAllStrike": true,
     "tradingLeverages": {},
     "favoriteEmoji": [],
     "portfolioWithoutInvestment": false,
@@ -69,12 +69,12 @@ const DEFAULTS = {
       "Alerts&&false",
       "ShowMore&&true"
     ],
-    "leftPanelButtonsStatesVer": 0,
+    "leftPanelButtonsStatesVer": 4,
     "selectedMarketAnalysisTab": "MARKET_NEWS",
     "marginBannerWasClosed": false,
-    "marginPlotTypeWasChanged": false,
-    "isPortfolioHidden": true,
-    "portfolioWasHiddenOnce": false,
+    "marginPlotTypeWasChanged": true,
+    "isPortfolioHidden": false,
+    "portfolioWasHiddenOnce": true,
     "portfolioSort": {},
     "lastSlowBrowserNotifyDate": -1,
     "isBlitzPromoHidden": false,
@@ -188,6 +188,15 @@ const DEFAULTS = {
       "type": "turbo"
     }))
   },
+  /*
+   * `UserCombinedContextMenuSettingsData` has one mandatory attribute, and it
+   * binds to a `std::map`, so an empty object satisfies it. Returning `{}` for
+   * the whole config does not: the map has to be present under its own key.
+   */
+  "context_menu_combined": {
+    "contextMenuSettings": {}
+  },
+
   "privacy-settings": {
     "allow_share_chosen_asset": true
   },
@@ -233,29 +242,39 @@ const DEFAULTS = {
     "gridSchemeColumns": [100],
     "fixedNumberOfPlotters": 1,
     "selectedActiveId": ACTIVES[0].id,
-    "selectedActiveType": "binary-option",
-    "plotters": [
-      {
-        "activeId": ACTIVES[0].id,
-        "activeType": "binary-option",
-        "isMinimized": false,
-        "plotType": "candles",
-        "emptyCandles": false,
-        "candleDuration": 60,
-        "timeScale": 2119.972496676448,
-        "indicators": "{\"indicators\":[]}",
-        "scriptedIndicators": "{\"scripted_indicators\":[]}",
-        "stackPanelSizes": [100],
-        "lineColor": "",
-        "lineWidth": 1,
-        "candleColorUp": "",
-        "candleColorDown": "",
-        "emptyHACandles": false,
-        "candleHAColorUp": "",
-        "candleHAColorDown": "",
-        "chartPriceType": "mid"
-      }
-    ]
+    "selectedActiveType": "digital-option",
+    "plotters": [0, 1, 2].map((i) => ({
+      "activeId": ACTIVES[i].id,
+      "activeType": "digital-option",
+      "isMinimized": false,
+      "plotType": "candles",
+      "emptyCandles": false,
+      /*
+       * These two travel together. The plot derives its candle type from the
+       * scale, so a duration that disagrees with it is discarded:
+       * `IQPlot::startLoadingNewCandleType` recomputes the type and resubscribes
+       * at one second, which is why the client asked for single-second candles
+       * no matter what the config said.
+       *
+       * This is the pair a live traderoom was recorded holding for a ten-second
+       * chart. There is one entry per open tab, because a tab with no entry
+       * falls back to the engine's own default of sixty seconds and then drags
+       * the whole axis back with it.
+       */
+      "candleDuration": 10,
+      "timeScale": 2119.972496676448,
+      "indicators": "{\"indicators\":[]}",
+      "scriptedIndicators": "{\"scripted_indicators\":[]}",
+      "stackPanelSizes": [100],
+      "lineColor": "",
+      "lineWidth": 1,
+      "candleColorUp": "",
+      "candleColorDown": "",
+      "emptyHACandles": false,
+      "candleHAColorUp": "",
+      "candleHAColorDown": "",
+      "chartPriceType": "mid"
+    }))
   }
 };
 

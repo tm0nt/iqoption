@@ -8,7 +8,7 @@
 
 import { EventEmitter } from "node:events";
 import { activeById } from "./actives.mjs";
-import { bucketStart, candleAt, halfSpread, priceAt, round } from "./prices.mjs";
+import { bucketStart, candleAt, halfSpread, liveCandle, priceAt, round } from "./prices.mjs";
 
 /** How often the curve is sampled for live output. */
 const DEFAULT_TICK_MS = 200;
@@ -82,8 +82,9 @@ export class MarketFeed extends EventEmitter {
     for (let i = count - 1; i >= 0; i -= 1) {
       const from = newest - i * size;
       const isOpen = from + size > this.now();
-      const candle = candleAt(active, from, size, isOpen ? this.now() : undefined);
-      out.push({ ...candle, active_id: activeId, size, phase: isOpen ? "T" : "C" });
+      // History is the narrow shape: no `active_id`, `size`, `at`, `ask`, `bid`
+      // or `phase`. Those belong to the live stream, not to a stored bar.
+      out.push(candleAt(active, from, size, isOpen ? this.now() : undefined));
     }
     return out;
   }
@@ -121,22 +122,12 @@ export class MarketFeed extends EventEmitter {
       // so a client never has to infer the close itself.
       if (current > series.openBucket) {
         const closed = candleAt(active, series.openBucket, series.size);
-        this.emit("candle", {
-          ...closed,
-          active_id: series.activeId,
-          size: series.size,
-          phase: "C",
-        });
+        this.emit("candle", liveCandle(closed, active, series.activeId, series.size, "C", time));
         series.openBucket = current;
       }
 
       const open = candleAt(active, current, series.size, time);
-      this.emit("candle", {
-        ...open,
-        active_id: series.activeId,
-        size: series.size,
-        phase: "T",
-      });
+      this.emit("candle", liveCandle(open, active, series.activeId, series.size, "T", time));
     }
   }
 }

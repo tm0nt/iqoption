@@ -12,7 +12,9 @@ import { ACTIVES, ACTIVE_GROUPS, activeById, groupIdFor } from "../market/active
 import { balancesFrame, profileFrame } from "../accounts.mjs";
 import { featureRows } from "../data/features.mjs";
 import { defaultUserConfig } from "../data/user-settings.mjs";
-import { priceAt, round } from "../market/prices.mjs";
+import { halfSpread, priceAt, round } from "../market/prices.mjs";
+import { openOption, openPositions, positionState } from "../market/positions.mjs";
+import { optionActive } from "./active.mjs";
 
 /** Status codes, mirroring the ones the live feed uses. */
 export const STATUS = { OK: 2000, BAD_REQUEST: 4000, NOT_FOUND: 4040 };
@@ -25,6 +27,58 @@ const MAX_CANDLES = 1_000;
  *
  * Taken from the keys of a recorded `first-candles` frame: 1s up to 30 days.
  */
+/**
+ * How far back a series of this bucket size reaches, in seconds.
+ *
+ * The live feed keeps roughly one day of history per second of bucket size,
+ * with a floor of a week for the fastest series and a ceiling where the series
+ * simply begins. Measured off a recording: size 1 and 5 reach back 7 days,
+ * size 60 reaches 60 days and size 300 reaches 300.
+ */
+function historyDepth(size) {
+  const DAY = 86_400;
+  return Math.min(Math.max(size, 7), 600) * DAY;
+}
+
+/** One wallet in the shape `balances` carries, for an incremental update. */
+function walletFrame(account, balanceId) {
+  return balancesFrame(account).find((entry) => entry.id === balanceId);
+}
+
+/** How long the client may treat a `positions-state` frame as current. */
+const STATE_TTL_SECONDS = 60;
+
+let nextPositionSubscription = 1;
+
+/**
+ * Registers interest in a set of deals and hands back the id that names it.
+ *
+ * `subscribe-positions` is answered with a frame called `subscription`, not
+ * with the state itself — the client prints the one it wanted when the answer
+ * is wrong: `{"name":"subscription", ...}`. Every `positions-state` event then
+ * has to carry the same `subscription_id`, which the client treats as
+ * mandatory.
+ */
+function nextSubscriptionId(account, ids) {
+  if (!account.positionSubscriptions) account.positionSubscriptions = new Map();
+  const id = (nextPositionSubscription += 1);
+  account.positionSubscriptions.set(id, ids);
+  return id;
+}
+
+/** The rate between two currencies, as `exchange-rate` reports it. */
+function exchangeRate(body, feed) {
+  const base = String(body?.base_currency ?? "");
+  const quote = String(body?.quote_currency ?? "USD");
+  const active = ACTIVES.find((candidate) => candidate.ticker === base);
+  return {
+    base_currency: base,
+    quote_currency: quote,
+    rate: active ? priceAt(active, feed.now()) : 1,
+    at: feed.now() * 1_000_000_000,
+  };
+}
+
 /** The expiries an option instrument offers, in seconds. */
 const EXPIRATION_TIMES = [5, 10, 15, 30, 45, 60, 120, 180, 300];
 
@@ -79,15 +133,21 @@ function categoryOf(active) {
 }
 
 /**
- * Trading windows, one per day for the coming week.
+ * Trading windows, one per day.
  *
  * The live feed never sends an empty `schedule`; it sends a run of
  * `{open, close}` pairs in seconds. An instrument with no window never trades.
+ *
+ * The run has to reach backwards as well as forwards. The chart hatches any
+ * stretch outside a window as closed, and it looks weeks into the past, so a
+ * schedule that starts at today's midnight leaves all of the history greyed out.
  */
 function scheduleFrom(now) {
   const DAY = 86_400;
-  const start = Math.floor(now / DAY) * DAY;
-  return Array.from({ length: 7 }, (_, i) => ({
+  const BACK = 30;
+  const AHEAD = 7;
+  const start = Math.floor(now / DAY) * DAY - BACK * DAY;
+  return Array.from({ length: BACK + AHEAD }, (_, i) => ({
     open: start + i * DAY + 1,
     close: start + (i + 1) * DAY,
   }));
@@ -389,20 +449,27 @@ export const CALLS = {
    * Nothing is subscribed, so the list is empty.
    */
   /**
-   * The newest candle of every size the client knows, keyed by size in seconds.
+   * The *oldest* candle of every size, keyed by size in seconds.
    *
-   * A recording of the live feed answers `{"candles_by_size": {"1": {...},
-   * "5": {...}, ...}}` across nineteen sizes, each value a single candle in the
-   * same shape `get-candles` returns.
+   * The name is literal: these are the first candles of each series, not the
+   * latest ones. A recording of the live feed makes that plain — at a capture
+   * taken on day D, the size-1 entry is from D-7, the size-60 entry from D-60
+   * and the size-300 entry from D-300.
+   *
+   * This is how the client learns how far back each series reaches, and it is
+   * what lets it then ask `get-candles` for an id range. Answering with the
+   * newest candle instead tells it every series begins now, so it concludes
+   * there is no history to fetch and the chart stays empty.
    */
   "get-first-candles": (body, { feed }) => {
     const activeId = Number(body?.active_id);
     if (!activeById(activeId)) {
       return { error: `unknown active_id ${activeId}`, status: STATUS.NOT_FOUND };
     }
+    const now = feed.now();
     const candles_by_size = {};
     for (const size of CANDLE_SIZES) {
-      const [candle] = feed.history(activeId, size, 1);
+      const [candle] = feed.history(activeId, size, 1, now - historyDepth(size));
       if (candle) candles_by_size[String(size)] = candle;
     }
     return { name: "first-candles", payload: { candles_by_size } };
@@ -467,9 +534,15 @@ export const CALLS = {
    * The live feed answers an `error` string rather than an empty list when the
    * account has no slice yet, and the client treats that as "nothing to show".
    */
-  "get-leaderboard-position": () => ({
+  "get-leaderboard-position": (_body, { account }) => ({
     name: "leaderboard-position",
-    payload: { error: "slice data for this user is empty" },
+    /*
+     * The live feed answers an `error` string when the account has no slice
+     * yet, but the client parses the frame regardless and then complains that
+     * `pnl` is missing. An empty standing is the same information without the
+     * noise, so this deliberately departs from the recording.
+     */
+    payload: { user_id: account.userId, position: 0, pnl: 0, total: 0, user_name: "" },
   }),
 
   "get-popups": (_body, { account }) => ({
@@ -480,10 +553,13 @@ export const CALLS = {
   /** Countries the brand promotes, as `{id, name_short}` pairs. */
   "get-profitable-countries": () => ({
     name: "profitable-countries",
+    // Only countries the `countries` stub also lists; the client resolves each
+    // id back to a short name and logs `Cannot get country short name by id`
+    // for any it cannot find.
     payload: [
       { id: 30, name_short: "BR" },
-      { id: 128, name_short: "MX" },
-      { id: 10, name_short: "AR" },
+      { id: 76, name_short: "GB" },
+      { id: 212, name_short: "US" },
     ],
   }),
 
@@ -531,6 +607,78 @@ export const CALLS = {
    * optional, so an empty collection carries no risk of a missing-attribute
    * rejection. If a shape is wrong the client names the frame it wanted.
    */
+  /*
+   * Calls the traderoom only makes once it is running and the user can reach
+   * its panels. Request shapes are the client's own, read off a recording of
+   * this server's traffic; the replies are the emptiest thing each one accepts.
+   */
+
+  /**
+   * A price alert. The client sends `{asset_id, instrument_types, type,
+   * activations, value}` and the answer echoes the stored alert back under the
+   * same name its change stream uses.
+   */
+  "create-alert": (body, { feed }) => ({
+    name: "alert-changed",
+    payload: {
+      id: Math.floor(feed.now()),
+      asset_id: Number(body?.asset_id) || 0,
+      instrument_types: body?.instrument_types ?? [],
+      type: body?.type ?? "price",
+      value: Number(body?.value) || 0,
+      activations: Number(body?.activations) || 1,
+      status: "active",
+      created: feed.now(),
+    },
+  }),
+
+  "get-news-feed": () => ({ name: "news-feed", payload: { news: [] } }),
+
+  /**
+   * Opening a binary option.
+   *
+   * The deal panel sends `{user_balance_id, active_id, option_type_id,
+   * direction, expired, refund_value, price, value, profit_percent}`, where
+   * `price` is the stake. The answer carries the position back, and the
+   * portfolio then learns about it the same way it learns about any other
+   * change — through `portfolio.position-changed` — while the wallet it was
+   * paid from is re-sent so the header balance follows.
+   */
+  "binary-options.open-option": (body, { feed, account, pushEvent, send }) => {
+    const position = openOption(account, body, feed);
+    if (position.error) return { error: position.error, status: STATUS.BAD_REQUEST };
+
+    pushEvent("portfolio.position-changed", position);
+    /*
+     * The header balance follows `internal-billing.balance-changed`, which is
+     * what the client subscribes to; a whole `balances` frame is the snapshot
+     * it reads once at login and does not treat as an update.
+     */
+    pushEvent("internal-billing.balance-changed", walletFrame(account, position.user_balance_id));
+    // The incremental event is what the deal panel listens on; the snapshot is
+    // what the header read at login, and re-sending it keeps the two agreeing.
+    send({ name: "balances", msg: balancesFrame(account) });
+    return { name: "option", payload: position };
+  },
+
+  /**
+   * Live tracking for the deals the portfolio is showing.
+   *
+   * `TickingPortfolioManager::subscribePositions` sends `{frequency, ids}` and
+   * then listens on the `positions-state` stream for the running numbers.
+   */
+  "subscribe-positions": (body, { account }) => {
+    const wanted = (body?.ids ?? []).map(String);
+    const id = nextSubscriptionId(account, wanted);
+    return { name: "subscription", payload: { subscription_id: id } };
+  },
+
+  /** Drops a position subscription opened by `subscribe-positions`. */
+  "unsubscribe-positions": (body, { account }) => {
+    account.positionSubscriptions?.delete(Number(body?.subscription_id));
+    return { name: "subscription", payload: { subscription_id: body?.subscription_id } };
+  },
+
   "get-top-assets": () => ({ name: "top-assets", payload: [] }),
   "get-leaderboard-top": () => ({ name: "leaderboard-top", payload: [] }),
   "get-videos": () => ({ name: "videos", payload: [] }),
@@ -726,15 +874,18 @@ export const CALLS = {
   },
 
   /** Open trades. A development account starts flat. */
-  "portfolio.get-positions": (body) => ({
-    name: "positions",
-    payload: {
-      positions: [],
-      total: 0,
-      limit: body?.limit ?? 30,
-      offset: body?.offset ?? 0,
-    },
-  }),
+  "portfolio.get-positions": (body, { account }) => {
+    const positions = openPositions(account);
+    return {
+      name: "positions",
+      payload: {
+        positions,
+        total: positions.length,
+        limit: body?.limit ?? 30,
+        offset: body?.offset ?? 0,
+      },
+    };
+  },
 
   /**
    * Margin balance updates. Despite the name this arrives as a call, not a
@@ -944,10 +1095,21 @@ function binaryActive(active, now) {
       count: 0,
       special: {},
       start_time: now,
+      /*
+       * The option carries its own schedule, separate from the active's.
+       *
+       * `F2::IQOptionData::isEnabledNow` walks this vector and asks whether the
+       * instant falls inside one of its windows; the chart hatches every
+       * stretch where it does not. An option with no schedule is closed at
+       * every instant, which greys out the whole plot.
+       */
+      schedule: scheduleFrom(now).map(({ open, close }) => ({ open, close })),
     },
-    schedule: Array.from({ length: 7 }, (_, i) => [
-      midnight + i * DAY + 1,
-      midnight + (i + 1) * DAY,
+    // Pairs, not objects — and reaching back, so the chart does not hatch its
+    // own history as closed.
+    schedule: Array.from({ length: 37 }, (_, i) => [
+      midnight - 30 * DAY + i * DAY + 1,
+      midnight - 30 * DAY + (i + 1) * DAY,
     ]),
     rollovers: EXPIRATION_TIMES.map((size) => ({
       expiration_size: size,
@@ -956,53 +1118,6 @@ function binaryActive(active, now) {
       deadtime: 7,
       limit: 5,
     })),
-  };
-}
-
-function optionActive(active) {
-  const commission = 100 - active.profit;
-  return {
-    id: active.id,
-    name: active.ticker,
-    ticker: active.ticker,
-    description: active.name,
-    group_name: active.ticker,
-    image: "",
-    // Mirrors the fields a recorded `active` frame carries. `is_visible`,
-    // `is_paused` and the `time_from`/`time_to` pair decide whether the
-    // instrument can be picked at all; equal times mean around the clock, and
-    // `expiration_days` opens it on all seven.
-    is_visible: true,
-    is_paused: false,
-    is_otc: false,
-    active_group_id: groupIdFor(active),
-    priority: 100,
-    precision: active.precision,
-    pip_scale: 2,
-    spread_plus: 0.4,
-    spread_minus: 0.1,
-    time_from: "00:00:00",
-    time_to: "00:00:00",
-    expiration_days: [1, 1, 1, 1, 1, 1, 1],
-    start_time: 0,
-    exchange: "na",
-    type: active.kind,
-    currency_left_side: active.ticker,
-    currency_right_side: "USD",
-    min_qty: 1,
-    qty_step: 1,
-    enabled: true,
-    is_suspended: false,
-    deadtime: 2,
-    option: {
-      profit: { commission },
-      count: 2,
-      exp: [60, 120, 300],
-      special: {},
-    },
-    profit: { commission },
-    schedule: [],
-    group_id: 1,
   };
 }
 
@@ -1022,13 +1137,11 @@ const CURRENCIES = [
  */
 export const PASSIVE_STREAMS = new Set([
   /*
-   * Opened once the traderoom is up, filtered by `active_id` alone — there is
-   * no `size`, so it is not the per-series `candle-generated`. The recording
-   * never carries one, so rather than invent a payload this is acknowledged and
-   * left silent; if the client does want data here it will say so by printing
-   * the frame name it timed out waiting for.
+   * Opened while a deal is running: the live state of the tracked positions and
+   * the buyback price for its asset. Neither is needed to hold a position, so
+   * both are acknowledged and left silent.
    */
-  "candles-generated",
+  "price-splitter.client-buyback-generated",
   "top-assets-updated",
   "leaderboard-top-changed",
   // Subscriptions the live feed was recorded opening. They carry no data until
@@ -1163,6 +1276,93 @@ export const STREAMS = {
       feed.off("candle", onCandle);
       off();
     };
+  },
+
+  /**
+   * Every series of one instrument at once, filtered by `active_id` alone.
+   *
+   * This is what `AssetQuotesProvider::Private::subscribeAllCandles` opens, and
+   * despite the name it is not a candle frame. `onAllCurrentCandlesReceived`
+   * reads a quote — `active_id`, `at`, `value`, `bid`, `ask` and a `phase` —
+   * and takes the candles from a `candles` object keyed by size, all in one
+   * message. Sending a stream of single candles instead gets the frame
+   * rejected as an "Improper candles-generated event".
+   */
+  "candles-generated": (filters, { feed, send }) => {
+    const activeId = Number(filters?.active_id);
+    const active = activeById(activeId);
+    if (!active) return null;
+
+    // One frame a second carries every series, so there is no need to watch
+    // each size separately or to rate limit per series.
+    const timer = setInterval(() => {
+      const now = feed.now();
+      const value = priceAt(active, now);
+      const spread = halfSpread(active);
+      const candles = {};
+      for (const size of CANDLE_SIZES) {
+        const [candle] = feed.history(activeId, size, 1, now);
+        if (candle) candles[String(size)] = candle;
+      }
+      send({
+        name: "candles-generated",
+        msg: {
+          active_id: activeId,
+          at: now * 1_000_000_000,
+          value,
+          bid: round(value - spread, active.precision),
+          ask: round(value + spread, active.precision),
+          phase: "T",
+          candles,
+        },
+      });
+    }, 1_000);
+
+    return () => clearInterval(timer);
+  },
+
+  /** Rate updates for one currency pair, once a second. */
+  "exchange-rates.exchange-rate-generated": (filters, { feed, send }) => {
+    const timer = setInterval(() => {
+      send({ name: "exchange-rates.exchange-rate-generated", msg: exchangeRate(filters, feed) });
+    }, 1_000);
+    return () => clearInterval(timer);
+  },
+
+  /**
+   * The running numbers for the deals `subscribe-positions` asked about.
+   *
+   * Every event carries the `subscription_id` it belongs to; without it the
+   * client rejects the frame with "Missing mandatory attribute".
+   */
+  "positions-state": (_filters, { feed, account, send }) => {
+    const timer = setInterval(() => {
+      const subscriptions = account.positionSubscriptions;
+      if (!subscriptions?.size) return;
+      const open = openPositions(account);
+      for (const [id, ids] of subscriptions) {
+        const positions = open
+          .filter((position) => ids.includes(String(position.external_id)))
+          .map((position) => positionState(position, feed));
+        if (positions.length) {
+          /*
+           * `F2::services::PositionsStateDTO` takes four mandatory attributes:
+           * `subscription_id`, `user_id`, `expires_in` and `positions`. The
+           * first three sit on the frame, not on the entries.
+           */
+          send({
+            name: "positions-state",
+            msg: {
+              subscription_id: id,
+              user_id: account.userId,
+              expires_in: STATE_TTL_SECONDS,
+              positions,
+            },
+          });
+        }
+      }
+    }, 1_000);
+    return () => clearInterval(timer);
   },
 
   "quote-generated": (filters, { feed, send }) => {

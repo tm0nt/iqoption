@@ -107,32 +107,47 @@ export function candleAt(active, from, size, until) {
   const jitter = hash(active.id, Math.floor(from / size));
   const volume = Math.round(60 + travel * 4_000 + jitter * 180);
 
-  const spread = halfSpread(active);
-
   /*
-   * The field set is the one the live feed sends, read off a recording of
-   * `candle-generated`:
+   * The history shape, which is the narrow one.
    *
-   *   {"active_id":2270,"size":5,"at":1791000930204423691,"from":1791000930,
-   *    "to":1791000935,"id":10061774,"open":...,"close":...,"min":...,"max":...,
-   *    "ask":...,"bid":...,"volume":0,"phase":"T"}
+   * A recording of the live feed shows two different candle shapes. History —
+   * `candles` and `first-candles` — carries exactly these eight fields:
    *
-   * `from` and `to` are seconds while `at` is nanoseconds — the two are not the
-   * same unit, which is easy to miss. `active_id`, `size` and `phase` are added
-   * by the feed, which knows the subscription they belong to.
+   *   {"id":10069640,"from":1791040560,"to":1791040565,"open":...,"close":...,
+   *    "min":...,"max":...,"volume":0}
+   *
+   * The live push `candle-generated` carries the same eight plus `active_id`,
+   * `size`, `at`, `ask`, `bid` and `phase`. Those belong to a subscription, not
+   * to a stored bar, so the feed adds them on the way out rather than here.
    */
   return {
     id: Math.floor(from / size),
     from,
     to: from + size,
-    at: end * 1_000_000_000,
     open,
     close,
     min: low,
     max: high,
-    ask: round(close + spread, active.precision),
-    bid: round(close - spread, active.precision),
     volume,
+  };
+}
+
+/**
+ * A candle dressed for the `candle-generated` stream.
+ *
+ * `from` and `to` are seconds while `at` is nanoseconds — the two are not the
+ * same unit, which is easy to miss.
+ */
+export function liveCandle(candle, active, activeId, size, phase, atSeconds) {
+  const spread = halfSpread(active);
+  return {
+    ...candle,
+    active_id: activeId,
+    size,
+    at: atSeconds * 1_000_000_000,
+    ask: round(candle.close + spread, active.precision),
+    bid: round(candle.close - spread, active.precision),
+    phase,
   };
 }
 

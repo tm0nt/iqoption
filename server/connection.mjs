@@ -10,9 +10,12 @@
 import { CALLS, PASSIVE_STREAMS, STATUS, STREAMS } from "./protocol/router.mjs";
 import { record } from "./transcript.mjs";
 import { balancesFrame, profileFrame, resolveSession } from "./accounts.mjs";
+import { settleDue } from "./market/positions.mjs";
 
 const TIME_SYNC_MS = 1_000;
 const HEARTBEAT_MS = 20_000;
+/** How often expired options are settled and announced. */
+const SETTLE_MS = 1_000;
 /** An unauthenticated socket is dropped rather than left to idle. */
 const AUTH_GRACE_MS = 30_000;
 
@@ -30,12 +33,32 @@ export class Connection {
     this.log = log;
     this.id = ++nextConnectionId;
     this.account = null;
-    /** `${name}:${filters}` -> teardown */
+    /** `request_id` -> teardown */
     this.streams = new Map();
+    /** Acknowledged subscriptions that only ever carry server-sent events. */
+    this.passive = [];
 
     this.timers = [
       setInterval(() => this.send({ name: "timeSync", msg: Date.now() }), TIME_SYNC_MS),
       setInterval(() => this.send({ name: "heartbeat", msg: Date.now() }), HEARTBEAT_MS),
+      /*
+       * An option that has reached its expiry has to be settled and announced:
+       * the portfolio only learns a deal is over from `position-changed`, and
+       * the header balance only moves when the wallet is re-sent.
+       */
+      setInterval(() => {
+        if (!this.account) return;
+        const closed = settleDue(this.account, this.feed);
+        if (!closed.length) return;
+        for (const position of closed) {
+          this.pushEvent("portfolio.position-changed", position);
+        }
+        // The same channel the deal panel listens on when a stake is taken.
+        for (const entry of balancesFrame(this.account)) {
+          this.pushEvent("internal-billing.balance-changed", entry);
+        }
+        this.send({ name: "balances", msg: balancesFrame(this.account) });
+      }, SETTLE_MS),
     ];
     this.authTimer = setTimeout(() => {
       if (!this.account) {
@@ -203,6 +226,15 @@ export class Connection {
     const name = frame.msg?.name;
     const filters = frame.msg?.params?.routingFilters ?? {};
     if (PASSIVE_STREAMS.has(name)) {
+      /*
+       * Nothing is pushed on its own, but the subscription still has to be
+       * remembered: an event belongs to the subscription that asked for it, and
+       * carries that `request_id`. The client opens seven
+       * `portfolio.position-changed` subscriptions, one per instrument family,
+       * and routes an incoming event by the id rather than by re-reading the
+       * filters.
+       */
+      this.passive.push({ name, filters, requestId: frame.request_id });
       return this.ack(frame);
     }
 
@@ -219,9 +251,24 @@ export class Connection {
       });
     }
 
-    const key = streamKey(name, filters);
-    // Re-subscribing to the same series is a no-op, not a second stream.
-    if (this.streams.has(key)) return;
+    /*
+     * A subscription is identified by the `request_id` that opened it, not by
+     * its routing filters.
+     *
+     * A recording of the live feed makes this plain: when the chart changes
+     * candle size it opens the new subscription first and only then closes the
+     * old one, and the closing frame carries the *old* request id —
+     * `unsubscribeMessage s_193 {active_id, size: 5}` arrives after
+     * `subscribeMessage s_236 {active_id, size: 60}`. The two overlap on
+     * purpose, so the series never goes quiet.
+     *
+     * Keying by filters collapsed that overlap: the second subscribe looked
+     * like a duplicate and was dropped, and the close that followed then tore
+     * down the only stream there was. The client went on believing it held a
+     * live subscription while nothing was being sent.
+     */
+    const key = frame.request_id;
+    if (key === undefined || this.streams.has(key)) return;
 
     const teardown = start(filters, this.context());
     if (!teardown) {
@@ -238,7 +285,8 @@ export class Connection {
   }
 
   closeStream(frame) {
-    const key = streamKey(frame.msg?.name, frame.msg?.params?.routingFilters ?? {});
+    // The frame names the subscription to close by its opening request id.
+    const key = frame.request_id;
     const teardown = this.streams.get(key);
     if (teardown) {
       teardown();
@@ -255,6 +303,31 @@ export class Connection {
    * traderoom — rather than with a name derived from the request. Inventing
    * `subscribed` left the client waiting on every subscription it opened.
    */
+  /**
+   * Sends a subscription event the way the live feed sends one.
+   *
+   * A stream is subscribed under a dotted name — `portfolio.position-changed` —
+   * but the event that comes back splits it: the service goes in
+   * `microserviceName` and only the bare event stays in `name`. A recording of
+   * the live feed shows every pushed event in that shape, and none of them
+   * carries a `request_id`:
+   *
+   *   {"name": "underlying-list-changed",
+   *    "microserviceName": "digital-option-instruments", "msg": {...}}
+   *
+   * Sending the dotted name as one string leaves the client with an event it
+   * has no handler for, which it drops without a word.
+   */
+  pushEvent(stream, msg) {
+    const dot = stream.indexOf(".");
+    if (dot < 0) return this.send({ name: stream, msg });
+    return this.send({
+      name: stream.slice(dot + 1),
+      microserviceName: stream.slice(0, dot),
+      msg,
+    });
+  }
+
   ack(frame) {
     this.send({ name: "result", request_id: frame.request_id, msg: { success: true } });
   }
@@ -275,6 +348,7 @@ export class Connection {
       feed: this.feed,
       account: this.account,
       send: (frame) => this.send(frame),
+      pushEvent: (stream, msg) => this.pushEvent(stream, msg),
     };
   }
 
@@ -284,11 +358,4 @@ export class Connection {
     for (const teardown of this.streams.values()) teardown();
     this.streams.clear();
   }
-}
-
-function streamKey(name, filters) {
-  const parts = Object.keys(filters)
-    .sort()
-    .map((key) => `${key}=${filters[key]}`);
-  return `${name}:${parts.join(",")}`;
 }
