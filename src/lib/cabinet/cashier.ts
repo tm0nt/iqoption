@@ -17,6 +17,7 @@ const FALLBACK: CashierSettings = {
   freeWithdrawalsPerMonth: 1,
   minWithdrawal: 10,
   minDeposit: 10,
+  depositPresets: [5000, 2500, 1000, 500, 250, 100, 50, 25],
 };
 
 export async function cashierSettings(): Promise<CashierSettings> {
@@ -30,5 +31,9 @@ export async function cashierSettings(): Promise<CashierSettings> {
     freeWithdrawalsPerMonth: value.freeWithdrawalsPerMonth ?? FALLBACK.freeWithdrawalsPerMonth,
     minWithdrawal: value.minWithdrawal ?? FALLBACK.minWithdrawal,
     minDeposit: value.minDeposit ?? FALLBACK.minDeposit,
+    depositPresets:
+      Array.isArray(value.depositPresets) && value.depositPresets.length > 0
+        ? value.depositPresets
+        : FALLBACK.depositPresets,
   };
 }

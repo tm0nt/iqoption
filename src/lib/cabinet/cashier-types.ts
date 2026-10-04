@@ -20,6 +20,8 @@ export type CashierSettings = {
   freeWithdrawalsPerMonth: number;
   minWithdrawal: number;
   minDeposit: number;
+  /** Offered as buttons on the deposit page, largest first. */
+  depositPresets: number[];
 };
 
 /** Icons are drawn from the rail's own name, so a new rail needs no new code. */

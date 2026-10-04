@@ -124,6 +124,8 @@ const SETTINGS = [
       freeWithdrawalsPerMonth: 1,
       minWithdrawal: 10,
       minDeposit: 10,
+      /* The amounts the deposit page offers as buttons, largest first. */
+      depositPresets: [5000, 2500, 1000, 500, 250, 100, 50, 25],
     },
   },
   {
