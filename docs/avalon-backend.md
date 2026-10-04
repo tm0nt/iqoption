@@ -588,10 +588,14 @@ and compares results, so the JS cannot be made more forgiving without diverging.
 - **Buyback.** `price-splitter.client-buyback-generated` is acknowledged and
   silent, so "P/L after sell" stays zero and the Sell button has no price. Its
   parser does not go through the attribute binders, so the shape was not
-  recovered from the build. A live capture was taken but did not answer it: the
-  session traded blitz options with a five-second expiry, which cannot be sold
-  early, so no buyback frame was exchanged. The capture needs a turbo or binary
-  deal held long enough to sell.
+  recovered from the build. A live capture was taken but did not answer it: all
+  seven deals in it were **blitz** (`option_type_id: 12`), and no frame in the
+  capture carries a buyback field of any kind — `sell_profit` stays zero for the
+  whole run. Expiry was not the obstacle; the deals ran from 5 to 300 seconds.
+  Whether blitz simply has no early sale on this broker, or the subscription was
+  never made, this capture cannot say. The next one has to be on a different
+  instrument — higher/lower or digital — where the positions panel offers
+  "P/L after sell".
 - **`Failed to parse input JSON: The document is empty`** — four per boot, each
   logged twice. No visible effect, and the source is still unidentified, but the
   following are ruled out by measurement rather than by argument: every HTTP body

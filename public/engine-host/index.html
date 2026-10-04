@@ -297,6 +297,37 @@
 
   /* ---------------------------------------------------------- shell globals */
   /**
+   * An IP literal cannot be served from, and says so before anything fails.
+   *
+   * `replaceHostSubdomain` replaces the first label of a host with more than two
+   * labels, so `127.0.0.1` becomes `auth.0.0.1` — a host whose trailing numeric
+   * label forces IPv4 parsing, which then fails. `new URL()` rejects it, no
+   * route can match, and `check-session` is issued against something
+   * unparseable; the traderoom never opens and nothing explains why.
+   *
+   * The routine itself cannot be made more forgiving: the engine carries the
+   * same one in C++ and compares results. Any hostname works — `localhost`, or
+   * any domain, on any machine. Only a bare address does not.
+   */
+  (function () {
+    var host = location.hostname;
+    var isIPv4 = /^\d{1,3}(\.\d{1,3}){3}$/.test(host);
+    var isIPv6 = host.indexOf(":") >= 0;
+    if (!isIPv4 && !isIPv6) return;
+    statusOnce(
+      "iphost",
+      "SERVE THIS ON A HOSTNAME, NOT " + host + " — subdomain rewriting breaks on an IP literal",
+      "bad",
+    );
+    console.error(
+      "[host] This page is being served from the IP literal " + host + ". The engine " +
+      "derives its service hosts by rewriting the first label, which produces an " +
+      "unparseable address, and the traderoom will not open. Use localhost or any " +
+      "domain name instead.",
+    );
+  })();
+
+  /**
    * Resolves a host for a given subdomain. The engine has the same routine in
    * C++ and compares results, so the behaviour has to match: a bare or
    * `trade.`-prefixed host gains the subdomain, a deeper one has its first
