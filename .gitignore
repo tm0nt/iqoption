@@ -68,3 +68,6 @@ server/.transcript.jsonl
 # account's own data — email, profile id, balances — and exist to be read
 # during the work, not to be kept.
 /docs/research/captures
+
+# Uploaded files. They belong to whoever uploaded them, not to the repository.
+/var

@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { CabinetShell } from "@/components/cabinet/CabinetShell";
 import { ProfileNav } from "@/components/cabinet/ProfileNav";
+import { ProfilePhotoModal } from "@/components/cabinet/ProfilePhotoModal";
 import { prisma } from "@/lib/db";
 import { isLocale } from "@/i18n/avalon";
 
@@ -32,6 +33,13 @@ export default async function PersonalDataPage(props: PageProps<"/[lang]/profile
   const { lang } = await props.params;
   if (!isLocale(lang)) notFound();
 
+  /*
+   * The photo dialog is a URL, not component state — which is how the live site
+   * opens it, and what makes it survive a reload and a shared address.
+   */
+  const query = await props.searchParams;
+  const photoOpen = query.act === "changephoto";
+
   const session = await auth();
   if (!session?.user) redirect(`/${lang}/login?next=/${lang}/profile/personal`);
 
@@ -42,6 +50,7 @@ export default async function PersonalDataPage(props: PageProps<"/[lang]/profile
       email: true,
       emailVerified: true,
       phone: true,
+      avatarUrl: true,
       createdAt: true,
       balances: { select: { amount: true, currency: true, type: true }, orderBy: { type: "asc" } },
     },
@@ -79,17 +88,26 @@ export default async function PersonalDataPage(props: PageProps<"/[lang]/profile
         <div className="min-w-0 grow">
           <Row>
             <div className="flex flex-col items-center">
-              <span className="flex size-[90px] items-center justify-center rounded-full bg-avalon-surface-hover text-avalon-border-muted">
-                <svg width="28" height="24" viewBox="0 0 28 24" fill="currentColor" aria-hidden>
-                  <path d="M26 4h-5l-1.6-2.4A2 2 0 0 0 17.7.6h-7.4a2 2 0 0 0-1.7.9L7 4H2a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2h24a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm-12 15a6.5 6.5 0 1 1 0-13 6.5 6.5 0 0 1 0 13zm0-11a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9z" />
-                </svg>
-              </span>
+              {user.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={user.avatarUrl}
+                  alt="Your profile photo"
+                  className="size-[90px] rounded-full object-cover"
+                />
+              ) : (
+                <span className="flex size-[90px] items-center justify-center rounded-full bg-avalon-surface-hover text-avalon-border-muted">
+                  <svg width="28" height="24" viewBox="0 0 28 24" fill="currentColor" aria-hidden>
+                    <path d="M26 4h-5l-1.6-2.4A2 2 0 0 0 17.7.6h-7.4a2 2 0 0 0-1.7.9L7 4H2a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2h24a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm-12 15a6.5 6.5 0 1 1 0-13 6.5 6.5 0 0 1 0 13zm0-11a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9z" />
+                  </svg>
+                </span>
+              )}
 
               <Link
-                href={`/${lang}/profile?act=changephoto`}
+                href={`/${lang}/profile/personal?act=changephoto`}
                 className="mt-5 flex h-[42px] w-[234px] items-center justify-center rounded-[2px] border border-dashed border-avalon-border-muted text-[14px] text-avalon-text transition-colors hover:border-avalon-primary hover:text-avalon-primary"
               >
-                + Upload a photo
+                {user.avatarUrl ? "Change photo" : "+ Upload a photo"}
               </Link>
 
               <p className="mt-4 text-center text-[13px] text-avalon-text">
@@ -187,6 +205,9 @@ export default async function PersonalDataPage(props: PageProps<"/[lang]/profile
           </section>
         </div>
       </div>
+      {photoOpen && (
+        <ProfilePhotoModal closeHref={`/${lang}/profile/personal`} hasPhoto={Boolean(user.avatarUrl)} />
+      )}
     </CabinetShell>
   );
 }
