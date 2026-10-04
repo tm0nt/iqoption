@@ -283,6 +283,22 @@ repetição não funciona aqui porque ele não repete o pedido.
 Falta também descobrir o que Vídeo Tutoriais, Ajuda e Alertas pedem — ainda não
 foram instrumentados — e Torneios e Tabela de Líderes inteiros.
 
+## Entrar num torneio
+
+A lista funciona — os torneios aparecem com contagem regressiva, prêmio, taxa e
+as seções de futuros e passados — e a classificação sai de `tournament_entries`.
+**Inscrever-se não está feito.**
+
+Falta a peça que o resto depende: uma **carteira de torneio**, um terceiro tipo
+ao lado de real e prática. Entrar debita a taxa da carteira real, cria uma
+carteira com `starting_balance`, e todo negócio aberto contra ela tem de liquidar
+na classificação em vez de num saldo que possa ser sacado. O `balances` do feed
+já carrega `tournament_id` e `tournament_name` para isso, e o cliente já pede
+`internal-billing.get-balances` com `tournaments_statuses_ids`.
+
+O `rebuy_count` vai zerado por isso: ele conta recompras, e não há como recomprar
+sem haver como entrar.
+
 ## Sobras do caminho
 
 ### O traderoom em React ficou órfão

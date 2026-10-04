@@ -218,6 +218,7 @@ model User {
   balances        Balance[]
   positions       Position[]
   transactions    Transaction[]
+  tournamentEntries TournamentEntry[]
   tradingSessions TradingSession[]
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -522,4 +523,83 @@ model CalendarEvent {
   @@index([releasedAt])
   @@index([country, importance])
   @@map("calendar_events")
+}
+
+/// Where a tournament is in its life. The numbers are the platform's own, as
+/// `get-tournaments-info` asks for them: the panel sends `status: [2, 3, 5]`
+/// and keys its answer by the same values.
+enum TournamentStatus {
+  /// Open for entries, not started.
+  REGISTERING
+  /// Running.
+  RUNNING
+  /// Over.
+  FINISHED
+}
+
+/// A competition with an entry fee, a prize pool and a live ranking.
+model Tournament {
+  id Int @id @default(autoincrement())
+
+  name        String  @db.VarChar(160)
+  description String? @db.Text
+  imageUrl    String? @map("image_url") @db.VarChar(512)
+
+  status TournamentStatus @default(REGISTERING)
+
+  /// What it costs to enter, and to buy back in after busting.
+  cost      Decimal @db.Decimal(18, 2)
+  rebuy     Boolean @default(false)
+  rebuyCost Decimal @default(0) @map("rebuy_cost") @db.Decimal(18, 2)
+
+  /// What every entrant's tournament balance starts at.
+  startingBalance Decimal @default(1000) @map("starting_balance") @db.Decimal(18, 2)
+
+  prizePool Decimal @map("prize_pool") @db.Decimal(18, 2)
+  /// `prizes` for a split pot, `cash` for a single payout — the panel's words.
+  prizeType String  @default("prizes") @map("prize_type") @db.VarChar(24)
+  currency  String  @default("USD")
+
+  /// ISO 3166-1 alpha-2 codes the tournament is open to. Null means everywhere.
+  countries Json?
+
+  startsAt DateTime @map("starts_at")
+  endsAt   DateTime @map("ends_at")
+
+  enabled Boolean @default(true)
+
+  entries TournamentEntry[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([status, startsAt])
+  @@map("tournaments")
+}
+
+/// One person's entry in one tournament.
+model TournamentEntry {
+  id Int @id @default(autoincrement())
+
+  tournamentId Int        @map("tournament_id")
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+
+  userId Int  @map("user_id")
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// The wallet created for this tournament, which is where its deals are
+  /// paid from. Not a relation: the wallet may be cleared when the tournament
+  /// ends, and the record that someone took part should outlive it.
+  balanceId Int? @map("balance_id")
+
+  /// Running total, in tournament money. Settled deals keep it current.
+  pnl Decimal @default(0) @db.Decimal(18, 2)
+
+  registeredAt DateTime @default(now()) @map("registered_at")
+
+  /// One entry per person per tournament; a rebuy tops the wallet back up
+  /// rather than creating a second row.
+  @@unique([tournamentId, userId])
+  @@index([tournamentId, pnl])
+  @@map("tournament_entries")
 }

@@ -21,6 +21,8 @@ import {
 } from "../accounts.mjs";
 import { calendarEvents, calendarEventsInfo, calendarFilters } from "../data/calendar.mjs";
 import { contentCategories, epoch } from "../data/content.mjs";
+import { leaderboardPosition, leaderboardTop } from "../data/leaderboard.mjs";
+import { tournamentsInfo, tournamentWinners } from "../data/tournaments.mjs";
 import { featureRows } from "../data/features.mjs";
 import { defaultUserConfig } from "../data/user-settings.mjs";
 import { halfSpread, priceAt, round } from "../market/prices.mjs";
@@ -627,16 +629,31 @@ export const CALLS = {
    * The live feed answers an `error` string rather than an empty list when the
    * account has no slice yet, and the client treats that as "nothing to show".
    */
-  "get-leaderboard-position": (_body, { account }) => ({
-    name: "leaderboard-position",
+  "get-leaderboard-position": async (body, { account }) => {
+    const standing = await leaderboardPosition(body, account.userId);
+    if (standing) {
+      return {
+        name: "leaderboard-position",
+        payload: { ...standing, total: standing.pnl },
+      };
+    }
+
     /*
-     * The live feed answers an `error` string when the account has no slice
-     * yet, but the client parses the frame regardless and then complains that
-     * `pnl` is missing. An empty standing is the same information without the
-     * noise, so this deliberately departs from the recording.
+     * The recorded answer for an account with nothing to rank, which this used
+     * to depart from.
+     *
+     * The departure sent an empty standing instead, to stop the client logging
+     * that `pnl` was missing. It cost more than it saved: the panel read a
+     * position of zero as first place and announced "You are the best trader
+     * worldwide this week" over a balance of $0.00. The live platform, given
+     * this error, says "You have made no profitable trades this week yet" —
+     * which is the truth. A line in a log is the cheaper price.
      */
-    payload: { user_id: account.userId, position: 0, pnl: 0, total: 0, user_name: "" },
-  }),
+    return {
+      name: "leaderboard-position",
+      payload: { error: "slice data for this user is empty" },
+    };
+  },
 
   "get-popups": (_body, { account }) => ({
     name: "popups",
@@ -740,6 +757,30 @@ export const CALLS = {
    */
 
   /**
+   * Tournaments.
+   *
+   * The reply is keyed by the status numbers the request asked about, each
+   * holding `{list, count}` — not a flat list. A recording shows the panel
+   * sending `{status: [2, 3, 5]}`, so three buckets come back whether or not
+   * any is filled: a status it did not ask about has nowhere to go, and one
+   * it did ask about and gets nothing for still needs its tab.
+   *
+   * Entering one is not implemented. It needs a wallet of tournament money —
+   * a third kind beside real and practice — and every deal opened against it
+   * has to settle into the standing rather than into a balance that can be
+   * withdrawn. See docs/engine-host-pendencias.md.
+   */
+  "get-tournaments-info": async (body, { account }) => ({
+    name: "tournaments-info",
+    payload: await tournamentsInfo(body, account.userId),
+  }),
+
+  "get-tournament-winners": async (body) => ({
+    name: "tournament-winners",
+    payload: await tournamentWinners(body?.tournament_id),
+  }),
+
+  /**
    * The economic calendar — this platform's "Market Analysis".
    *
    * Three calls, with the shapes a recording gives (docs/avalon-panels.md).
@@ -818,7 +859,16 @@ export const CALLS = {
   },
 
   "get-top-assets": () => ({ name: "top-assets", payload: [] }),
-  "get-leaderboard-top": () => ({ name: "leaderboard-top", payload: [] }),
+  /**
+   * The top of the table, counted from closed deals on real wallets.
+   *
+   * A bare array of `{user_id, user_name, country_id, pnl}`, best first, as a
+   * recording of the live feed shows it.
+   */
+  "get-leaderboard-top": async (body) => ({
+    name: "leaderboard-top",
+    payload: await leaderboardTop(body),
+  }),
   /**
    * The video library, in the three calls the panel makes.
    *
@@ -1508,6 +1558,16 @@ export const PASSIVE_STREAMS = new Set([
   "tech-instruments.modified-templates",
   "tournaments.user-registered-in-tournament",
   "tournaments.user-tournament-position-changed",
+  /*
+   * The tournaments panel opens these *before* it asks for the list, and asks
+   * for nothing while a subscription is outstanding — so refusing them left
+   * the panel blank with `get-tournaments-info` never sent. Accepting them is
+   * what makes the list arrive.
+   */
+  "tournament-created",
+  "tournament-params-changed",
+  "tournament-status-changed",
+  "tournament-winners-changed",
   "traders-mood-changed",
   "trading-settings.blitz-option-trading-group-params-changed",
   "trading-settings.digital-option-client-price-generated",
