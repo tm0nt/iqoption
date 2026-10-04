@@ -193,14 +193,24 @@ export function bootEngine(options: EngineHostOptions): void {
     [/^\/storage\/public\//, `${stubBase}/pixel.png`],
   ];
 
-  /** The engine's own assets, our stubs and the framework's pass through. */
+  /**
+   * The engine's own assets, our stubs and the framework's pass through.
+   *
+   * `/v1/logout` is in the list because it is not a stub at all: it is a real
+   * route of this app (src/app/v1/logout/route.ts) that ends the session. The
+   * engine builds that URL inside the WASM and calls it when someone picks
+   * "Log Out", then navigates to `/traderoom/` without waiting to be told where
+   * to go. Letting the call through is what makes that navigation arrive
+   * without a session, which is what sends them to the login page.
+   */
   function isLocalAsset(pathname: string) {
     return (
       pathname.startsWith(`${resourceHost}/`) ||
       pathname.startsWith(stubBase) ||
       pathname.startsWith("/engine-host/") ||
       pathname.startsWith("/_next/") ||
-      pathname.startsWith("/api/engine/")
+      pathname.startsWith("/api/engine/") ||
+      pathname === "/v1/logout"
     );
   }
 

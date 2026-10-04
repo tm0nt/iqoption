@@ -42,6 +42,13 @@ const PROTECTED = new Set([
   "trading",
   "counting",
 ]);
+/**
+ * Paths the engine calls by a fixed, locale-free URL built into the WASM.
+ * They are real routes of this app, but they are not pages and must not be
+ * given a language prefix.
+ */
+const ENGINE_PATHS = new Set(["/v1/logout"]);
+
 /** Pages that need an administrator, not merely a session. */
 const ADMIN_ONLY = new Set(["admin"]);
 const GUEST_ONLY = new Set(["login", "register", "change-password"]);
@@ -56,12 +63,15 @@ export default auth((request) => {
    * country the request appears to come from. See src/i18n/negotiate.ts for why
    * the country is last.
    *
-   * The API and the engine's own files are not locale-prefixed and must never
-   * be redirected — `/api/engine/stubs/...` answering a 307 is a parse failure
-   * to the WASM build, not a redirect it follows.
+   * The API, the engine's own files and the endpoints the engine calls by a
+   * fixed path are not locale-prefixed and must never be redirected —
+   * `/api/engine/stubs/...` answering a 307 is a parse failure to the WASM
+   * build, not a redirect it follows, and `/v1/logout` sent to `/pt/v1/logout`
+   * is a session ending one request later than the engine believes it did.
    */
   const first = pathname.split("/")[1];
-  const localised = pathname.startsWith("/api/") || pathname.startsWith("/engine");
+  const localised =
+    pathname.startsWith("/api/") || pathname.startsWith("/engine") || ENGINE_PATHS.has(pathname);
   if (!localised && !isLocale(first)) {
     const country = COUNTRY_HEADERS.map((header) => request.headers.get(header)).find(Boolean);
     const { locale: picked } = negotiateLocale({
