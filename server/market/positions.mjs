@@ -22,6 +22,25 @@ function expiryAfter(now, size) {
   return Math.ceil((now + 5) / size) * size;
 }
 
+/** The furthest ahead an expiry is believed rather than treated as a mistake. */
+const MAX_EXPIRY_AHEAD = 86_400;
+
+/**
+ * When the option the panel sold is to end.
+ *
+ * `expired` is the instant the person was shown — "expires at 21:35" — and it
+ * is honoured, because the alternative is a deal that ends at a moment nobody
+ * was told about. It is still checked: the panel has been seen to send `0` when
+ * it had no expiries to offer, and a zero taken literally is an option with no
+ * end. Anything absent, past or improbably far falls back to the next boundary
+ * of the size that was asked for.
+ */
+function expiryFor(body, now, size) {
+  const named = Number(body?.expired) || 0;
+  if (named > now && named <= now + MAX_EXPIRY_AHEAD) return named;
+  return expiryAfter(now, size);
+}
+
 /**
  * The instrument family an option belongs to, from the id the panel sends.
  *
@@ -137,7 +156,7 @@ export function openOption(account, body, feed) {
     open_quote: priceAt(active, now),
     close_quote: 0,
     close_reason: "default",
-    expiration_time: expiryAfter(now, size),
+    expiration_time: expiryFor(body, now, size),
     expiration_size: size,
     // `IQDealStatus` while the deal runs; `IQPositionCloseReason` has its own
     // "nothing happened yet" member, which is `default`.

@@ -99,8 +99,19 @@ function exchangeRate(body, feed) {
   };
 }
 
-/** The expiries an option instrument offers, in seconds. */
-const EXPIRATION_TIMES = [5, 10, 15, 30, 45, 60, 120, 180, 300];
+/**
+ * The expiries an instrument offers, in seconds.
+ *
+ * The instrument's own list when it has one, so an administrator editing an
+ * asset changes what the deal panel offers. The fallback is only for a row
+ * whose `expirations` came back empty.
+ */
+function expirationsOf(active) {
+  const configured = Array.isArray(active.expirations) ? active.expirations.filter((n) => n > 0) : [];
+  return configured.length ? configured : DEFAULT_EXPIRATION_TIMES;
+}
+
+const DEFAULT_EXPIRATION_TIMES = [60, 120, 300];
 
 const CANDLE_SIZES = [
   1, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600, 7200, 14400, 28800,
@@ -1188,6 +1199,7 @@ export const CALLS = {
  */
 function binaryActive(active, now) {
   const commission = 100 - active.profit;
+  const expirations = expirationsOf(active);
   const DAY = 86_400;
   const midnight = Math.floor(now / DAY) * DAY;
   return {
@@ -1216,10 +1228,19 @@ function binaryActive(active, now) {
     start_time: midnight,
     option: {
       profit: { commission, refund_min: 0, refund_max: 0 },
-      expiration_times: EXPIRATION_TIMES,
-      default_expiration: 60,
-      exp_time: 0,
-      count: 0,
+      expiration_times: expirations,
+      default_expiration: expirations[0],
+      /*
+       * `count` is how many expiries the panel offers, and it was zero.
+       *
+       * The deal panel read that as nothing to offer and drew "no expirations
+       * available" over an empty list, with the Expiration field blank beside
+       * it — and a purchase made from that state sends `expired: 0`, an option
+       * with no end. `exp_time` is the longest of them, which is what the
+       * instrument tab labels itself with.
+       */
+      exp_time: expirations[expirations.length - 1],
+      count: expirations.length,
       special: {},
       start_time: now,
       /*
@@ -1238,7 +1259,7 @@ function binaryActive(active, now) {
       midnight - 30 * DAY + i * DAY + 1,
       midnight - 30 * DAY + (i + 1) * DAY,
     ]),
-    rollovers: EXPIRATION_TIMES.map((size) => ({
+    rollovers: expirations.map((size) => ({
       expiration_size: size,
       offset: 0,
       offset_from_expiration: size,

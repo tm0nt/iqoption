@@ -56,6 +56,14 @@ type Shell = {
   GLEngineModule?: {
     appendLogMessage?: (message: unknown) => unknown;
     setInitProgress?: (done: number, total: number) => unknown;
+    /*
+     * The engine's own automation API. `getCurrentView` hands back an opaque
+     * handle and `getViewName` turns it into the name the build knows it by —
+     * which is how the host can tell what the engine is showing without
+     * reading its canvas.
+     */
+    "automation.getCurrentView"?: () => unknown;
+    "automation.getViewName"?: (view: unknown) => string;
   };
   __gl?: string[];
   MozWebSocket?: typeof WebSocket;
@@ -409,6 +417,56 @@ export function bootEngine(options: EngineHostOptions): void {
       };
     }
   })(0);
+
+  /**
+   * Views the engine opens that only its own backend can fill.
+   *
+   * "Deposit" does not open a cashier: it opens `dialogSelectAccount`, the
+   * first step of Quadcode's billing flow, which then waits on
+   * `billing.trade.avalonbroker.com`. That service is theirs, this platform
+   * has its own cashier, and the dialog asks for nothing over the socket or
+   * over HTTP — so left alone it spins on "Loading…" for as long as anyone is
+   * willing to watch.
+   *
+   * Sending the person to our own page is the honest answer. The view name
+   * comes from the engine's automation API rather than from guessing at
+   * pixels, so this notices exactly the dialog it means and nothing else.
+   */
+  const REPLACED_VIEWS: Record<string, string> = {
+    dialogSelectAccount: `/${locale}/counting`,
+  };
+
+  /**
+   * Watches what the engine is showing.
+   *
+   * Polled rather than subscribed because the engine offers no event for it;
+   * twice a second is far below anything a person notices and costs one
+   * function call. It stops at the first match, because by then the page is
+   * navigating away.
+   */
+  function watchViews() {
+    const engine = shell.GLEngineModule;
+    const current = engine?.["automation.getCurrentView"];
+    const nameOf = engine?.["automation.getViewName"];
+    if (typeof current !== "function" || typeof nameOf !== "function") return;
+
+    let name: string;
+    try {
+      name = nameOf(current());
+    } catch {
+      // The engine is mid-teardown or between views; try again next tick.
+      return;
+    }
+
+    const destination = REPLACED_VIEWS[name];
+    if (!destination) return;
+
+    clearInterval(timer);
+    status(`view ${name} -> ${destination}`, "good");
+    location.assign(destination);
+  }
+
+  const timer = setInterval(watchViews, 500);
 
   const manifest = document.createElement("script");
   manifest.src = `${resourceHost}/toLoad.js?v=${resourceVersion}`;
