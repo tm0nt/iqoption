@@ -203,6 +203,7 @@ model User {
 
   balances        Balance[]
   positions       Position[]
+  transactions    Transaction[]
   tradingSessions TradingSession[]
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -320,4 +321,59 @@ model Position {
   @@index([userId, closedAt])
   @@index([userId, expirationTime])
   @@map("positions")
+}
+
+/// Money in or money out.
+enum TransactionKind {
+  DEPOSIT
+  WITHDRAWAL
+}
+
+/// Where a request has got to. A withdrawal is a request until someone
+/// approves it; a deposit is settled or it is not.
+enum TransactionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+/// A movement of money that is not a trade.
+///
+/// Deals have their own table because they settle themselves on a timer; these
+/// settle because a person decided. Both feed the balance history, which is why
+/// the amount is signed the same way in each: positive is money arriving.
+model Transaction {
+  id Int @id @default(autoincrement())
+
+  userId Int  @map("user_id")
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// Which wallet it moves. Not a relation: a wallet can go and the record of
+  /// what happened should not go with it.
+  balanceId Int @map("balance_id")
+
+  kind   TransactionKind
+  status TransactionStatus @default(PENDING)
+
+  /// Always positive. `kind` says which way it goes — a negative deposit and a
+  /// positive withdrawal are the same mistake written two ways.
+  amount   Decimal @db.Decimal(18, 2)
+  currency String  @default("USD")
+
+  /// The rail, as the cashier names it: "PIX (CPF)", "Bitcoin (BTC)".
+  method      String  @db.VarChar(64)
+  /// Where the money goes. Held for the operator and never shown back in full.
+  destination String? @db.VarChar(255)
+  /// Why it was rejected, or anything else a person needs to read later.
+  note        String? @db.Text
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  /// When it stopped being pending.
+  settledAt DateTime? @map("settled_at")
+
+  @@index([userId, createdAt])
+  @@index([status])
+  @@map("transactions")
 }

@@ -106,6 +106,27 @@ const SETTINGS = [
     value: { userId: 100000001 },
   },
   {
+    key: "cashier.methods",
+    description:
+      "The rails the cashier offers, in the order it lists them. `deposit` and `withdrawal` say where each one appears; `days` is the settlement window shown under the name.",
+    value: {
+      methods: [
+        { id: "pix", name: "PIX (CPF)", days: "1 - 3 business days", deposit: true, withdrawal: true, kind: "bank" },
+        { id: "usdc-bsc", name: "USD Coin (BNB Smart Chain)", days: "1 - 3 business days", deposit: true, withdrawal: true, kind: "crypto" },
+        { id: "bnb", name: "Binance Coin (BNB)", days: "1 - 3 business days", deposit: true, withdrawal: true, kind: "crypto" },
+        { id: "btc", name: "Bitcoin (BTC)", days: "1 - 3 business days", deposit: true, withdrawal: true, kind: "crypto" },
+        { id: "ada", name: "Cardano (ADA)", days: "1 - 3 business days", deposit: true, withdrawal: true, kind: "crypto" },
+        { id: "eth-erc20", name: "Ethereum (ETH) ERC-20", days: "1 - 3 business days", deposit: true, withdrawal: true, kind: "crypto" },
+        { id: "ltc", name: "Litecoin (LTC)", days: "1 - 3 business days", deposit: true, withdrawal: true, kind: "crypto" },
+        { id: "xrp", name: "Ripple (XRP)", days: "1 - 3 business days", deposit: true, withdrawal: true, kind: "crypto" },
+        { id: "usdt-trc20", name: "Tether (USDT) TRC-20", days: "1 - 3 business days", deposit: true, withdrawal: true, kind: "crypto" },
+      ],
+      freeWithdrawalsPerMonth: 1,
+      minWithdrawal: 10,
+      minDeposit: 10,
+    },
+  },
+  {
     key: "trading.demoBalance",
     description: "What a new practice account starts with.",
     value: { amount: 10000, currency: "USD" },
