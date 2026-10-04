@@ -801,9 +801,18 @@ export const CALLS = {
       ? closedPositions(account).filter((position) => wanted.includes(portfolioTypeOf(position.option_type_id)))
       : closedPositions(account);
 
+    /*
+     * The same shape the portfolio's own event carries, not the stored deal.
+     *
+     * The history list and `portfolio.position-changed` go through one parser,
+     * and it reads normalised fields: times in milliseconds, `pnl` beside
+     * `close_profit`, and `instrument_type` in its suffixed form. Handing it
+     * the stored deal instead gave every row a date of 1 January and a result
+     * of $0 — seconds read as milliseconds, and a profit field it never found.
+     */
     return {
       name: "history-positions",
-      payload: { positions: matching.slice(offset, offset + limit), limit },
+      payload: { positions: matching.slice(offset, offset + limit).map(portfolioEvent), limit },
     };
   },
 
@@ -1042,9 +1051,11 @@ export const CALLS = {
     // Same rule as the history: the client asks one family at a time and has
     // nowhere to put a deal of another.
     const wanted = Array.isArray(body?.instrument_types) ? body.instrument_types : null;
-    const positions = wanted
+    const matching = wanted
       ? openPositions(account).filter((position) => wanted.includes(portfolioTypeOf(position.option_type_id)))
       : openPositions(account);
+    // Same parser, same shape — see the note on the history above.
+    const positions = matching.map(portfolioEvent);
     return {
       name: "positions",
       payload: {
