@@ -33,10 +33,17 @@ function Flag({ locale }: { locale: AvalonLocale }) {
 export function CabinetShell({
   account,
   locale,
+  wide = false,
   children,
 }: {
   account: DrawerAccount;
   locale: AvalonLocale;
+  /**
+   * The cabinet has two column widths and the live site uses both: 1032px for
+   * the profile pages, 1440px for verification, which needs room for a rail
+   * beside a form.
+   */
+  wide?: boolean;
   children: React.ReactNode;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -99,7 +106,9 @@ export function CabinetShell({
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-[1032px] grow px-6 pb-16">{children}</main>
+      <main className={`mx-auto w-full grow px-6 pb-16 ${wide ? "max-w-[1440px]" : "max-w-[1032px]"}`}>
+        {children}
+      </main>
 
       <footer className="mt-auto border-t border-avalon-surface-hover py-6 text-center text-[13px] text-avalon-text">
         Avalon

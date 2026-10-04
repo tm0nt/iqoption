@@ -137,6 +137,19 @@ enum Role {
   ADMIN
 }
 
+/// How far an account has got through identity checks.
+///
+/// The live site gates funding on this, and shows the step someone is on in a
+/// three-point progress rail: the address, then the details, then a document.
+enum KycStatus {
+  /// Nothing submitted.
+  NONE
+  /// Details given, document not yet accepted.
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 /// Someone who can sign in and trade.
 ///
 /// The id is the `user_id` the protocol carries, not a surrogate: it travels in
@@ -155,6 +168,23 @@ model User {
   passwordHash  String    @map("password_hash")
 
   name String?
+
+  /**
+   * Identity, as the verification form collects it. Separate first and last
+   * names rather than one `name`, because the form asks for them separately —
+   * it says to enter them exactly as the identity document spells them, and a
+   * single field cannot be checked against a document that has two.
+   */
+  firstName   String?   @map("first_name")
+  lastName    String?   @map("last_name")
+  dateOfBirth DateTime? @map("date_of_birth") @db.Date
+  /// ISO 3166-1 alpha-2, the country on the document.
+  citizenship String?   @db.Char(2)
+  /// Asked separately because it changes what a broker has to report.
+  isUsPerson  Boolean   @default(false) @map("is_us_person")
+  kycStatus   KycStatus @default(NONE) @map("kyc_status")
+  /// Where the uploaded photo lives; null means the blank avatar.
+  avatarUrl   String?   @map("avatar_url") @db.VarChar(512)
 
   /// E.164, the only form that is unambiguous across countries.
   phone         String    @unique
