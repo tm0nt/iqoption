@@ -639,9 +639,11 @@ export const CALLS = {
    * the obvious counterpart to `create-alert`. If the panel calls it something
    * else, the log says so the first time someone removes a line.
    */
-  "delete-alert": async (body, { account, pushEvent }) => {
+  "delete-alert": async (body, { account }) => {
     const gone = await deleteAlert(body, account.userId);
     if (gone.error) return { error: gone.error, status: STATUS.NOT_FOUND };
+    // No event: `alert-changed` carries an alert, and a deleted one is not
+    // something to carry. The panel drops the line on the reply.
     return { name: "alert-deleted", payload: gone };
   },
 
