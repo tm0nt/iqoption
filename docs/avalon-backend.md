@@ -334,8 +334,18 @@ standard envelope with the strings **nested under a locale key**:
 That nesting is the whole trick. A flat `result` map — the obvious reading —
 is worse than an empty one: the client stops before it opens its socket.
 
-`public/engine-host/stubs/lang-route-translations.json` holds our own short set
-of strings in that shape. Keys with no entry render as the key itself.
+A key with no entry renders as the key itself, so a short set does not degrade
+gracefully: the interface comes up with blank buttons and labels. The brand's
+own file carries about 9,200 strings, and
+`public/engine-host/stubs/lang-route-translations.json` is that file, read out
+of a signed-in session with
+
+```js
+fetch("/api/lang/route-translations?groups[]=desktop&groups[]=billing" +
+      "&groups[]=actives&route=en", {credentials: "include"}).then(r => r.text())
+```
+
+`result` also carries `expired` and `version` alongside the locale key.
 
 ## Shapes taken from a wide capture
 
@@ -378,38 +388,33 @@ Answered per asset, and richer than the option catalog in
 
 `is_visible`, `is_paused` and the `time_from`/`time_to` pair decide whether an
 instrument can be selected at all; `00:00:00` on both means around the clock.
+## Where the engine stands
 
-## Where the engine effort stands
+The traderoom opens. The engine boots, authenticates, builds its views, draws
+candles from our feed, and places and settles binary options against our
+account. A boot leaves no unanswered call and no stream without a handler.
 
-The engine boots, authenticates, runs its WebGL loop at 30fps and answers every
-frame we send — its own telemetry reports one connection, no disconnects and
-~1400 frames in. What it does **not** do is leave its `login` view, so the
-traderoom is never built and no candle is ever requested.
-
-That view is not a sign-in form; it is the waiting state for a sequence the
-binary names `login_step_socket`, `_profile`, `_features`, `_settings`, `_kyc`
-and `_assets`. Five are confirmed by the events they raise
-(`EventAuthenticated`, `EventFullProfile`, `CommandFeaturesInitialized`,
-`EventUserConfigReceived`, `EventKycStepsReceived`). The sixth never completes,
-and `F2::CMain::checkLoginConnectionProgress()` is the gate that holds
-`initializeTraderoom()` behind it.
+Getting there turned on four things the protocol does not announce, each of
+which fails silently or points somewhere else. They are written down below
+because none of them is recoverable by reading the traffic alone.
 
 ### The engine's own instrumentation
 
 It ships a 39-function automation API, which is far better than guessing from
-the outside:
+the outside. The functions hang off the module under dotted keys, not off
+`window.automation`:
 
 ```js
 const m = window.GLEngineModule;
-m["automation.getViewName"](m["automation.getCurrentView"]())  // "login"
-m["automation.getElementViaQuery"](view, "*")                  // 0 elements
+m["automation.getViewName"](m["automation.getCurrentView"]())  // "login" | "main"
 m["automation.SOBADgetPerfStats"]()                            // sockets, fps
 m["automation.getFeatureState"]("binary-instrument")           // per flag
 ```
 
-`public/engine-host/index.html` also keeps the engine's full log in
-`window.__gl`, which is where the two timed-out requests and the step names
-came from. The overlay filters it; `__gl` does not.
+`public/engine-host/index.html` keeps the engine's full log in `window.__gl` by
+wrapping `GLEngineModule.appendLogMessage`, which the shell otherwise prints
+only for error lines. The same wrapper can be injected into the live site to
+read its log for comparison, which is how the plot's own decisions were read.
 
 ### The client names the frame it wanted
 
@@ -419,76 +424,128 @@ Every timeout prints the answer it was waiting for:
 WS:get-trading-group-params -> {"name":"trading-params","msName":"","request_id":"","status":-6}
 ```
 
-That line turns a guess into a read, and it is how `trading-params`,
-`set-user-settings-reply` and the promo-code answers were fixed. The naming is
-not one rule: most answers are the request minus `get-`, but
-`set-user-settings` answers as `set-user-settings-reply`,
-`subscribe-balance-changed` as `subscription-balance-changed`, and
-`trading-settings.get-trading-group-params` as plain `trading-params` — even
-though its *change* streams are `turbo-option-trading-group-params-changed`.
-Deriving names from the stream names looks right and is wrong.
+That line turns a guess into a read. Most answers are the request minus `get-`,
+but `set-user-settings` answers as `set-user-settings-reply`,
+`subscribe-balance-changed` as `subscription-balance-changed`,
+`trading-settings.get-trading-group-params` as plain `trading-params`, and
+`subscribe-positions` as `subscription`. Deriving a name from the matching
+*change stream* looks right and is wrong.
 
 Calls carry a service prefix that answers drop: `promo-codes.get-…`,
-`core.get-profile`, `trading-settings.get-…`. A handler registered without the
-prefix never matches, and the client waits ten seconds per call rather than
-reporting anything.
+`core.get-profile`. A handler registered without the prefix never matches, and
+the client waits ten seconds per call rather than reporting anything.
 
-### Observation channels, and what each one gave
+## Rules this protocol does not announce
 
-| channel | state |
+### A subscription event splits its name
+
+A stream is subscribed under a dotted name and the event comes back with the
+service moved into its own field:
+
+```json
+{"name": "position-changed", "microserviceName": "portfolio", "msg": {…}}
+```
+
+Sending `portfolio.position-changed` as one string leaves the client with an
+event it has no handler for, and it is **dropped without a word** — no error,
+no log line. This applies to every pushed event, not only deals.
+
+### A subscription is identified by the id that opened it
+
+Not by its routing filters. When the chart changes candle size it opens the
+replacement *before* closing the one it replaces, and the closing frame carries
+the **old** request id:
+
+```
+subscribe   s_236  {active_id, size: 60}
+unsubscribe s_193  {active_id, size: 5}
+```
+
+The overlap is deliberate, so the series never goes quiet. Keying streams by
+their filters collapses it: the second subscribe looks like a duplicate and the
+close that follows tears down the only stream there is.
+
+### Enums are a vocabulary of their own
+
+A field read through `enum_as_string` accepts only the members of its
+`F2::MVEnum<T>::mapper()` table. A value outside it reads back as zero, and the
+object is usually rejected without naming the field.
+
+| enum | members |
 |---|---|
-| server transcript (`npm run server:trace`) | clean — no unhandled call or stream |
-| the engine's own log (`window.__gl`) | clean — no timeouts left |
-| its automation API | `view: login`, 0 elements, healthy socket, 30fps |
-| its analytics (`/api/v1/events`) | silent — it never posts the stage events |
-| a recording of the live feed | unavailable; see below |
+| `IQOptionType` | `turbo`, `binary`, `digital-option`, `blitz-option`, `fx-option`, `exchange-option`, `trade-rush`, `marginal-forex`, `marginal-cfd`, `marginal-crypto`, `forex`, `cfd`, `crypto` |
+| `IQDealStatus` | `open`, `win`, `loose`, `equal`, `expired`, `sold`, `canceled`, `cancelled_by_system` |
+| `IQPositionCloseReason` | `default`, `win`, `loose`, `equal`, `expired`, `sold`, `withdraw`, `overnight`, … |
+| `IQDealDirection` | `call`, `put` |
+| `KYCLevel` | `NEW`, `BASIC`, `ENHANCED`, `NONE` |
+| `KYCLevelIndicator` | `OK`, `REQUIRED`, `NEED_ACTION`, `WAIT` |
 
-### Ruled out
+Two traps. **The routing filters use a different vocabulary**: the client
+subscribes `position-changed` filtered by `instrument_type: "turbo-option"`
+while the payload must say `turbo`. And `F2::getOptionType()` accepts
+`turbo-option`, but it is not the table the JSON reader uses.
 
-- **Translations** — fixed; the error is gone and the file loads.
-- **`check-session`** — its shape was wrong and is now right, but it was never
-  the gate: login succeeds well before the stall.
-- **Instrument family** — `turbo`/`binary` *is* read; the log shows
-  `parse binary` with our nine instruments, despite `binary-instrument` being
-  disabled on the live brand.
-- **Asset groups, digital underlyings, user-setting defaults, tab features** —
-  all plausible, all tried, none moved the view.
+A lower-case `none` where `KYCLevel` wants `NONE` is what held the login view
+shut: the KYC service never initialised, and the gate waits on it.
 
-### Still open
+### Types that look interchangeable and are not
 
-- One texture path arrives as the literal `https://[resources_endpoint]/…`,
-  unsubstituted, even though `/api/configuration` carries that key and the same
-  file is where the client correctly found the websocket host.
-- What `checkLoginConnectionProgress` actually waits for.
+- `qcalc::BigDecimal` travels as a **string**: `"markup": "0.4"`, `"pnl": "0.78"`.
+- A timestamp read with `getInteger` cannot carry a fraction. `Date.now()/1000`
+  produces one, and the field then reads as nothing.
+- `external_id` on a deal is stored as a 64-bit integer, not a string.
+- `open` and `closed` on a deal are **instants**, not flags.
+- In a candle, `from` and `to` are seconds while `at` is nanoseconds.
 
-### How to resume
+### `first-candles` means the first candles
 
-The discovery loop that worked — read the log, add the handler, measure the
-repetition — has run dry: the client now waits silently instead of complaining.
-Two ways forward:
+It answers with the **oldest** candle of each size — the start of each series —
+not the newest. The depth scales with the bucket: a size-1 series reaches back
+about a week, size-60 about sixty days, size-300 about three hundred. It is how
+the client learns how far back it may ask. Answering with the newest candle
+tells it every series begins now, so it never requests history and the chart
+stays empty.
 
-1. **Capture a working boot.** `scripts/capture-frames.js` records both
-   directions; its header has the timing recipe. The live traderoom has been
-   intermittent (`runtimeReady: true` with no socket at all), so this needs a
-   window when it works. The outbound call order after
-   `internal-billing.get-balances` is the missing piece.
-2. **Decompile the gate.** `F2::CMain::checkLoginConnectionProgress()`.
+### Candles come in two shapes
+
+History (`candles`, `first-candles`) carries eight fields: `id`, `from`, `to`,
+`open`, `close`, `min`, `max`, `volume`. The live push `candle-generated` adds
+`active_id`, `size`, `at`, `ask`, `bid` and `phase`. History is requested by
+**id range** — `{active_id, size, from_id, to_id, only_closed}` — not by count.
+
+`candles-generated`, despite the name, is not a candle frame at all: it is a
+quote (`active_id`, `at`, `value`, `bid`, `ask`, `phase`) carrying every series
+of that instrument in a `candles` object keyed by size. A stream of single
+candles there is refused as an "Improper candles-generated event".
+
+### The chart's own settings
+
+`traderoom_gl_grid` is read as written. `candleDuration` and `timeScale` travel
+as a pair — the plot derives its type from the scale, so a duration that
+disagrees is discarded and `IQPlot::startLoadingNewCandleType` resets it. One
+plotter per open tab; a tab without one falls back to the engine's default and
+drags the axis with it. `plotType` is `candles`, plural; the grid dimensions are
+percentages (`[100]`), and `indicators` is JSON held in a string.
 
 ## Known gaps
 
+- **Buyback.** `price-splitter.client-buyback-generated` is acknowledged and
+  silent, so "P/L after sell" stays zero and the Sell button has no price. Its
+  parser does not go through the attribute binders, so the shape was not
+  recovered from the build; a capture of a live sale is the cheaper route.
+- **The balance during an open deal.** The wallet is debited and announced on
+  both channels, but the header only moves at settlement. The accounting is
+  right; whether the live feed behaves the same is unverified.
+- **`Failed to parse input JSON: The document is empty`** — eight per boot,
+  source unidentified, no visible effect. One attempt to silence it (giving
+  `/api/geoip/getmycountry` an object instead of its bare `"BR"`) replaced it
+  with a real failure and was reverted.
+- **Only turbo options are exercised.** Digital with its strike ladder and the
+  marginal families are served but never traded against. Asset switching,
+  timeframe changes from the UI, several open deals at once and the history
+  panel are likewise untested.
 - **Instrument ids are provisional.** `server/market/actives.mjs` follows the
-  ids the live feed appears to use, but they have not been reconciled against a
-  real `get-initialization-data` response. Run the probe against the live feed
-  and correct the catalog; `src/components/sites/.../actives.ts` maps the UI's
-  asset tabs onto them.
-- **No order flow.** `get-candles` and the two streams are in; placing,
-  settling and reporting positions are not.
-- **The engine still re-initialises in a loop.** Every call it makes is
-  answered and no errors remain, but it reports
-  `Failed to parse input JSON: The document is empty` and starts over. The
-  likely cause is the resources chain: `resources.get-resources` returns an
-  empty list, so the translations file the engine expects at
-  `/local/strings_<locale>_<version>.txt` is never fetched, and parsing the
-  missing content fails. Mapping that payload is the next step.
+  ids the live feed appears to use, reconciled against a recorded
+  `get-initialization-data` but not against every family.
 - **No real identity.** Any unknown session id is accepted and handed a fresh
   demo account. That is deliberate for development and must not be deployed.
