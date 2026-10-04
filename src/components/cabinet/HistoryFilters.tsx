@@ -34,10 +34,10 @@ export function HistoryFilters({
 
   return (
     /*
-     * Flexible rather than fixed at the live site's 248px. Its column is 1032px
-     * with no padding, so four of those fit exactly; ours carries a gutter, and
-     * a fixed width pushes the fourth onto its own line. They share the row
-     * instead, and still wrap when the row is genuinely too narrow.
+     * The controls share the row rather than taking the live site's fixed width,
+     * which is 248px where there are four of them and 333px where there are
+     * three — the same 1032px column divided by what is in it. Sharing gets both
+     * from one component, and still wraps when the row is genuinely too narrow.
      */
     <div className="flex flex-wrap gap-3.5">
       {groups.map((group) => (
@@ -47,7 +47,7 @@ export function HistoryFilters({
             <select
               value={current[group.name] ?? "all"}
               onChange={(event) => set(group.name, event.target.value)}
-              className="h-[50px] w-full max-w-[248px] appearance-none rounded-[4px] border border-avalon-border bg-white py-2.5 pl-5 pr-[38px] text-[14px] font-medium text-avalon-text outline-none transition-colors focus:border-avalon-primary"
+              className="h-[50px] w-full appearance-none rounded-[4px] border border-avalon-border bg-white py-2.5 pl-5 pr-[38px] text-[14px] font-medium text-avalon-text outline-none transition-colors focus:border-avalon-primary"
             >
               {group.options.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -70,7 +70,7 @@ export function HistoryFilters({
 
       <label className="block min-w-[180px] flex-1 basis-[200px]">
         <span className="mb-1.5 block text-[14px] font-medium text-avalon-text">Date</span>
-        <span className="flex h-[50px] w-full max-w-[248px] items-center rounded-[4px] border border-avalon-border bg-white">
+        <span className="flex h-[50px] w-full items-center rounded-[4px] border border-avalon-border bg-white">
           <span className="flex size-[50px] shrink-0 items-center justify-center border-r border-avalon-border text-avalon-primary">
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden>
               <rect x="1" y="3" width="16" height="14" rx="2" />
