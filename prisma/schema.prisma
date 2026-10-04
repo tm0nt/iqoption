@@ -261,8 +261,11 @@ model Balance {
   userId Int  @map("user_id")
   user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  /// `IQBalanceType`: 1 is real money, 4 is the practice balance.
+  /// `IQBalanceType`: 1 is real money, 2 a tournament, 4 the practice balance.
   type Int @default(4)
+
+  /// The tournament this wallet plays in, or 0 for the two ordinary ones.
+  tournamentId Int @default(0) @map("tournament_id")
 
   /// Decimal, not a float. A stake and a payout are money, and a binary option
   /// settles on a comparison that a rounding error can invert.
@@ -273,8 +276,15 @@ model Balance {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  /// One wallet of each kind per person.
-  @@unique([userId, type])
+  /**
+   * One wallet of each kind per person — and one per tournament entered.
+   *
+   * `tournamentId` is 0 rather than null for a real or practice wallet, which
+   * is what keeps that promise. MySQL counts two NULLs as different values in
+   * a unique index, so a nullable column here would quietly permit the second
+   * real wallet this constraint exists to forbid.
+   */
+  @@unique([userId, type, tournamentId])
   @@map("balances")
 }
 

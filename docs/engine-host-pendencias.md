@@ -286,19 +286,45 @@ foram instrumentados — e Torneios e Tabela de Líderes inteiros.
 
 ## Entrar num torneio
 
-A lista funciona — os torneios aparecem com contagem regressiva, prêmio, taxa e
-as seções de futuros e passados — e a classificação sai de `tournament_entries`.
-**Inscrever-se não está feito.**
+Feito do lado do servidor, e verificado ponta a ponta:
 
-Falta a peça que o resto depende: uma **carteira de torneio**, um terceiro tipo
-ao lado de real e prática. Entrar debita a taxa da carteira real, cria uma
-carteira com `starting_balance`, e todo negócio aberto contra ela tem de liquidar
-na classificação em vez de num saldo que possa ser sacado. O `balances` do feed
-já carrega `tournament_id` e `tournament_name` para isso, e o cliente já pede
-`internal-billing.get-balances` com `tournaments_statuses_ids`.
+- `register-in-tournament-new` com `force: false` é uma **cotação** — devolve
+  custo, moeda e saldo, e **não cobra nada**. A primeira versão cobrava aqui, e
+  quem apertasse Cancelar já teria pago.
+- Com `force: true` a taxa sai da carteira real, abre-se uma carteira de
+  torneio (`type` 2, `is_fiat` falso, nomeando o torneio) com o valor inicial, e
+  a inscrição é gravada — as três coisas numa transação só.
+- Repetir é idempotente: devolve a mesma carteira e não cobra de novo.
+- Cada negócio liquidado naquela carteira soma na classificação. Testado: $50 de
+  aposta perdida levou o saldo de 500 para 450 e a classificação para −50.
 
-O `rebuy_count` vai zerado por isso: ele conta recompras, e não há como recomprar
-sem haver como entrar.
+A resposta chama-se **`tournament-registration-new`**. Duas tentativas erraram
+antes — um nome inventado e o nome do evento — e o engine disse as duas vezes
+repetindo a chamada a cada três segundos sob um mesmo `request_id`. A regra está
+na tabela de strings: objeto primeiro, verbo depois. `register-in-tournament-new`
+→ `tournament-registration-new`, como `rebuy-in-tournament-new` →
+`tournament-rebuy-new` e `reset-training-balance` → `training-balance-reset`.
+
+### O que falta: o diálogo não deixa confirmar
+
+Clicar "JOIN THE TOURNAMENT" abre **"Confirm your participation"**, que mostra o
+custo certo ($5,00) — prova de que parte da resposta é lida — mas em vermelho,
+com os botões **Cancel** e **Deposit**. Ou seja, o engine conclui que falta
+dinheiro e oferece depositar em vez de confirmar. Pela interface ninguém chega
+ao `force: true`.
+
+Com 600,46 na carteira real e taxa de 5,00, não falta. Três hipóteses testadas e
+descartadas:
+
+1. Campos de "tem dinheiro suficiente" na resposta (`enough_money` e variantes) —
+   nenhum desses nomes existe na tabela de strings do binário.
+2. `has_deposits`, que era fixo em `false`. Passou a refletir a verdade — não
+   mudou o diálogo. (A correção fica: era mentira sobre uma conta com saldo.)
+3. A carteira ativa ser a de praticante. Troquei para a real — não mudou.
+
+O caminho que resta é o de sempre: **gravar a resposta verdadeira**. Exige uma
+conta com saldo real na plataforma deles e clicar em entrar num torneio. Até lá
+o servidor está pronto e só a última porta da interface está fechada.
 
 ## Sobras do caminho
 

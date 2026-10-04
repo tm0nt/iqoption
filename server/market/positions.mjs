@@ -12,6 +12,8 @@
  */
 import { activeById } from "./actives.mjs";
 import { optionActive } from "../protocol/active.mjs";
+import { TOURNAMENT } from "../accounts.mjs";
+import { recordTournamentPnl } from "../data/tournaments.mjs";
 import { closePosition, savePosition, takePositionId } from "./position-store.mjs";
 import { priceAt, round } from "./prices.mjs";
 
@@ -236,6 +238,18 @@ export function settleDue(account, feed) {
 
     const wallet = walletOf(account, position.user_balance_id);
     wallet.amount = round(wallet.amount + position.profit_amount, 2);
+
+    /*
+     * A tournament standing is the sum of what its deals made, not the wallet
+     * balance — two people can hold the same amount having started from
+     * different places if a rebuy was taken. `close_profit` is already the
+     * profit of the deal, stake excluded, so it is exactly what the ranking
+     * adds up.
+     */
+    if (wallet.type === TOURNAMENT) {
+      recordTournamentPnl(wallet.id, position.close_profit);
+    }
+
     closePosition(position);
     closed.push(position);
   }

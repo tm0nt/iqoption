@@ -30,7 +30,7 @@ import {
   usedPromoCodes,
 } from "../data/promo.mjs";
 import { leaderboardPosition, leaderboardTop } from "../data/leaderboard.mjs";
-import { tournamentsInfo, tournamentWinners } from "../data/tournaments.mjs";
+import { registerInTournament, tournamentsInfo, tournamentWinners } from "../data/tournaments.mjs";
 import { featureRows } from "../data/features.mjs";
 import { defaultUserConfig } from "../data/user-settings.mjs";
 import { halfSpread, priceAt, round } from "../market/prices.mjs";
@@ -801,6 +801,100 @@ export const CALLS = {
     name: "tournaments-info",
     payload: await tournamentsInfo(body, account.userId),
   }),
+
+  /**
+   * Entering a tournament.
+   *
+   * The name came from the feed's own log the first time the button was
+   * pressed — `register-in-tournament-new`, with `{tournament_id, force,
+   * locale}` — rather than from guessing at it.
+   *
+   * The wallet it opens is tournament money: `is_fiat` is false, it names its
+   * tournament, and nothing can withdraw it. The fee leaves the real wallet,
+   * which is the only part of this that touches money anyone can keep.
+   */
+  "register-in-tournament-new": async (body, { account, pushEvent, send }) => {
+    const force = body?.force === true;
+    const result = await registerInTournament(body?.tournament_id, account, force);
+    if (result.error) return { error: result.error, status: STATUS.BAD_REQUEST };
+
+    /*
+     * The dry run: what it would cost and whether the wallet can bear it.
+     * Nothing has been charged, and the figures are what the confirmation
+     * dialog puts in front of the person before they agree to it.
+     */
+    if (result.quote) {
+      return {
+        name: "tournament-registration-new",
+        payload: {
+          user_id: account.userId,
+          tournament_id: Number(result.tournament.id),
+          registered: false,
+          cost: result.cost,
+          amount: result.cost,
+          currency: result.tournament.currency,
+          balance_id: result.real.id,
+          balance_amount: result.real.amount,
+          enough_money: result.enough,
+        },
+      };
+    }
+
+    const { tournament, real, created, balanceId, existing } = result;
+
+    /*
+     * Nothing moved on a repeat, so nothing is announced. Re-sending a
+     * balance-changed for a wallet that did not change is how a client ends up
+     * redrawing a figure that is already right.
+     */
+    if (existing) {
+      return {
+        name: "tournament-registration-new",
+        payload: {
+          user_id: account.userId,
+          tournament_id: Number(tournament.id),
+          balance_id: balanceId,
+          registered: true,
+        },
+      };
+    }
+
+    saveBalance(real);
+    // Both wallets moved, so both are announced: the real one is lighter by
+    // the fee and the new one exists at all.
+    pushEvent("internal-billing.balance-changed", balanceChangedFrame(account, real));
+    pushEvent("internal-billing.balance-created", balanceChangedFrame(account, created));
+    pushEvent("tournaments.user-registered-in-tournament", {
+      user_id: account.userId,
+      tournament_id: Number(tournament.id),
+      balance_id: balanceId,
+    });
+    send({ name: "balances", msg: balancesFrame(account) });
+
+    /*
+     * `tournament-registration-new`, which is the reply and not the event.
+     *
+     * Two guesses missed first: an invented `registered-in-tournament`, then
+     * the event's own name. The engine said so both times by sending the call
+     * again every three seconds under one request id — repetition, not an
+     * error, is what says a reply was not understood.
+     *
+     * The string table settles it, and shows the rule: object first, verb
+     * last. `register-in-tournament-new` is answered by
+     * `tournament-registration-new`, exactly as `rebuy-in-tournament-new` is
+     * answered by `tournament-rebuy-new`, and as `reset-training-balance` is
+     * answered by `training-balance-reset`.
+     */
+    return {
+      name: "tournament-registration-new",
+      payload: {
+        user_id: account.userId,
+        tournament_id: Number(tournament.id),
+        balance_id: balanceId,
+        registered: true,
+      },
+    };
+  },
 
   "get-tournament-winners": async (body) => ({
     name: "tournament-winners",

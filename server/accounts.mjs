@@ -21,6 +21,7 @@ import { loadPositions } from "./market/position-store.mjs";
  * reconciled, which is why it starts empty.
  */
 export const REAL = 1;
+export const TOURNAMENT = 2;
 export const PRACTICE = 4;
 
 /** Practice money, in the account currency, when nothing has been configured. */
@@ -238,7 +239,11 @@ async function loadAccount(row) {
 
   const [wallets, positions] = await Promise.all([
     pool().query(
-      "SELECT id, type, amount, currency, is_fiat FROM balances WHERE user_id = ? ORDER BY type",
+      `SELECT b.id, b.type, b.amount, b.currency, b.is_fiat, b.tournament_id, t.name AS tournament_name
+         FROM balances b
+         LEFT JOIN tournaments t ON t.id = b.tournament_id
+        WHERE b.user_id = ?
+        ORDER BY b.type`,
       [userId],
     ),
     /*
@@ -262,6 +267,9 @@ async function loadAccount(row) {
       amount: Number(wallet.amount),
       currency: wallet.currency,
       is_fiat: Boolean(wallet.is_fiat),
+      // Zero for the two ordinary wallets; the frame reports null for those.
+      tournamentId: Number(wallet.tournament_id) || 0,
+      tournamentName: wallet.tournament_name ?? null,
     })),
     positions,
   };
@@ -343,11 +351,23 @@ function balanceFrame(account, balance) {
     auth_amount: 0,
     equivalent: balance.amount,
     currency: balance.currency,
-    tournament_id: null,
-    tournament_name: null,
+    // A tournament wallet names its tournament here, which is how the balance
+    // switcher labels it as something other than real or practice money.
+    tournament_id: balance.tournamentId || null,
+    tournament_name: balance.tournamentName ?? null,
     is_fiat: balance.is_fiat,
     is_marginal: true,
-    has_deposits: false,
+    /*
+     * Whether the wallet has ever been funded.
+     *
+     * Hardcoded false until now, which was true of an account that had never
+     * deposited and a lie about one that had. The tournament dialog is the
+     * first thing seen to read it: with money in the real wallet and this
+     * false it still offered "Deposit" rather than letting the entry fee be
+     * paid. Money present is the simplest honest answer — a wallet holding
+     * something was funded from somewhere.
+     */
+    has_deposits: balance.type === REAL && balance.amount > 0,
     created: account.created,
   };
 }
