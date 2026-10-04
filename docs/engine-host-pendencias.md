@@ -202,17 +202,21 @@ O que **não** está traduzido:
 - **As mensagens de erro das APIs.** Voltam em inglês do servidor. Ou o servidor
   passa a receber o locale, ou devolve códigos e o cliente traduz — a segunda é
   mais limpa.
-- **O traderoom.** O mecanismo está feito: o host grava o cookie `lang` com o
-  idioma da rota e pede `lang-route-translations.json?locale=<id>`, e a rota de
-  stubs serve `lang-route-translations.<locale>.json` quando existe. Só que
-  **não existe**: o arquivo espelhado tem apenas o dicionário `en`, porque foi
-  capturado numa sessão em inglês. Enquanto os outros não forem capturados, o
-  engine cai no inglês — que é melhor que não abrir.
+- **O traderoom.** ~~Falta capturar `pt` e `es`.~~ Feito. Os três dicionários
+  estão em `public/engine-host/stubs/lang-route-translations.{pt,es}.json`, com
+  9.247 chaves cada — o mesmo número do inglês. O host grava o cookie `lang`
+  com o idioma da rota e pede `lang-route-translations.json?locale=<id>`; a
+  rota de stubs serve o arquivo do idioma quando existe e cai no inglês quando
+  não.
 
-Pegar os outros dois exige observar o engine pedindo. O endpoint
-`/api/lang/route-translations` é público mas recusa os parâmetros adivinhados
-(`groups`, depois `route`, depois "Route doesn't match brand"), e o HAR que
-temos foi capturado na tela de login, onde a requisição não acontece.
+O endpoint `/api/lang/route-translations` responde **sem sessão**, com a mesma
+consulta documentada em `docs/avalon-backend.md` e `route=<idioma>`. A nota
+anterior dizia que ele recusava os parâmetros; recusa os adivinhados, não os
+certos. Para recapturar:
+
+```
+curl "https://trade.avalonbroker.com/api/lang/route-translations?groups[]=desktop&groups[]=billing&groups[]=actives&route=pt"
+```
 
 ## Sobras do caminho
 
