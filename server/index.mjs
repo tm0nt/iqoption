@@ -29,6 +29,7 @@ import * as binance from "./market/binance.mjs";
 import { loadNextPositionId } from "./market/position-store.mjs";
 import { startSettlement, stopSettlement } from "./market/settlement.mjs";
 import { openSession } from "./accounts.mjs";
+import { priceAt, round } from "./market/prices.mjs";
 
 const PORT = Number(process.env.AVALON_SERVER_PORT ?? 3100);
 const WS_PATH = "/echo/websocket";
@@ -86,6 +87,44 @@ const http = createServer((request, response) => {
       })
       .catch((error) => json(response, 500, { error: error.message }));
     return;
+  }
+
+  /**
+   * Instruments ranked by how far they have moved this week, with a sparkline.
+   *
+   * Sampled through `priceAt` rather than read off a series, because that one
+   * function answers for both price sources: an instrument with a live feed
+   * returns real bars, and one still on the deterministic curve returns the
+   * curve. The portfolio page draws them the same way either way.
+   */
+  if (url.pathname === "/top-assets") {
+    const DAY = 86_400;
+    const now = Math.floor(feed.now());
+    const points = Number(url.searchParams.get("points")) || 32;
+    const span = (Number(url.searchParams.get("days")) || 7) * DAY;
+
+    const rows = ACTIVES.map((active) => {
+      const series = [];
+      for (let i = 0; i < points; i += 1) {
+        series.push(priceAt(active, now - span + (span * i) / (points - 1)));
+      }
+      const first = series[0];
+      const last = series[series.length - 1];
+      return {
+        id: active.id,
+        ticker: active.ticker,
+        name: active.name,
+        kind: active.kind,
+        precision: active.precision,
+        source: active.source,
+        price: last,
+        // Percent, signed. A flat instrument reports zero rather than NaN.
+        change: first ? round(((last - first) / first) * 100, 2) : 0,
+        series,
+      };
+    });
+
+    return json(response, 200, { assets: rows });
   }
 
   if (url.pathname === "/session" && request.method === "POST") {

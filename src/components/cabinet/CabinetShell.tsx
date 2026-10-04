@@ -34,6 +34,7 @@ export function CabinetShell({
   account,
   locale,
   wide = false,
+  bleed = false,
   children,
 }: {
   account: DrawerAccount;
@@ -44,6 +45,12 @@ export function CabinetShell({
    * beside a form.
    */
   wide?: boolean;
+  /**
+   * Hands the full width to the page. The portfolio runs a banner and a tinted
+   * band edge to edge and centres its own column inside each, which a wrapper
+   * with a max width cannot express.
+   */
+  bleed?: boolean;
   children: React.ReactNode;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -106,7 +113,11 @@ export function CabinetShell({
         </div>
       </header>
 
-      <main className={`mx-auto w-full grow px-6 pb-16 ${wide ? "max-w-[1440px]" : "max-w-[1032px]"}`}>
+      <main
+        className={
+          bleed ? "w-full grow" : `mx-auto w-full grow px-6 pb-16 ${wide ? "max-w-[1440px]" : "max-w-[1032px]"}`
+        }
+      >
         {children}
       </main>
 
