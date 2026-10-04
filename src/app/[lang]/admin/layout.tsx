@@ -26,6 +26,7 @@ export default async function AdminLayout(props: LayoutProps<"/[lang]/admin">) {
     { href: `/${lang}/admin/positions`, label: "Deals" },
     { href: `/${lang}/admin/content`, label: "Content" },
     { href: `/${lang}/admin/promo`, label: "Promo" },
+    { href: `/${lang}/admin/cashier`, label: "Cashier" },
     { href: `/${lang}/admin/settings`, label: "Settings" },
   ];
 

@@ -38,32 +38,33 @@ Uma ressalva que vale repetir: o papel viaja no token assinado da sessão, que
 não é relido do banco a cada requisição. Quem já estava logado mantém o papel
 que tinha até sair e entrar de novo.
 
-### 2. Nada credita a carteira real
+### 2. Depósito aprovado à mão, sem provedor
 
-Toda conta agora tem duas carteiras e o traderoom troca entre elas. A de
-praticante se recarrega sozinha pelo "Top Up". A real **não tem como receber
-dinheiro pelo produto**:
+Toda conta tem duas carteiras e o traderoom troca entre elas. A de praticante se
+recarrega pelo "Top Up". A real agora **recebe por aprovação manual**: o caixa
+grava o pedido como `PENDING` e `/[lang]/admin/cashier` resolve.
 
-- O caixa (`POST /api/cashier/deposit`) grava uma transação `PENDING` e não
-  mexe em saldo nenhum — de propósito, porque não há provedor de pagamento
-  atrás dele e um depósito que credita antes do dinheiro chegar é como uma
-  plataforma se entrega.
-- Não existe tela para aprovar esse `PENDING`. O painel de administração não
-  cobre contas nem saldos (ver item 1).
+O que cada decisão faz com o dinheiro — e os dois lados não são simétricos,
+porque debitam em momentos diferentes:
 
-O efeito prático é que a conta real fica em zero para sempre, e uma carteira
-real vazia **não é selecionável**: o painel do engine oferece "Deposit" no lugar
-da troca. Isso é regra do próprio engine e está certa — ninguém negocia dinheiro
-que não depositou — mas significa que, até existir aprovação de depósito, a
-conta real só sai do zero por `UPDATE` no banco.
+| | aprovar | rejeitar |
+|---|---|---|
+| **Depósito** | credita a carteira | não move nada |
+| **Saque** | nada a mover (já saiu no pedido) | estorna |
 
-O que falta, na ordem: aprovar/rejeitar depósito na administração, lançando o
-crédito e a transação juntos; e a mesma coisa do outro lado para o saque, que
-hoje já debita na hora e fica `PENDING` esperando alguém que não existe.
+Três garantias, todas verificadas:
 
-A conta de testes `trader@exemplo.com.br` tem US$ 500 creditados à mão, com uma
-transação `APPROVED` de método "Manual (test account)" registrando de onde
-vieram.
+- **Só carteira real.** Dinheiro de praticante não é dinheiro; um depósito pago
+  nele é valor criado do nada. A checagem fica onde o dinheiro se move, não no
+  pedido — uma checagem longe do dinheiro é uma checagem contornável.
+- **Atômico.** Mudança de status e movimento de saldo na mesma transação. Um
+  pedido recusado pela trava continua `PENDING`, não fica marcado como resolvido.
+- **Idempotente.** Só linha `PENDING` é tocada; o segundo clique responde
+  "that request is not pending" em vez de pagar duas vezes.
+
+O que **continua faltando**: provedor de pagamento. Aprovar é a afirmação de que
+o dinheiro chegou — nada aqui verifica que chegou. Para operar de verdade falta
+conciliação automática com o provedor.
 
 ### 3. A liquidação não é transacional
 
