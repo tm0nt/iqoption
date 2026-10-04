@@ -19,7 +19,7 @@ import {
   saveBalance,
   setActiveBalance,
 } from "../accounts.mjs";
-import { contentItems, epoch } from "../data/content.mjs";
+import { contentCategories, epoch } from "../data/content.mjs";
 import { featureRows } from "../data/features.mjs";
 import { defaultUserConfig } from "../data/user-settings.mjs";
 import { halfSpread, priceAt, round } from "../market/prices.mjs";
@@ -98,6 +98,18 @@ function exchangeRate(body, feed) {
     rate: active ? priceAt(active, feed.now()) : 1,
     at: feed.now() * 1_000_000_000,
   };
+}
+
+/**
+ * The language a panel is asking in, in both forms the protocol uses.
+ *
+ * The engine sends `en_US`; the database stores `en`. The calls that carry a
+ * locale send it as `locale`, and the ones that do not fall back to the
+ * account's own. Returning both saves every caller from slicing it again.
+ */
+function engineLocale(body, account) {
+  const full = String(body?.locale ?? body?.lang ?? account?.locale ?? "en_US");
+  return { full, short: full.slice(0, 2).toLowerCase() };
 }
 
 /**
@@ -712,102 +724,19 @@ export const CALLS = {
     },
   }),
 
-  /**
-   * The news list inside Market Analysis.
+  /*
+   * `get-news-feed` used to be answered here, from a `content_items` row of
+   * kind NEWS. It is gone, and the kind with it.
    *
-   * The panel asks once each time it is opened and spins until it is answered,
-   * so the empty list it used to get was indistinguishable from a server that
-   * never replied. The items are whatever an administrator has written, in the
-   * language the traderoom is running in.
+   * A recording of the live platform settled it: in forty-one thousand frames
+   * the client never sent the call once. "Market Analysis" in this brand is
+   * the economic calendar — `get-economic-calendar-events` and its filters and
+   * per-event detail — and the news panel is not populated at all. Answering a
+   * call nobody makes is not harmless: it is a shape nobody can ever check,
+   * and it was read for three rounds as a shape we had got wrong.
+   *
+   * See docs/avalon-panels.md.
    */
-  "get-news-feed": async (body, { account }) => {
-    /*
-     * The request names its own page and its own feed: `{from, n, config,
-     * lang}`. All four are echoed back. A list that pages has to match an
-     * answer to the question it asked, and one it cannot place is one it goes
-     * on waiting for — which looks identical to a reply that never came.
-     *
-     * `lang` goes back exactly as it arrived (`en_US`, not `en`); only the
-     * database lookup uses the two-letter form.
-     */
-    const lang = String(body?.lang ?? body?.locale ?? "en_US");
-    const locale = lang.slice(0, 2);
-    const from = Number(body?.from) || 0;
-    const count = Number(body?.n) || Number(body?.limit) || 30;
-    const rows = await contentItems("NEWS", locale, count);
-
-    /*
-     * The shape the news list parses, taken from the binary rather than guessed.
-     *
-     * `IQNewsArticleData`'s setters name its fields — `activeIds`,
-     * `mainActiveId`, `forexCountries`, `topics`, `https`, `url` — and the
-     * string table carries `active_ids`, `image_url`, `source_url` and `https`
-     * in snake case. The text is not flat: the table holds `title.bold_text`,
-     * `description.text`, `description.html`, `image.url` and `link.url`,
-     * which is this build's way of naming a nested key. Flat `title` and
-     * `content`, which the first attempt sent, are not in the table at all —
-     * which is why real items arrived with status 2000 and the panel went on
-     * spinning.
-     *
-     * Both container names go out: `articles` is in the table and `news` is
-     * not, and a reply the panel cannot find looks exactly like one that never
-     * came.
-     */
-    const articles = rows.map((row) => {
-      const text = row.summary ?? row.body ?? "";
-      const link = row.link_url ?? "";
-      const image = row.image_url ?? "";
-
-      return {
-        id: Number(row.id),
-        news_id: Number(row.id),
-        rank: Number(row.priority) || 0,
-
-        title: { text: row.title, bold_text: row.title, is_bold: false, is_uppercase: false },
-        description: { text, html: "", is_solid: false, solid_text: text, solid_html: "" },
-        subtitle: { text: row.author ?? "" },
-
-        image: { url: image },
-        image_url: image,
-        link: { url: link, text: "", action: "" },
-        source_url: link,
-        url: link,
-
-        // Empty rather than absent: the setters take vectors, and a missing
-        // vector and an empty one are not the same thing to a parser that
-        // reads before it checks.
-        active_ids: [],
-        active_snippet_ids: [],
-        forex_countries: [],
-        topics: [],
-        main_active_id: 0,
-
-        https: link.startsWith("https://"),
-        no_instant: true,
-        only_desktop: false,
-
-        lang,
-        date: epoch(row.starts_at),
-        time: epoch(row.starts_at),
-        created_at: epoch(row.starts_at),
-      };
-    });
-
-    return {
-      name: "news-feed",
-      payload: {
-        articles,
-        news: articles,
-        count: articles.length,
-        total: articles.length,
-        from,
-        n: count,
-        config: body?.config ?? "aylien-grabber",
-        lang,
-        user_id: account.userId,
-      },
-    };
-  },
 
   /**
    * Opening a binary option.
@@ -866,10 +795,117 @@ export const CALLS = {
 
   "get-top-assets": () => ({ name: "top-assets", payload: [] }),
   "get-leaderboard-top": () => ({ name: "leaderboard-top", payload: [] }),
-  "get-videos": () => ({ name: "videos", payload: [] }),
+  /**
+   * The video library, in the three calls the panel makes.
+   *
+   * Shapes from a recording — see docs/avalon-panels.md. All three carry
+   * `locale_key` beside `locale_title`: the key is looked up in the engine's
+   * own dictionary and the title is the text to fall back on. Ours have no
+   * dictionary entry, so the key is left empty and the title is what shows.
+   *
+   * The nesting is the platform's own: one video holds its artwork, its
+   * per-language files and its categories inside it. An item here is one row,
+   * so each of those lists has exactly one entry — which is a smaller lie than
+   * leaving them out, because the panel reads into them without checking.
+   */
+  "get-video-categories": async (body, { account }) => {
+    const locale = engineLocale(body, account);
+    const groups = await contentCategories("TUTORIAL", locale.short);
+    const now = Math.floor(Date.now() / 1000);
 
-  "get-video-categories": () => ({ name: "video-categories", payload: [] }),
+    return {
+      name: "video-categories",
+      payload: groups.map((group) => ({
+        id: group.id,
+        title: group.name,
+        locale_key: "",
+        locale_title: group.name,
+        has_new_video: false,
+        bumpers: [],
+        instrument: "all-instrument",
+        weight: 100,
+        images: [],
+        icons: [],
+        videos_count: group.items.length,
+        created_at: now,
+        updated_at: now,
+      })),
+    };
+  },
+
+  /*
+   * Tags are a second axis over the same videos, and nothing here writes them.
+   * An empty list is the honest answer: the panel draws no tag filter, rather
+   * than one that filters nothing.
+   */
   "get-video-tags": () => ({ name: "video-tags", payload: [] }),
+
+  "get-videos": async (body, { account }) => {
+    const locale = engineLocale(body, account);
+    const wanted = Number(body?.category_filter) || 0;
+    const groups = await contentCategories("TUTORIAL", locale.short);
+    const platform = String(body?.platform ?? "desktop");
+    const now = Math.floor(Date.now() / 1000);
+
+    const videos = [];
+    for (const group of groups) {
+      // `category_filter` is a category id; absent or zero means every one.
+      if (wanted && group.id !== wanted) continue;
+
+      for (const row of group.items) {
+        const id = Number(row.id);
+        const seconds = (Number(row.duration_mins) || 0) * 60;
+        const link = row.link_url ?? "";
+
+        videos.push({
+          id,
+          title: row.title,
+          locale_key: "",
+          locale_title: row.title,
+          new: false,
+          watched: false,
+          weight: Number(row.priority) || 0,
+          published: true,
+          images: [{
+            id,
+            video_id: id,
+            locale: locale.full,
+            platform: "all",
+            image: row.image_url ?? "",
+            created_at: now,
+            updated_at: now,
+          }],
+          video_locales: [{
+            id,
+            video_id: id,
+            locale: locale.full,
+            platform: "all",
+            video: link,
+            format: link.endsWith(".webm") ? "webm" : "mp4",
+            duration: seconds,
+            vimeo_link: link,
+            created_at: now,
+            updated_at: now,
+          }],
+          tags: [],
+          categories: [{
+            id: group.id,
+            title: group.name,
+            locale_key: "",
+            locale_title: group.name,
+            weight: 100,
+            videos_count: group.items.length,
+            created_at: now,
+            updated_at: now,
+          }],
+          created_at: now,
+          updated_at: now,
+        });
+      }
+    }
+
+    return { name: "videos", payload: videos };
+  },
 
   /**
    * Settled deals, for the history panel.
@@ -985,7 +1021,41 @@ export const CALLS = {
    * still runs at boot and still blocks:
    * `Request 'get-faq' (3) timed out after 8.0289 sec`.
    */
-  "get-faq": () => ({ name: "faq", payload: { items: [] } }),
+  /**
+   * The Help panel.
+   *
+   * Not a flat list: the recording shows categories with their questions
+   * nested inside, so the grouping an editor types is the grouping the panel
+   * draws. `created` and `updated` are seconds, and `updated` is null on a row
+   * nobody has touched since writing it.
+   */
+  "get-faq": async (body, { account }) => {
+    const locale = engineLocale(body, account);
+    const groups = await contentCategories("HELP", locale.short);
+
+    return {
+      name: "faq",
+      payload: {
+        items: groups.map((group) => ({
+          id: group.id,
+          icon: "",
+          title: group.name,
+          slug: group.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
+          description: "",
+          questions: group.items.map((row) => ({
+            id: Number(row.id),
+            question: row.title,
+            answer: row.body ?? row.summary ?? "",
+            meta: "",
+            created: epoch(row.starts_at) || epoch(row.created_at),
+            updated: null,
+          })),
+          created: epoch(group.items[0]?.created_at),
+          updated: epoch(group.items[0]?.updated_at),
+        })),
+      },
+    };
+  },
 
   /**
    * Feature flags. The live feed answers with 377 of them; none enabled keeps

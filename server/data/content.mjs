@@ -26,7 +26,7 @@ export async function contentItems(kind, locale, limit = 50) {
   if (hit && Date.now() - hit.at < TTL_MS) return hit.rows;
 
   const rows = await pool().query(
-    `SELECT id, title, summary, body, image_url, link_url, author, starts_at, duration_mins, priority
+    `SELECT id, title, summary, body, image_url, link_url, author, category, starts_at, duration_mins, priority, created_at, updated_at
        FROM content_items
       WHERE kind = ?
         AND enabled = 1
@@ -51,4 +51,38 @@ export function epoch(value) {
   if (!value) return 0;
   const time = value instanceof Date ? value.getTime() : new Date(value).getTime();
   return Number.isFinite(time) ? Math.floor(time / 1000) : 0;
+}
+
+/**
+ * A stable number for a category named by a person.
+ *
+ * The wire wants an integer category id — `get-videos` filters on one — and
+ * the database stores a name, because an editor types a name. Deriving the id
+ * from the name means the two always agree without a second table to keep in
+ * step, and it survives a restart, which an assigned counter would not.
+ *
+ * FNV-1a, kept well inside the range the client reads as an integer.
+ */
+export function categoryId(name) {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < name.length; i += 1) {
+    hash ^= name.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  // Starts above the handful of ids the live platform uses, so a captured
+  // fixture and one of ours can never collide while both are around.
+  return 1000 + (hash % 100_000);
+}
+
+/** The distinct categories of one kind, in the order the panels show them. */
+export async function contentCategories(kind, locale) {
+  const rows = await contentItems(kind, locale, 500);
+  const groups = new Map();
+  for (const row of rows) {
+    const name = row.category ?? "General";
+    const group = groups.get(name) ?? { name, id: categoryId(name), items: [] };
+    group.items.push(row);
+    groups.set(name, group);
+  }
+  return [...groups.values()];
 }

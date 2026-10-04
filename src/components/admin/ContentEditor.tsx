@@ -7,6 +7,7 @@ export type AdminContent = {
   id: number;
   kind: string;
   locale: string | null;
+  category: string | null;
   title: string;
   summary: string | null;
   body: string | null;
@@ -28,7 +29,6 @@ export type AdminContent = {
 const KINDS = [
   { value: "WEBINAR", label: "Webinars" },
   { value: "TUTORIAL", label: "Video Tutorials" },
-  { value: "NEWS", label: "Market Analysis — news" },
   { value: "HELP", label: "Help" },
   { value: "PROMO", label: "Promo" },
 ];
@@ -43,6 +43,7 @@ const LOCALES = [
 type Draft = {
   kind: string;
   locale: string;
+  category: string;
   title: string;
   summary: string;
   body: string;
@@ -57,7 +58,7 @@ type Draft = {
 };
 
 const BLANK: Draft = {
-  kind: "WEBINAR", locale: "", title: "", summary: "", body: "", imageUrl: "", linkUrl: "",
+  kind: "WEBINAR", locale: "", category: "", title: "", summary: "", body: "", imageUrl: "", linkUrl: "",
   author: "", startsAt: "", endsAt: "", durationMins: "", priority: "0", enabled: true,
 };
 
@@ -74,6 +75,7 @@ function draftOf(item: AdminContent): Draft {
   return {
     kind: item.kind,
     locale: item.locale ?? "",
+    category: item.category ?? "",
     title: item.title,
     summary: item.summary ?? "",
     body: item.body ?? "",
@@ -215,6 +217,13 @@ export function ContentEditor({ items }: { items: AdminContent[] }) {
           </div>
 
           <div className="sm:col-span-2">
+            <span className={label}>
+              Group — Help draws its categories from this, and so does the video library
+            </span>
+            <input value={draft.category} onChange={(e) => setDraft({ ...draft, category: e.target.value })} className={field} />
+          </div>
+
+          <div className="sm:col-span-2">
             <span className={label}>Title</span>
             <input value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} className={field} />
           </div>
@@ -284,6 +293,7 @@ export function ContentEditor({ items }: { items: AdminContent[] }) {
         <thead>
           <tr className="border-b border-white/10 text-left text-[11px] uppercase tracking-wide text-[#73747a]">
             <th className="py-2 pr-3">Panel</th>
+            <th className="py-2 pr-3">Group</th>
             <th className="py-2 pr-3">Title</th>
             <th className="py-2 pr-3">Language</th>
             <th className="py-2 pr-3">Starts</th>
@@ -296,6 +306,7 @@ export function ContentEditor({ items }: { items: AdminContent[] }) {
           {shown.map((item) => (
             <tr key={item.id} className="border-b border-white/5">
               <td className="py-2 pr-3 text-[#a0a1a6]">{KINDS.find((k) => k.value === item.kind)?.label ?? item.kind}</td>
+              <td className="py-2 pr-3 text-[#a0a1a6]">{item.category ?? "—"}</td>
               <td className="py-2 pr-3">{item.title}</td>
               <td className="py-2 pr-3 text-[#a0a1a6]">{item.locale ?? "all"}</td>
               <td className="py-2 pr-3 text-[#a0a1a6]">
@@ -314,7 +325,7 @@ export function ContentEditor({ items }: { items: AdminContent[] }) {
 
           {shown.length === 0 && (
             <tr>
-              <td colSpan={7} className="py-6 text-center text-[#73747a]">
+              <td colSpan={8} className="py-6 text-center text-[#73747a]">
                 Nothing written yet. The traderoom shows its empty state for this panel.
               </td>
             </tr>

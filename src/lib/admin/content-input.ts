@@ -13,6 +13,7 @@ const LOCALES = ["en", "pt", "es"];
 export type ContentInput = {
   kind: ContentKind;
   locale: string | null;
+  category: string | null;
   title: string;
   summary: string | null;
   body: string | null;
@@ -67,6 +68,7 @@ export function contentInput(body: unknown): { data: ContentInput } | { error: s
     data: {
       kind: kind as ContentKind,
       locale,
+      category: text(input.category, 96),
       title,
       summary: text(input.summary, 512),
       body: text(input.body, 20_000),

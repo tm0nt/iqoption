@@ -41,46 +41,38 @@ async function dynamicBody(file: string, request: Request) {
 
   if (file === "webinars.json") {
     /*
-     * The standard envelope, not the bare array the static stub used to hold.
+     * A bare array, and the field names a live recording gives.
      *
-     * Every other answer this API gives is `{isSuccessful, message, result}`,
-     * and the panel's empty state is the same either way — it says "there are
-     * no scheduled webinars" both when it parses an empty list and when it
-     * fails to parse at all, which is why a bare array looked like it worked.
+     * See docs/avalon-panels.md. The endpoint is `gateway_api`, the body
+     * carries no `{isSuccessful, result}` envelope — the one this API uses
+     * nearly everywhere else — and the fields are not the ones the binary's
+     * string table seemed to suggest: `schedule_datetime` rather than
+     * `start_time`, `streaming_url` for the video, and no presenter at all.
      *
-     * Both spellings of each time go out. `start_at` and `webinar_id` are in
-     * the binary's string table; `start_time` and `id` are what the rest of
-     * this protocol uses, and sending both costs nothing while guessing wrong
-     * costs a boot.
+     * `status` is what splits the panel's NEW and HISTORY tabs. Every webinar
+     * in the recording was `"history"`; `"upcoming"` is the counterpart, and
+     * it is the one value here that a recording has not confirmed.
      */
     const locale = (new URL(request.url).searchParams.get("locale") ?? "en").replace(/[^a-z]/g, "").slice(0, 5);
     const items = await contentItems({ kind: "WEBINAR", locale });
+    const now = Date.now();
 
-    const webinars = items.map((item) => ({
+    return items.map((item) => ({
       id: item.id,
       title: item.title,
       description: item.summary ?? "",
-      text: item.body ?? item.summary ?? "",
+      image_url: item.imageUrl ?? "",
+      image_preview_url: item.imageUrl ?? "",
+      streaming_url: item.linkUrl ?? "",
+      schedule_datetime: epoch(item.startsAt),
+      status: item.startsAt && item.startsAt.getTime() > now ? "upcoming" : "history",
       lang: item.locale ?? locale,
-      image: item.imageUrl ?? "",
-      link: item.linkUrl ?? "",
-      url: item.linkUrl ?? "",
-      lecturer: item.author ?? "",
-      author: item.author ?? "",
-      webinar_id: item.id,
-      start_time: epoch(item.startsAt),
-      start_at: epoch(item.startsAt),
-      date: epoch(item.startsAt),
-      end_at: epoch(item.startsAt) + (item.durationMins ?? 60) * 60,
-      // Minutes on the way in, seconds on the way out: every other duration in
-      // this protocol is a count of seconds.
+      // Minutes in the database, seconds on the wire.
       duration: (item.durationMins ?? 60) * 60,
-      is_subscribed: false,
-      rating: 0,
-      status: item.startsAt && item.startsAt.getTime() > Date.now() ? "scheduled" : "finished",
+      is_liked: false,
+      like_count: 0,
+      watched_count: 0,
     }));
-
-    return { isSuccessful: true, message: [], result: webinars };
   }
 
   if (file === "check-session.json") {

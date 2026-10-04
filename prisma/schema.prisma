@@ -403,8 +403,6 @@ enum ContentKind {
   WEBINAR
   /// The Video Tutorials panel.
   TUTORIAL
-  /// The news list inside Market Analysis.
-  NEWS
   /// The Help panel.
   HELP
   /// The Promo panel's banners, as opposed to its promo codes.
@@ -434,6 +432,19 @@ model ContentItem {
 
   /// Who is presenting, for a webinar. Null for everything else.
   author String? @db.VarChar(128)
+
+  /**
+   * The group an item sits in, named rather than numbered.
+   *
+   * Help is not a flat list: the panel draws categories with questions inside
+   * them, and the video library draws categories too. One free-text name keeps
+   * that without a second table, and an editor who types the same name twice
+   * gets one group rather than two — which is the behaviour to want here.
+   *
+   * The wire needs a numeric id for a category. It is derived from this name,
+   * so it is the same on every read without being stored anywhere.
+   */
+  category String? @db.VarChar(96)
 
   /**
    * When it happens, and for how long.
