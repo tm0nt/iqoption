@@ -38,7 +38,34 @@ Uma ressalva que vale repetir: o papel viaja no token assinado da sessão, que
 não é relido do banco a cada requisição. Quem já estava logado mantém o papel
 que tinha até sair e entrar de novo.
 
-### 2. A liquidação não é transacional
+### 2. Nada credita a carteira real
+
+Toda conta agora tem duas carteiras e o traderoom troca entre elas. A de
+praticante se recarrega sozinha pelo "Top Up". A real **não tem como receber
+dinheiro pelo produto**:
+
+- O caixa (`POST /api/cashier/deposit`) grava uma transação `PENDING` e não
+  mexe em saldo nenhum — de propósito, porque não há provedor de pagamento
+  atrás dele e um depósito que credita antes do dinheiro chegar é como uma
+  plataforma se entrega.
+- Não existe tela para aprovar esse `PENDING`. O painel de administração não
+  cobre contas nem saldos (ver item 1).
+
+O efeito prático é que a conta real fica em zero para sempre, e uma carteira
+real vazia **não é selecionável**: o painel do engine oferece "Deposit" no lugar
+da troca. Isso é regra do próprio engine e está certa — ninguém negocia dinheiro
+que não depositou — mas significa que, até existir aprovação de depósito, a
+conta real só sai do zero por `UPDATE` no banco.
+
+O que falta, na ordem: aprovar/rejeitar depósito na administração, lançando o
+crédito e a transação juntos; e a mesma coisa do outro lado para o saque, que
+hoje já debita na hora e fica `PENDING` esperando alguém que não existe.
+
+A conta de testes `trader@exemplo.com.br` tem US$ 500 creditados à mão, com uma
+transação `APPROVED` de método "Manual (test account)" registrando de onde
+vieram.
+
+### 3. A liquidação não é transacional
 
 Um negócio que vence tem três efeitos: a linha em `positions` é atualizada, o
 saldo é gravado, e os eventos vão para quem estiver conectado. Os dois primeiros
@@ -53,7 +80,7 @@ qualquer ordem — a mais antiga chegando por último deixava a carteira uma apo
 mais alta. Foi encontrado conferindo o saldo contra o livro de negócios, e é o
 tipo de coisa que uma conferência periódica acharia de novo.
 
-### 3. Um único servidor de mercado por banco
+### 4. Um único servidor de mercado por banco
 
 Os ids de negócio são alocados no processo, semeados pelo maior id da tabela no
 boot. Dois servidores apontando para o mesmo banco distribuiriam o mesmo id e
@@ -64,7 +91,7 @@ assíncrona por todo o roteador — `openOption` é chamada de dentro do tratame
 do frame e a resposta carrega o id. Enquanto for um processo só, isto é uma
 restrição anotada, não um defeito.
 
-### 4. Forex ainda é sintético
+### 5. Forex ainda é sintético
 
 Só `BINANCE` e `SIMULATED` existem como fontes. Os cinco pares de forex usam a
 curva determinística de `server/market/prices.mjs` — ela é convincente e não é
@@ -75,7 +102,7 @@ Para acrescentar um: `server/market/binance.mjs` é o modelo. O contrato é
 pequeno — `warmUp`, `connect`, `priceAt`, `candleAt` — e o despacho por fonte
 está em `prices.mjs`.
 
-### 5. O `/reload` não é automático
+### 6. O `/reload` não é automático
 
 Mudar um instrumento pelo admin não alcança o feed até alguém chamar
 `POST /api/admin/reload`. Os dois processos compartilham o banco, não a
