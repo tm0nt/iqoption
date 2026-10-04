@@ -10,6 +10,7 @@ import {
 } from "./icons";
 import { LOCALES, LOCALE_LABELS } from "@/i18n/avalon";
 import type { AvalonLocale } from "@/types/avalon-login";
+import { rememberLocale } from "@/i18n/remember";
 
 const FLAGS = {
   en: FlagEnIcon,
@@ -94,6 +95,7 @@ export function LanguageMenu({ locale, page }: LanguageMenuProps) {
               <Link
                 key={code}
                 href={`/${code}/${page}`}
+                onClick={() => rememberLocale(code)}
                 role="menuitem"
                 tabIndex={open ? 0 : -1}
                 className={cn(

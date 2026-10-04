@@ -48,6 +48,7 @@ export default async function Page(props: PageProps<"/[lang]/traderoom">) {
         resourceHost={config.resource.host}
         resourceVersion={config.resource.version}
         stubBase="/api/engine/stubs"
+        locale={lang}
       />
     </main>
   );

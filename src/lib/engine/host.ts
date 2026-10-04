@@ -31,6 +31,14 @@ export type EngineHostOptions = {
   resourceVersion: number;
   /** Where the canned HTTP answers live. */
   stubBase: string;
+  /**
+   * The language the engine should draw itself in.
+   *
+   * It reads this out of a `lang` cookie before it asks for anything, and the
+   * dictionary it then fetches is per locale — so this has to be set before the
+   * engine's own script is appended, not after.
+   */
+  locale: string;
   /** Optional overlay to mirror the engine's log into. */
   statusElement?: HTMLPreElement | null;
 };
@@ -66,7 +74,7 @@ export function bootEngine(options: EngineHostOptions): void {
   if (booted) return;
   booted = true;
 
-  const { wsUrl, ssid, resourceHost, resourceVersion, stubBase, statusElement } = options;
+  const { wsUrl, ssid, resourceHost, resourceVersion, stubBase, locale, statusElement } = options;
   const shell = window as ShellWindow;
 
   /* ----------------------------------------------------------------- status */
@@ -124,7 +132,7 @@ export function bootEngine(options: EngineHostOptions): void {
   /* ---------------------------------------------------------------- cookies */
   // The engine reads document.cookie wholesale and pulls `ssid` out of it.
   document.cookie = `ssid=${encodeURIComponent(ssid)}; path=/`;
-  document.cookie = "lang=en; path=/";
+  document.cookie = `lang=${locale}; path=/`;
   shell.ssid = ssid;
 
   /* ------------------------------------------------------------- websockets */
@@ -160,7 +168,12 @@ export function bootEngine(options: EngineHostOptions): void {
     [/\/api\/configuration/, `${stubBase}/configuration.json`],
     [/\/api\/trading-accounts\//, `${stubBase}/trading-accounts.json`],
     [/\/api\/lang\/routes$/, `${stubBase}/lang-routes.json`],
-    [/\/api\/lang\/route-translations$/, `${stubBase}/lang-route-translations.json`],
+    /*
+     * The locale travels in the rewritten URL. A rerouted request becomes a
+     * plain GET of a static path and loses whatever query the engine put on it,
+     * so the one thing that matters is put back here.
+     */
+    [/\/api\/lang\/route-translations$/, `${stubBase}/lang-route-translations.json?locale=${locale}`],
     [/\/api\/regulation$/, `${stubBase}/regulation.json`],
     [/\/web-client-versions\//, `${stubBase}/versions.json`],
     [/\/api\/v1\/versions\//, `${stubBase}/versions.json`],

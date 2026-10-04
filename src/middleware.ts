@@ -18,6 +18,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { DEFAULT_LOCALE, isLocale } from "@/i18n/avalon";
+import { COUNTRY_HEADERS, LOCALE_COOKIE, negotiateLocale } from "@/i18n/negotiate";
 
 /** `/pt/traderoom` -> `pt`, falling back when the path carries no locale. */
 function localeOf(pathname: string) {
@@ -48,6 +49,31 @@ const GUEST_ONLY = new Set(["login", "register", "change-password"]);
 export default auth((request) => {
   const { pathname } = request.nextUrl;
   const signedIn = Boolean(request.auth?.user);
+
+  /*
+   * A path with no locale gets one, chosen from what we can see of the person:
+   * their own earlier choice first, then what their browser asks for, then the
+   * country the request appears to come from. See src/i18n/negotiate.ts for why
+   * the country is last.
+   *
+   * The API and the engine's own files are not locale-prefixed and must never
+   * be redirected — `/api/engine/stubs/...` answering a 307 is a parse failure
+   * to the WASM build, not a redirect it follows.
+   */
+  const first = pathname.split("/")[1];
+  const localised = pathname.startsWith("/api/") || pathname.startsWith("/engine");
+  if (!localised && !isLocale(first)) {
+    const country = COUNTRY_HEADERS.map((header) => request.headers.get(header)).find(Boolean);
+    const { locale: picked } = negotiateLocale({
+      chosen: request.cookies.get(LOCALE_COOKIE)?.value,
+      acceptLanguage: request.headers.get("accept-language"),
+      country,
+    });
+
+    const url = request.nextUrl.clone();
+    url.pathname = `/${picked}${pathname === "/" ? "/login" : pathname}`;
+    return NextResponse.redirect(url);
+  }
 
   if (pathname.startsWith("/api/admin")) {
     // JSON, not a redirect: this is called by tools, not by browsers, and a

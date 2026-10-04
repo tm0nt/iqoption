@@ -11,6 +11,7 @@ import {
   FlagPtIcon,
 } from "@/components/sites/trade-avalonbroker-com-6f41c8f2/shared/icons";
 import { LOCALE_LABELS, LOCALES } from "@/i18n/avalon";
+import { rememberLocale } from "@/i18n/remember";
 import type { AvalonLocale } from "@/types/avalon-login";
 
 const LOGO = "/sites/trade-avalonbroker-com-6f41c8f2/en-login-301e30be/images/avalon-logo.svg";
@@ -83,7 +84,10 @@ export function CabinetShell({
                     <li key={code}>
                       <Link
                         href={`/${code}/profile/personal`}
-                        onClick={() => setLangOpen(false)}
+                        onClick={() => {
+                          rememberLocale(code);
+                          setLangOpen(false);
+                        }}
                         className="block px-4 py-2 text-[14px] text-avalon-text transition-colors hover:bg-avalon-surface hover:text-avalon-text-strong"
                       >
                         {LOCALE_LABELS[code]}

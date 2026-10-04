@@ -155,6 +155,38 @@ O que **não** está pronto nelas:
   rodapé do depósito. São marcas de terceiros e exibi-las afirmaria uma relação
   de pagamento que não existe; a linha diz o que é verdade no lugar.
 
+## Idiomas
+
+O roteamento e a negociação estão prontos. Um caminho sem idioma ganha um,
+escolhido nesta ordem: a escolha da própria pessoa (cookie), depois
+`Accept-Language`, depois o país que o cabeçalho de um CDN informar. O país vem
+por último de propósito — muita gente lê inglês no Brasil e português no Japão,
+e uma VPN torna o sinal sem valor; ele serve para desempatar, não para mandar.
+
+Verificado: `pt-BR` → `/pt`, `es-ES` → `/es`, `ja-JP` → `/en`, e com o navegador
+em japonês mas `cf-ipcountry: BR` → `/pt`. Um cookie `locale=es` vence os dois.
+
+O que **não** está traduzido:
+
+- **As oito páginas de conta e o painel de administração.** As strings estão
+  fixas no JSX em vez de virem do dicionário. O `/pt/portfolio` mostra "Total
+  Investment" igual ao inglês. O dicionário em `src/i18n/avalon.ts` já tem a
+  estrutura de três locales; falta estender e trocar as strings.
+- **As mensagens de erro das APIs.** Voltam em inglês do servidor. Ou o servidor
+  passa a receber o locale, ou devolve códigos e o cliente traduz — a segunda é
+  mais limpa.
+- **O traderoom.** O mecanismo está feito: o host grava o cookie `lang` com o
+  idioma da rota e pede `lang-route-translations.json?locale=<id>`, e a rota de
+  stubs serve `lang-route-translations.<locale>.json` quando existe. Só que
+  **não existe**: o arquivo espelhado tem apenas o dicionário `en`, porque foi
+  capturado numa sessão em inglês. Enquanto os outros não forem capturados, o
+  engine cai no inglês — que é melhor que não abrir.
+
+Pegar os outros dois exige observar o engine pedindo. O endpoint
+`/api/lang/route-translations` é público mas recusa os parâmetros adivinhados
+(`groups`, depois `route`, depois "Route doesn't match brand"), e o HAR que
+temos foi capturado na tela de login, onde a requisição não acontece.
+
 ## Sobras do caminho
 
 ### O traderoom em React ficou órfão

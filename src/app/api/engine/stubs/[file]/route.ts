@@ -90,7 +90,7 @@ async function dynamicBody(file: string) {
   };
 }
 
-export async function GET(_request: Request, context: { params: Promise<{ file: string }> }) {
+export async function GET(request: Request, context: { params: Promise<{ file: string }> }) {
   const { file } = await context.params;
 
   // The name comes from the URL, so it decides which file is read. Anything
@@ -103,6 +103,29 @@ export async function GET(_request: Request, context: { params: Promise<{ file: 
     return NextResponse.json(await dynamicBody(file), {
       headers: { "cache-control": "no-store" },
     });
+  }
+
+  /*
+   * The engine's dictionary is per locale, and the file is named for it. A
+   * locale we have not captured yet falls back to English rather than 404ing:
+   * an empty body reads to the engine as a parse failure, and a traderoom in
+   * the wrong language is better than one that will not start.
+   */
+  if (file === "lang-route-translations.json") {
+    const locale = (new URL(request.url).searchParams.get("locale") ?? "en").replace(/[^a-z]/g, "").slice(0, 5);
+    const candidates = [`lang-route-translations.${locale}.json`, file];
+    for (const root of STATIC_ROOTS) {
+      for (const candidate of candidates) {
+        try {
+          const body = await readFile(path.join(root, candidate));
+          return new NextResponse(new Uint8Array(body), {
+            headers: { "content-type": "application/json", "cache-control": "public, max-age=300" },
+          });
+        } catch {
+          // Next candidate.
+        }
+      }
+    }
   }
 
   for (const root of STATIC_ROOTS) {
