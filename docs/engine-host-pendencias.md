@@ -155,8 +155,11 @@ histórico seguem sem teste.
 
 ## Como subir isto numa VPS
 
-1. MySQL alcançável, com banco e usuário criados (veja `.env.example`).
-2. `.env` preenchido — **nunca versionado**; carrega a senha.
+1. `cp .env.example .env` e preencher — **nunca versionado**; carrega as senhas.
+   Gere-as, não escolha: `openssl rand -base64 24 | tr -d '/+=' | head -c 24`.
+2. `docker compose up -d` sobe o MySQL dedicado. O contêiner lê usuário, senha e
+   banco **só na primeira partida**, quando o diretório de dados está vazio;
+   mudar depois não tem efeito.
 3. `npm run db:deploy && npm run db:seed`.
 4. `npm run build && npm start` para o site.
 5. `npm run server` para o feed de mercado, como serviço próprio.

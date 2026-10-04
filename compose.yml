@@ -1,0 +1,54 @@
+# The platform's database.
+#
+# A container of its own, so this project does not share a server with anything
+# else: its own port, its own volume, its own credentials. Everything it needs
+# comes from `.env`, which Compose reads from this directory and which is never
+# committed — see `.env.example` for the shape.
+#
+#   docker compose up -d        start it
+#   docker compose logs -f db   watch it come up
+#   docker compose down         stop it, keeping the data
+#   docker compose down -v      stop it and delete the data
+#
+# The first start creates the database and the application user from the
+# variables below. Changing them afterwards has no effect: MySQL only reads them
+# when the data directory is empty. To change a password later, do it in SQL —
+# or `down -v` and start again, which throws the data away.
+services:
+  db:
+    image: mysql:8.4
+    container_name: avalon-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in .env}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-avalon}
+      MYSQL_USER: ${MYSQL_USER:-avalon}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?set MYSQL_PASSWORD in .env}
+    # Bound to the loopback interface: the database has no business being
+    # reachable from the network. On a VPS, keep it this way and let the app
+    # reach it over the compose network or over localhost.
+    ports:
+      - "127.0.0.1:${MYSQL_PORT:-3308}:3306"
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - avalon-db:/var/lib/mysql
+      # Prisma's `migrate dev` builds a throwaway shadow database to diff
+      # against, which the application user cannot create on its own. This
+      # grants exactly that prefix, and nothing wider.
+      # The `z` suffix relabels for SELinux; without it the container cannot even
+      # list this directory, and MySQL restarts in a loop saying only
+      # "Permission denied".
+      - ./docker/mysql-init:/docker-entrypoint-initdb.d:ro,z
+    healthcheck:
+      # `mysqladmin ping` answers before the server is ready for queries, so the
+      # check runs a real one.
+      test: ["CMD", "mysql", "-h", "127.0.0.1", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}", "-e", "SELECT 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+volumes:
+  avalon-db:
