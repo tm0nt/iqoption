@@ -25,6 +25,7 @@ import {
   openPositions,
   optionReply,
   portfolioEvent,
+  portfolioTypeOf,
   positionState,
 } from "../market/positions.mjs";
 import { optionActive } from "./active.mjs";
@@ -724,9 +725,24 @@ export const CALLS = {
   "portfolio.get-history-positions": (body, { account }) => {
     const limit = Number(body?.limit) || 300;
     const offset = Number(body?.offset) || 0;
+
+    /*
+     * `instrument_types` is not advisory. The client allocates a place to put
+     * the answer for each family it asks about, and a deal of a family it did
+     * not ask for has nowhere to go: it reports "No history fetch info
+     * allocated for type '3'" and drops it. It asks once per family, so
+     * returning everything to every request means the turbo deals arrive during
+     * the marginal-forex question and are thrown away — a hundred and
+     * thirty-five times on an account with real history.
+     */
+    const wanted = Array.isArray(body?.instrument_types) ? body.instrument_types : null;
+    const matching = wanted
+      ? closedPositions(account).filter((position) => wanted.includes(portfolioTypeOf(position.option_type_id)))
+      : closedPositions(account);
+
     return {
       name: "history-positions",
-      payload: { positions: closedPositions(account).slice(offset, offset + limit), limit },
+      payload: { positions: matching.slice(offset, offset + limit), limit },
     };
   },
 
@@ -914,7 +930,12 @@ export const CALLS = {
 
   /** Open trades. A development account starts flat. */
   "portfolio.get-positions": (body, { account }) => {
-    const positions = openPositions(account);
+    // Same rule as the history: the client asks one family at a time and has
+    // nowhere to put a deal of another.
+    const wanted = Array.isArray(body?.instrument_types) ? body.instrument_types : null;
+    const positions = wanted
+      ? openPositions(account).filter((position) => wanted.includes(portfolioTypeOf(position.option_type_id)))
+      : openPositions(account);
     return {
       name: "positions",
       payload: {

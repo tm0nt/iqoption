@@ -48,7 +48,7 @@ function instrumentTypeOf(optionTypeId) {
  * while its own `raw_event` says `option_type: "blitz"` — so the portfolio's
  * events use the suffixed form and the deal enum does not.
  */
-function portfolioTypeOf(optionTypeId) {
+export function portfolioTypeOf(optionTypeId) {
   return `${instrumentTypeOf(optionTypeId)}-option`;
 }
 
