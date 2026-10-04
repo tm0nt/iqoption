@@ -218,6 +218,37 @@ certos. Para recapturar:
 curl "https://trade.avalonbroker.com/api/lang/route-translations?groups[]=desktop&groups[]=billing&groups[]=actives&route=pt"
 ```
 
+## Os painéis editoriais
+
+Existe `content_items` no banco e uma tela em `/[lang]/admin/content` que
+escreve nela: webinars, tutoriais, notícias, ajuda e promoções, cada item com
+título, resumo, corpo, imagem, link, apresentador, data, duração, prioridade e
+idioma — um item sem idioma aparece nos três.
+
+O caminho até o engine está ligado e **verificado no fio**:
+
+- `GET /api/engine/stubs/webinars.json?locale=xx` devolve os webinars do banco.
+- `get-news-feed` devolve as notícias do banco (confirmado no transcript:
+  `status 2000`, itens reais).
+
+O que **não** funciona ainda: os dois painéis continuam mostrando o estado
+vazio. Não é falta de dados nem erro de transporte — é a forma de cada item,
+que ainda não conhecemos. Duas pistas para quem continuar:
+
+1. O pedido de notícias traz `config: "aylien-grabber"`, o que sugere que o
+   item espelha o formato de artigo da Aylien (`published_at` como string ISO,
+   `source` como objeto, `media` como lista, `links.permalink`), e não os campos
+   planos que estamos mandando.
+2. `articles`, `news_id` e `body` estão na tabela de strings do binário;
+   `news` não está. Já mandamos a lista sob os dois nomes.
+
+O método que funcionou para carteiras e expirações vale aqui: medir por
+repetição, não por erro. O painel gira igual quando não entende e quando não
+recebe, que foi o que fez a primeira tentativa parecer plausível.
+
+Falta também descobrir o que Vídeo Tutoriais, Ajuda e Alertas pedem — ainda não
+foram instrumentados — e Torneios e Tabela de Líderes inteiros.
+
 ## Sobras do caminho
 
 ### O traderoom em React ficou órfão

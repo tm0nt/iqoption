@@ -104,7 +104,18 @@ export class Connection {
       case "setOptions":
         return this.ack(frame);
       case "sendMessage":
-        return this.call(frame);
+        // Caught here as well as inside: `call` is async now, and a rejection
+        // escaping it would be an unhandled rejection that takes the process
+        // down rather than one failed request.
+        return this.call(frame).catch((error) => {
+          console.error(`[avalon] call ${frame.msg?.name} failed:`, error.message);
+          this.send({
+            name: "error",
+            request_id: frame.request_id,
+            status: STATUS.BAD_REQUEST,
+            msg: { isSuccessful: false, message: [error.message], result: null },
+          });
+        });
       case "subscribeMessage":
         return this.openStream(frame);
       case "unsubscribeMessage":
@@ -200,7 +211,15 @@ export class Connection {
     this.send({ name: "balances", msg: balancesFrame(account) });
   }
 
-  call(frame) {
+  /*
+   * Answers one call.
+   *
+   * Async because a handler may have to read the database — the editorial
+   * panels do — and a promise returned into the synchronous path below became
+   * a reply with no name and no body. Awaiting a handler that returns a plain
+   * object costs one microtask and nothing else.
+   */
+  async call(frame) {
     if (!this.requireAuth(frame)) return;
 
     const name = frame.msg?.name;
@@ -222,7 +241,7 @@ export class Connection {
 
     let result;
     try {
-      result = handler(frame.msg?.body, this.context());
+      result = await handler(frame.msg?.body, this.context());
     } catch (error) {
       return this.send({
         name: "error",

@@ -19,6 +19,7 @@ import {
   saveBalance,
   setActiveBalance,
 } from "../accounts.mjs";
+import { contentItems, epoch } from "../data/content.mjs";
 import { featureRows } from "../data/features.mjs";
 import { defaultUserConfig } from "../data/user-settings.mjs";
 import { halfSpread, priceAt, round } from "../market/prices.mjs";
@@ -711,7 +712,50 @@ export const CALLS = {
     },
   }),
 
-  "get-news-feed": () => ({ name: "news-feed", payload: { news: [] } }),
+  /**
+   * The news list inside Market Analysis.
+   *
+   * The panel asks once each time it is opened and spins until it is answered,
+   * so the empty list it used to get was indistinguishable from a server that
+   * never replied. The items are whatever an administrator has written, in the
+   * language the traderoom is running in.
+   */
+  "get-news-feed": async (body, { account }) => {
+    const locale = String(body?.lang ?? body?.locale ?? account.locale ?? "en").slice(0, 2);
+    const rows = await contentItems("NEWS", locale, Number(body?.limit) || 30);
+
+    /*
+     * `articles`, not `news`: the container name is in the binary's string
+     * table and `news` is not. The same list goes out under both, because a
+     * reply the panel cannot find is indistinguishable from one that never
+     * came — it spins either way, which is what made the first guess look
+     * plausible for as long as it did.
+     */
+    const articles = rows.map((row) => ({
+          news_id: Number(row.id),
+          id: Number(row.id),
+          title: row.title,
+          // Both names: the list reads one and the opened article the other,
+          // and sending the summary twice is cheaper than guessing which.
+          description: row.summary ?? "",
+          content: row.body ?? row.summary ?? "",
+          text: row.body ?? row.summary ?? "",
+          body: row.body ?? row.summary ?? "",
+          image: row.image_url ?? "",
+          image_url: row.image_url ?? "",
+          url: row.link_url ?? "",
+          link: row.link_url ?? "",
+          source: row.author ?? "",
+          lang: locale,
+          date: epoch(row.starts_at),
+          time: epoch(row.starts_at),
+          created_at: epoch(row.starts_at),
+          published_at: epoch(row.starts_at),
+          rank: Number(row.priority) || 0,
+        }));
+
+    return { name: "news-feed", payload: { articles, news: articles, count: articles.length } };
+  },
 
   /**
    * Opening a binary option.

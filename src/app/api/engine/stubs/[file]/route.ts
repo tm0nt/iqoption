@@ -17,6 +17,7 @@ import path from "node:path";
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { engineConfig } from "@/lib/engine/settings";
+import { contentItems, epoch } from "@/lib/cabinet/content";
 
 /*
  * Two directories, because `appinit.json` sits beside the host page rather than
@@ -32,11 +33,55 @@ const CONTENT_TYPES: Record<string, string> = {
   ".png": "image/png",
 };
 
-/** The answers built from settings rather than read from disk. */
-const DYNAMIC = new Set(["company.json", "check-session.json", "geoip.json"]);
+/** The answers built from the database rather than read from disk. */
+const DYNAMIC = new Set(["company.json", "check-session.json", "geoip.json", "webinars.json"]);
 
-async function dynamicBody(file: string) {
+async function dynamicBody(file: string, request: Request) {
   const config = await engineConfig();
+
+  if (file === "webinars.json") {
+    /*
+     * The standard envelope, not the bare array the static stub used to hold.
+     *
+     * Every other answer this API gives is `{isSuccessful, message, result}`,
+     * and the panel's empty state is the same either way — it says "there are
+     * no scheduled webinars" both when it parses an empty list and when it
+     * fails to parse at all, which is why a bare array looked like it worked.
+     *
+     * Both spellings of each time go out. `start_at` and `webinar_id` are in
+     * the binary's string table; `start_time` and `id` are what the rest of
+     * this protocol uses, and sending both costs nothing while guessing wrong
+     * costs a boot.
+     */
+    const locale = (new URL(request.url).searchParams.get("locale") ?? "en").replace(/[^a-z]/g, "").slice(0, 5);
+    const items = await contentItems({ kind: "WEBINAR", locale });
+
+    const webinars = items.map((item) => ({
+      id: item.id,
+      title: item.title,
+      description: item.summary ?? "",
+      text: item.body ?? item.summary ?? "",
+      lang: item.locale ?? locale,
+      image: item.imageUrl ?? "",
+      link: item.linkUrl ?? "",
+      url: item.linkUrl ?? "",
+      lecturer: item.author ?? "",
+      author: item.author ?? "",
+      webinar_id: item.id,
+      start_time: epoch(item.startsAt),
+      start_at: epoch(item.startsAt),
+      date: epoch(item.startsAt),
+      end_at: epoch(item.startsAt) + (item.durationMins ?? 60) * 60,
+      // Minutes on the way in, seconds on the way out: every other duration in
+      // this protocol is a count of seconds.
+      duration: (item.durationMins ?? 60) * 60,
+      is_subscribed: false,
+      rating: 0,
+      status: item.startsAt && item.startsAt.getTime() > Date.now() ? "scheduled" : "finished",
+    }));
+
+    return { isSuccessful: true, message: [], result: webinars };
+  }
 
   if (file === "check-session.json") {
     /*
@@ -100,7 +145,7 @@ export async function GET(request: Request, context: { params: Promise<{ file: s
   }
 
   if (DYNAMIC.has(file)) {
-    return NextResponse.json(await dynamicBody(file), {
+    return NextResponse.json(await dynamicBody(file, request), {
       headers: { "cache-control": "no-store" },
     });
   }

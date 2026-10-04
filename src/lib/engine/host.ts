@@ -192,7 +192,7 @@ export function bootEngine(options: EngineHostOptions): void {
     [/\/api\/support\/phones/, `${stubBase}/support-phones.json`],
     // The `/v1/` endpoints are an older API generation and answer with a bare
     // array rather than the `{isSuccessful, message, result}` envelope.
-    [/\/v1\/webinars$/, `${stubBase}/webinars.json`],
+    [/\/v1\/webinars$/, `${stubBase}/webinars.json?locale=${locale}`],
     [/\/v1\/brand\/icons$/, `${stubBase}/brand-icons.json`],
     // Telemetry. Swallowed rather than answered.
     [/\/api\/v1\/events$/, `${stubBase}/empty.json`],

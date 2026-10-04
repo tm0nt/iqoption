@@ -391,3 +391,70 @@ model Transaction {
   @@index([status])
   @@map("transactions")
 }
+
+/// What a piece of editorial content is for.
+///
+/// One table rather than five, because the panels differ in where they are
+/// shown far more than in what they hold: each is a dated item with a title, a
+/// body, a picture and somewhere to go. Splitting them would mean four
+/// near-identical tables and four near-identical admin screens.
+enum ContentKind {
+  /// The Webinars panel. Scheduled, and sorted into NEW and HISTORY by time.
+  WEBINAR
+  /// The Video Tutorials panel.
+  TUTORIAL
+  /// The news list inside Market Analysis.
+  NEWS
+  /// The Help panel.
+  HELP
+  /// The Promo panel's banners, as opposed to its promo codes.
+  PROMO
+}
+
+/// Something an administrator writes for the traderoom to show.
+model ContentItem {
+  id Int @id @default(autoincrement())
+
+  kind ContentKind
+
+  /// ISO 639-1, or null for an item every language sees. The traderoom asks in
+  /// one language at a time, and an item with no locale answers all of them —
+  /// which is what a platform with three languages and one editor needs.
+  locale String? @db.Char(2)
+
+  title   String  @db.VarChar(255)
+  /// The line under the title in a list.
+  summary String? @db.VarChar(512)
+  /// The whole text, for the panels that open an item rather than link away.
+  body    String? @db.Text
+
+  imageUrl String? @map("image_url") @db.VarChar(512)
+  /// Where the item goes when opened: a video, an article, a sign-up page.
+  linkUrl  String? @map("link_url") @db.VarChar(512)
+
+  /// Who is presenting, for a webinar. Null for everything else.
+  author String? @db.VarChar(128)
+
+  /**
+   * When it happens, and for how long.
+   *
+   * A webinar uses both: the panel splits its list on whether `startsAt` is
+   * ahead or behind. News uses `startsAt` as its publication date. Help and
+   * tutorials use neither, and an item with no `startsAt` is always current.
+   */
+  startsAt       DateTime? @map("starts_at")
+  /// Minutes. What a webinar or a tutorial is worth setting aside for.
+  durationMins   Int?      @map("duration_mins")
+  /// After this, the item stops being offered. Null never expires.
+  endsAt         DateTime? @map("ends_at")
+
+  /// Higher first, then newest first. Lets an editor pin an item to the top.
+  priority Int     @default(0)
+  enabled  Boolean @default(true)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([kind, enabled, priority])
+  @@map("content_items")
+}
