@@ -8,7 +8,6 @@ import {
   OperationsCircleIcon,
   PersonalCircleIcon,
   PortfolioIcon,
-  SupportCircleIcon,
   TradingCircleIcon,
   UserIcon,
   VerificationIcon,
@@ -41,6 +40,16 @@ export function AccountDrawer({
   open: boolean;
   onClose: () => void;
 }) {
+  /*
+   * No "Contact Support" row.
+   *
+   * It used to point at `/${locale}/chat`, which has never existed here — a
+   * 404 behind the one item someone clicks when something is already wrong. On
+   * the live platform that path redirects to the profile and the conversation
+   * happens in a widget in the corner, and there is no widget here. The row
+   * comes back when there is a channel for it to open; an item that goes
+   * nowhere is worse than no item.
+   */
   const items = [
     { href: `/${locale}/profile/personal`, label: "Personal Data", Icon: PersonalCircleIcon },
     { href: `/${locale}/verification`, label: "Verification", Icon: VerificationIcon, alert: !account.verified },
@@ -48,7 +57,6 @@ export function AccountDrawer({
     { href: `/${locale}/withdrawal`, label: "Withdraw Funds", Icon: WithdrawCircleIcon },
     { href: `/${locale}/transactions`, label: "Balance History", Icon: OperationsCircleIcon },
     { href: `/${locale}/trading`, label: "Trading History", Icon: TradingCircleIcon },
-    { href: `/${locale}/chat`, label: "Contact Support", Icon: SupportCircleIcon },
   ];
 
   return (

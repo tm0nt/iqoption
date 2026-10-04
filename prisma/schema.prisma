@@ -187,6 +187,31 @@ model User {
   avatarUrl   String?   @map("avatar_url") @db.VarChar(512)
 
   /**
+   * The name shown in rankings and public chats, and whether to show one.
+   *
+   * Not the real name: the platform generates a plausible one and lets people
+   * reroll it, so that a leaderboard does not publish who someone is. With
+   * `publicProfile` off they appear anonymously.
+   */
+  publicProfile Boolean @default(true) @map("public_profile")
+  displayName   String? @map("display_name") @db.VarChar(64)
+
+  /**
+   * What they agreed to be sent, as the notification page writes it.
+   *
+   * JSON because it is a list of switches that grows whenever marketing wants
+   * another one, and a column per switch would mean a migration each time.
+   * Null means nobody has touched it and the defaults apply.
+   */
+  notifications Json?
+
+  /// Set when the account is closed by its owner. It can be reopened, which is
+  /// why this is a date and not a deletion.
+  closedAt            DateTime? @map("closed_at")
+  /// Set when its owner asks to be erased. Honouring it is a human decision.
+  deletionRequestedAt DateTime? @map("deletion_requested_at")
+
+  /**
    * The wallet this person is trading on.
    *
    * Everyone has a real and a practice wallet, and the traderoom lets them
@@ -271,6 +296,16 @@ model TradingSession {
   createdAt  DateTime  @default(now()) @map("created_at")
   /// Touched on each `authenticate`, so an abandoned session is visible.
   lastSeenAt DateTime? @map("last_seen_at")
+
+  /**
+   * Where it was opened from, for the Safety & Security page.
+   *
+   * Kept so that someone can recognise a session as theirs — or not. Stored as
+   * the browser sent it and never parsed into anything load-bearing: a user
+   * agent is a claim, not a fact.
+   */
+  userAgent String? @map("user_agent") @db.VarChar(255)
+  ip        String? @db.VarChar(45)
 
   @@index([userId])
   @@index([expiresAt])

@@ -1,0 +1,121 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { CabinetShell } from "@/components/cabinet/CabinetShell";
+import { ProfileNav } from "@/components/cabinet/ProfileNav";
+import { ProfileSection } from "@/components/cabinet/ProfileSection";
+import { SessionList, type SessionRow } from "@/components/cabinet/SessionList";
+import { loadProfile, longDate } from "@/lib/cabinet/profile";
+import { prisma } from "@/lib/db";
+import { isLocale } from "@/i18n/avalon";
+
+export const metadata: Metadata = { title: "Safety & Security" };
+export const dynamic = "force-dynamic";
+
+/**
+ * The browser a user-agent string claims to be.
+ *
+ * Deliberately crude. This is a label on a row so that someone can recognise
+ * their own session, not a fingerprint, and the order matters: every Chromium
+ * browser also says "Chrome", and Chrome itself says "Safari".
+ */
+function browserOf(agent: string | null) {
+  if (!agent) return "unknown";
+  if (/Edg\//.test(agent)) return "Edge";
+  if (/OPR\//.test(agent)) return "Opera";
+  if (/Firefox\//.test(agent)) return "Firefox";
+  if (/Chrome\//.test(agent)) return "Chrome";
+  if (/Safari\//.test(agent)) return "Safari";
+  return "unknown";
+}
+
+/** "Today at 7:49 PM", or the date once it is no longer today. */
+function when(date: Date) {
+  const time = date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  const today = new Date();
+  const sameDay =
+    date.getFullYear() === today.getFullYear() &&
+    date.getMonth() === today.getMonth() &&
+    date.getDate() === today.getDate();
+  return sameDay ? `Today at ${time}` : `${longDate(date)} at ${time}`;
+}
+
+export default async function SecurityPage(props: PageProps<"/[lang]/profile/security">) {
+  const { lang } = await props.params;
+  if (!isLocale(lang)) notFound();
+
+  const { user, account } = await loadProfile(lang, "security");
+
+  const rows = await prisma.tradingSession.findMany({
+    where: { userId: user.id, expiresAt: { gt: new Date() } },
+    orderBy: { createdAt: "desc" },
+    take: 20,
+  });
+
+  const sessions: SessionRow[] = rows.map((row) => ({
+    id: row.id,
+    browser: browserOf(row.userAgent),
+    ip: row.ip,
+    when: when(row.lastSeenAt ?? row.createdAt),
+    // The newest one is almost certainly the tab reading this page: a fresh
+    // ssid is minted on every traderoom load.
+    current: row.id === rows[0]?.id,
+  }));
+
+  return (
+    <CabinetShell locale={lang} account={account}>
+      <p className="pt-7 text-right text-[12px] leading-5 text-avalon-text">
+        Date registered: {longDate(user.createdAt)}
+        <br />
+        Profile ID: {user.id}
+      </p>
+
+      <div className="mt-6 flex gap-12">
+        <ProfileNav locale={lang} />
+
+        <div className="min-w-0 grow">
+          <h1 className="pb-2 text-[28px] font-semibold text-avalon-text-strong">Safety &amp; Security</h1>
+
+          <ProfileSection title="2-Step Authentication">
+            <p>You will receive an extra confirmation code to log in to your account.</p>
+            <p className="text-avalon-border-muted">
+              Not available yet. This account is protected by its password alone.
+            </p>
+          </ProfileSection>
+
+          <ProfileSection title="Change Password">
+            <p>Choose a new password for your account.</p>
+            <Link
+              href={`/${lang}/change-password`}
+              className="inline-block text-[14px] text-avalon-primary transition-colors hover:text-avalon-primary-hover"
+            >
+              Change password
+            </Link>
+          </ProfileSection>
+
+          <ProfileSection title="Active Sessions">
+            <p>
+              Information about the use of your account on other devices. Ending a session stops
+              that device trading straight away.
+            </p>
+            <div className="pt-3">
+              <SessionList sessions={sessions} />
+            </div>
+          </ProfileSection>
+
+          <ProfileSection title="Session History" last>
+            <p>
+              This section shows which devices you used to log in and when you logged in. If you
+              suspect that someone else has access to your profile, please consider changing your
+              password.
+            </p>
+            <p className="text-avalon-border-muted">
+              Only sessions that are still open are kept. An expired one is removed rather than
+              recorded.
+            </p>
+          </ProfileSection>
+        </div>
+      </div>
+    </CabinetShell>
+  );
+}
