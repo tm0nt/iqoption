@@ -232,19 +232,53 @@ O caminho até o engine está ligado e **verificado no fio**:
   `status 2000`, itens reais).
 
 O que **não** funciona ainda: os dois painéis continuam mostrando o estado
-vazio. Não é falta de dados nem erro de transporte — é a forma de cada item,
-que ainda não conhecemos. Duas pistas para quem continuar:
+vazio. Não é falta de dados nem erro de transporte — o transcript mostra
+`status 2000` com itens reais, o engine não registra erro nem timeout, e não
+reenvia o pedido. É a forma do item.
 
-1. O pedido de notícias traz `config: "aylien-grabber"`, o que sugere que o
-   item espelha o formato de artigo da Aylien (`published_at` como string ISO,
-   `source` como objeto, `media` como lista, `links.permalink`), e não os campos
-   planos que estamos mandando.
-2. `articles`, `news_id` e `body` estão na tabela de strings do binário;
-   `news` não está. Já mandamos a lista sob os dois nomes.
+### O que já foi descartado
 
-O método que funcionou para carteiras e expirações vale aqui: medir por
-repetição, não por erro. O painel gira igual quando não entende e quando não
-recebe, que foi o que fez a primeira tentativa parecer plausível.
+Três tentativas, todas verificadas no engine:
+
+1. **Campos planos** (`title`, `content`, `image`, `url`, `date`) — o que o
+   primeiro palpite mandava. Nem `title` nem `content` existem na tabela de
+   strings do binário.
+2. **Contêiner `news` vs `articles`** — `articles`, `news_id` e `body` estão na
+   tabela; `news` não. Mandamos sob os dois nomes. Não resolveu.
+3. **Forma aninhada "smartfeed"** — a atual. É a mais fundamentada: a tabela
+   carrega `title.bold_text`, `description.text`, `description.html`,
+   `image.url`, `link.url`, `main_button.*`, `timer.*`, `video.embed_url`, que
+   é como este build nomeia chave aninhada. Os setters de `IQNewsArticleData`
+   dão o resto do conjunto (`activeIds`, `mainActiveId`, `forexCountries`,
+   `topics`, `https`, `url`), e `active_ids`, `image_url`, `source_url` e
+   `https` aparecem em snake case. Mesmo assim o painel não renderiza.
+
+A resposta hoje também devolve `from`, `n`, `config` e `lang` do pedido — uma
+lista paginada precisa casar resposta com pergunta, e `lang` volta na forma
+exata que chegou (`en_US`, não `en`). Isso está certo independentemente do
+resto e fica.
+
+### Onde olhar a seguir
+
+O construtor de `IQNewsArticleData` recebe uma tupla de **29 campos** (tipos
+decodificáveis do símbolo mangled: 8 strings, 3 vetores de string, 2 vetores de
+int, 4 bools, 4 ints, um `IQOptionType`, um `IQNewsButtonData`, um
+`IQNewsPriority`). Conhecemos ~12 nomes. Os outros 17 estão no binário; o pool
+de strings é fundido por sufixo, então vizinhança no `strings` não é semântica
+e procurar por ali não ajudou.
+
+Dois caminhos melhores que continuar adivinhando:
+
+- **Gravar a resposta real.** É o método que resolveu todo o resto deste
+  projeto. Exige uma sessão autenticada no feed deles com o painel de Análise
+  de Mercado aberto.
+- **Desmontar a função.** `F2::APNews::onDataReceived` e o construtor da tupla,
+  com `wasm-objdump`/`wasm2wat`, mostram a ordem de leitura das chaves.
+
+Vale registrar a armadilha: **o painel gira igual quando não entende e quando
+não recebe.** Não há sinal de erro para guiar, o que é exatamente o oposto das
+expirações e das carteiras, onde o engine nomeava o que faltava. Medir por
+repetição não funciona aqui porque ele não repete o pedido.
 
 Falta também descobrir o que Vídeo Tutoriais, Ajuda e Alertas pedem — ainda não
 foram instrumentados — e Torneios e Tabela de Líderes inteiros.

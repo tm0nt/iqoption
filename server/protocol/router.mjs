@@ -721,40 +721,92 @@ export const CALLS = {
    * language the traderoom is running in.
    */
   "get-news-feed": async (body, { account }) => {
-    const locale = String(body?.lang ?? body?.locale ?? account.locale ?? "en").slice(0, 2);
-    const rows = await contentItems("NEWS", locale, Number(body?.limit) || 30);
+    /*
+     * The request names its own page and its own feed: `{from, n, config,
+     * lang}`. All four are echoed back. A list that pages has to match an
+     * answer to the question it asked, and one it cannot place is one it goes
+     * on waiting for — which looks identical to a reply that never came.
+     *
+     * `lang` goes back exactly as it arrived (`en_US`, not `en`); only the
+     * database lookup uses the two-letter form.
+     */
+    const lang = String(body?.lang ?? body?.locale ?? "en_US");
+    const locale = lang.slice(0, 2);
+    const from = Number(body?.from) || 0;
+    const count = Number(body?.n) || Number(body?.limit) || 30;
+    const rows = await contentItems("NEWS", locale, count);
 
     /*
-     * `articles`, not `news`: the container name is in the binary's string
-     * table and `news` is not. The same list goes out under both, because a
-     * reply the panel cannot find is indistinguishable from one that never
-     * came — it spins either way, which is what made the first guess look
-     * plausible for as long as it did.
+     * The shape the news list parses, taken from the binary rather than guessed.
+     *
+     * `IQNewsArticleData`'s setters name its fields — `activeIds`,
+     * `mainActiveId`, `forexCountries`, `topics`, `https`, `url` — and the
+     * string table carries `active_ids`, `image_url`, `source_url` and `https`
+     * in snake case. The text is not flat: the table holds `title.bold_text`,
+     * `description.text`, `description.html`, `image.url` and `link.url`,
+     * which is this build's way of naming a nested key. Flat `title` and
+     * `content`, which the first attempt sent, are not in the table at all —
+     * which is why real items arrived with status 2000 and the panel went on
+     * spinning.
+     *
+     * Both container names go out: `articles` is in the table and `news` is
+     * not, and a reply the panel cannot find looks exactly like one that never
+     * came.
      */
-    const articles = rows.map((row) => ({
-          news_id: Number(row.id),
-          id: Number(row.id),
-          title: row.title,
-          // Both names: the list reads one and the opened article the other,
-          // and sending the summary twice is cheaper than guessing which.
-          description: row.summary ?? "",
-          content: row.body ?? row.summary ?? "",
-          text: row.body ?? row.summary ?? "",
-          body: row.body ?? row.summary ?? "",
-          image: row.image_url ?? "",
-          image_url: row.image_url ?? "",
-          url: row.link_url ?? "",
-          link: row.link_url ?? "",
-          source: row.author ?? "",
-          lang: locale,
-          date: epoch(row.starts_at),
-          time: epoch(row.starts_at),
-          created_at: epoch(row.starts_at),
-          published_at: epoch(row.starts_at),
-          rank: Number(row.priority) || 0,
-        }));
+    const articles = rows.map((row) => {
+      const text = row.summary ?? row.body ?? "";
+      const link = row.link_url ?? "";
+      const image = row.image_url ?? "";
 
-    return { name: "news-feed", payload: { articles, news: articles, count: articles.length } };
+      return {
+        id: Number(row.id),
+        news_id: Number(row.id),
+        rank: Number(row.priority) || 0,
+
+        title: { text: row.title, bold_text: row.title, is_bold: false, is_uppercase: false },
+        description: { text, html: "", is_solid: false, solid_text: text, solid_html: "" },
+        subtitle: { text: row.author ?? "" },
+
+        image: { url: image },
+        image_url: image,
+        link: { url: link, text: "", action: "" },
+        source_url: link,
+        url: link,
+
+        // Empty rather than absent: the setters take vectors, and a missing
+        // vector and an empty one are not the same thing to a parser that
+        // reads before it checks.
+        active_ids: [],
+        active_snippet_ids: [],
+        forex_countries: [],
+        topics: [],
+        main_active_id: 0,
+
+        https: link.startsWith("https://"),
+        no_instant: true,
+        only_desktop: false,
+
+        lang,
+        date: epoch(row.starts_at),
+        time: epoch(row.starts_at),
+        created_at: epoch(row.starts_at),
+      };
+    });
+
+    return {
+      name: "news-feed",
+      payload: {
+        articles,
+        news: articles,
+        count: articles.length,
+        total: articles.length,
+        from,
+        n: count,
+        config: body?.config ?? "aylien-grabber",
+        lang,
+        user_id: account.userId,
+      },
+    };
   },
 
   /**
