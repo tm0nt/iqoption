@@ -26,6 +26,8 @@ function localeOf(pathname: string) {
 }
 
 const PROTECTED = new Set(["traderoom"]);
+/** Pages that need an administrator, not merely a session. */
+const ADMIN_ONLY = new Set(["admin"]);
 const GUEST_ONLY = new Set(["login", "register", "change-password"]);
 
 export default auth((request) => {
@@ -52,6 +54,27 @@ export default auth((request) => {
   const segments = pathname.split("/").filter(Boolean);
   const locale = localeOf(pathname);
   const page = isLocale(segments[0]) ? segments[1] : segments[0];
+
+  if (page && ADMIN_ONLY.has(page)) {
+    if (!signedIn) {
+      const url = request.nextUrl.clone();
+      url.pathname = `/${locale}/login`;
+      url.searchParams.set("next", pathname);
+      return NextResponse.redirect(url);
+    }
+    /*
+     * Back to the traderoom rather than to a wall. Someone who is signed in and
+     * not an administrator has somewhere to be, and a bare 403 page in a
+     * browser reads as the site being broken.
+     */
+    if (!request.auth?.user?.isAdmin) {
+      const url = request.nextUrl.clone();
+      url.pathname = `/${locale}/traderoom`;
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
+    return NextResponse.next();
+  }
 
   if (page && PROTECTED.has(page) && !signedIn) {
     const url = request.nextUrl.clone();

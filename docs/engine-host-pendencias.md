@@ -2,8 +2,9 @@
 
 Estado em 4 de outubro de 2026. O traderoom roda em `/[lang]/traderoom`, servido
 pelo Next, atrás de login: contas, carteiras e negócios vivem no MySQL, o
-catálogo de instrumentos também, e os preços de cripto vêm da Binance. O que
-está abaixo é o que ainda não está pronto, em ordem do que mais dói.
+catálogo de instrumentos também, e os preços de cripto vêm da Binance. O painel
+de administração está em `/[lang]/admin`, aberto só a quem tem papel `ADMIN`. O
+que está abaixo é o que ainda não está pronto, em ordem do que mais dói.
 
 Para o protocolo em si — o que cada frame carrega e por quê — veja
 [`avalon-backend.md`](./avalon-backend.md). Este arquivo é só a lista de
@@ -11,20 +12,24 @@ pendências.
 
 ## Bloqueios reais
 
-### 1. Não existe interface de administração
+### 1. A administração não cobre contas nem negócios
 
-As rotas existem, exigem um administrador e respondem JSON; a tela não. Hoje se
-mexe por `curl`, autenticado.
+O painel está em `/[lang]/admin`: visão geral com o estado do feed, catálogo de
+instrumentos editável, e as configurações como JSON. O que ele **não** faz:
 
-O papel em si está feito: `users.role`, o middleware recusando com 401 sem
-sessão e 403 sem `ADMIN`, e um script que é o único caminho para conceder —
-`npm run admin:grant -- alguem@exemplo.com`. Não há formulário nem regra de
-"primeiro usuário vira dono", porque qualquer uma dessas é um caminho de
-"consegue se registrar" até "muda o que a plataforma negocia".
+- **Contas.** Não lista usuários, não desativa ninguém, não mexe em saldo. Para
+  dar ou tirar papel de administrador continua sendo `npm run admin:grant` — e
+  isso é de propósito, não uma lacuna.
+- **Negócios.** Não há tela de posições: nem as abertas, nem o histórico, nem a
+  possibilidade de anular uma. Os dados estão em `positions`; falta a tela.
+- **Instrumentos novos.** Dá para editar e ligar/desligar, não para criar nem
+  apagar. A API aceita `POST` e `DELETE`; a tela não os expõe, porque criar um
+  instrumento exige escolher um `active_id` que o engine conheça, e uma caixa de
+  texto não ajuda nessa escolha.
 
-Uma ressalva: o papel viaja no token da sessão, que é assinado e não relido do
-banco a cada requisição. Quem já estava logado mantém o papel que tinha até
-sair e entrar de novo.
+Uma ressalva que vale repetir: o papel viaja no token assinado da sessão, que
+não é relido do banco a cada requisição. Quem já estava logado mantém o papel
+que tinha até sair e entrar de novo.
 
 ### 2. Um único servidor de mercado por banco
 
