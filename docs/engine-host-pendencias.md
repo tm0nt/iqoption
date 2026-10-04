@@ -2,9 +2,11 @@
 
 Estado em 4 de outubro de 2026. O traderoom roda em `/[lang]/traderoom`, servido
 pelo Next, atrás de login: contas, carteiras e negócios vivem no MySQL, o
-catálogo de instrumentos também, e os preços de cripto vêm da Binance. O painel
-de administração está em `/[lang]/admin`, aberto só a quem tem papel `ADMIN`. O
-que está abaixo é o que ainda não está pronto, em ordem do que mais dói.
+catálogo de instrumentos também, e os preços de cripto vêm da Binance. As oito
+páginas de conta — perfil, verificação, portfólio, saque, histórico de saldo,
+histórico de negócios, depósito e a foto — estão clonadas e ligadas. O painel de
+administração está em `/[lang]/admin`, aberto só a quem tem papel `ADMIN`. O que
+está abaixo é o que ainda não está pronto, em ordem do que mais dói.
 
 Para o protocolo em si — o que cada frame carrega e por quê — veja
 [`avalon-backend.md`](./avalon-backend.md). Este arquivo é só a lista de
@@ -124,6 +126,34 @@ O stub de `check-session` reporta o id do usuário da sessão, e o feed reporta 
 id que o ssid resolve. Com alguém logado os dois vêm da mesma linha de `users` e
 não têm como divergir. Sem sessão, o stub cai na configuração `engine.session` e
 o feed em `FIRST_USER_ID` — os dois têm o mesmo padrão e nada garante isso.
+
+## O gabinete
+
+As oito páginas de conta estão clonadas e ligadas: `/profile/personal`,
+`/verification`, `/portfolio`, `/withdrawal`, `/transactions`, `/trading`,
+`/counting`, e o diálogo de foto em `/profile/personal?act=changephoto`. A
+gaveta de conta atrás do avatar é o mapa do site e alcança todas, mais o
+traderoom e o depósito.
+
+Três delas eram aplicativos separados no site original, embutidos em iframe —
+verificação (`verify.`), saque e depósito (`billing.`). Foram reconstruídas
+aqui, não embutidas.
+
+O que **não** está pronto nelas:
+
+- **Nada paga ninguém.** Um depósito grava uma linha pendente e o saldo não se
+  move; um saque debita no pedido e fica pendente para sempre, porque não existe
+  quem aprove. Falta a tela de operação do caixa e o provedor de pagamento.
+- **O documento de identidade.** A etapa de detalhes grava e move a conta para
+  `PENDING`; o envio do documento não existe, então ninguém chega a `APPROVED`.
+- **As sub-páginas do perfil.** O menu lateral lista seis — notificações,
+  configurações de conta, redes sociais, meios de pagamento, segurança — e só
+  "Personal Data" existe. As outras cinco dão 404.
+- **Promoções.** O campo de código promocional existe e responde que não há
+  promoção alguma, porque não há.
+- **Logos de bandeiras de cartão.** O original alinha Visa e Mastercard no
+  rodapé do depósito. São marcas de terceiros e exibi-las afirmaria uma relação
+  de pagamento que não existe; a linha diz o que é verdade no lugar.
 
 ## Sobras do caminho
 

@@ -25,7 +25,22 @@ function localeOf(pathname: string) {
   return isLocale(first) ? first : DEFAULT_LOCALE;
 }
 
-const PROTECTED = new Set(["traderoom"]);
+/*
+ * Everything behind a session. The pages check again for themselves — they need
+ * the account anyway — but turning someone away here saves rendering a page
+ * that is only going to redirect, and keeps the list of what is private in one
+ * readable place.
+ */
+const PROTECTED = new Set([
+  "traderoom",
+  "profile",
+  "verification",
+  "portfolio",
+  "withdrawal",
+  "transactions",
+  "trading",
+  "counting",
+]);
 /** Pages that need an administrator, not merely a session. */
 const ADMIN_ONLY = new Set(["admin"]);
 const GUEST_ONLY = new Set(["login", "register", "change-password"]);
