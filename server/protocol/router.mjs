@@ -20,7 +20,15 @@ import {
   setActiveBalance,
 } from "../accounts.mjs";
 import { calendarEvents, calendarEventsInfo, calendarFilters } from "../data/calendar.mjs";
+import { createAlert, deleteAlert, listAlerts } from "../data/alerts.mjs";
 import { contentCategories, epoch } from "../data/content.mjs";
+import {
+  applyPromoCode,
+  availablePromoCodes,
+  promoCodeDetails,
+  traderoomPromoCodes,
+  usedPromoCodes,
+} from "../data/promo.mjs";
 import { leaderboardPosition, leaderboardTop } from "../data/leaderboard.mjs";
 import { tournamentsInfo, tournamentWinners } from "../data/tournaments.mjs";
 import { featureRows } from "../data/features.mjs";
@@ -599,7 +607,43 @@ export const CALLS = {
   "deposit-bonuses.get-presets": () => ({ name: "presets", payload: [] }),
 
   /** Price alerts, asked as `{asset_id, type: ["price", "market_open"]}`. */
-  "get-alerts": () => ({ name: "alerts", payload: { total: 0, records: [] } }),
+  /**
+   * Price alerts.
+   *
+   * `{total, records}` for the list and a bare alert for a new one, as a
+   * recording shows. `asset_id` of 0 means every instrument, which is how the
+   * panel asks when it is listing rather than drawing one chart's lines.
+   */
+  "get-alerts": async (body, { account }) => ({
+    name: "alerts",
+    payload: await listAlerts(body, account.userId),
+  }),
+
+  "create-alert": async (body, { account, pushEvent }) => {
+    const alert = await createAlert(body, account.userId);
+    if (alert.error) return { error: alert.error, status: STATUS.BAD_REQUEST };
+
+    /*
+     * The reply and the event are two different frames, and a recording tells
+     * them apart: `alert` carries a `request_id` and no microservice, while
+     * `alert-changed` carries `microserviceName: "user-alerts"` and no
+     * request id. An earlier handler here answered with the event's name,
+     * which is why the panel never saw its own new line.
+     */
+    pushEvent("user-alerts.alert-changed", alert);
+    return { name: "alert", payload: alert };
+  },
+
+  /*
+   * Not in the recording — nothing was deleted while it ran — so the name is
+   * the obvious counterpart to `create-alert`. If the panel calls it something
+   * else, the log says so the first time someone removes a line.
+   */
+  "delete-alert": async (body, { account, pushEvent }) => {
+    const gone = await deleteAlert(body, account.userId);
+    if (gone.error) return { error: gone.error, status: STATUS.NOT_FOUND };
+    return { name: "alert-deleted", payload: gone };
+  },
 
   /**
    * Deposit and withdrawal limits per currency.
@@ -722,25 +766,6 @@ export const CALLS = {
    * its panels. Request shapes are the client's own, read off a recording of
    * this server's traffic; the replies are the emptiest thing each one accepts.
    */
-
-  /**
-   * A price alert. The client sends `{asset_id, instrument_types, type,
-   * activations, value}` and the answer echoes the stored alert back under the
-   * same name its change stream uses.
-   */
-  "create-alert": (body, { feed }) => ({
-    name: "alert-changed",
-    payload: {
-      id: Math.floor(feed.now()),
-      asset_id: Number(body?.asset_id) || 0,
-      instrument_types: body?.instrument_types ?? [],
-      type: body?.type ?? "price",
-      value: Number(body?.value) || 0,
-      activations: Number(body?.activations) || 1,
-      status: "active",
-      created: feed.now(),
-    },
-  }),
 
   /*
    * `get-news-feed` used to be answered here, from a `content_items` row of
@@ -1395,10 +1420,39 @@ export const CALLS = {
   // seconds when unanswered. The calls carry the `promo-codes.` service prefix
   // while the answers drop it, which is the same split as `core.get-profile`
   // answering as `profile`.
-  "promo-codes.get-available-promo-codes": () => ({ name: "available-promo-codes", payload: [] }),
+  "promo-codes.get-available-promo-codes": async (body, { account }) => ({
+    name: "available-promo-codes",
+    payload: await availablePromoCodes(account.userId, Number(body?.limit) || 100, Number(body?.offset) || 0),
+  }),
+
+  /*
+   * "Active" is a code already applied and still earning — a bonus being
+   * wagered off. Nothing here credits a bonus, so nothing can be active; see
+   * the cashier note in docs/engine-host-pendencias.md.
+   */
   "promo-codes.get-active-promo-codes": () => ({ name: "active-promo-codes", payload: [] }),
-  "promo-codes.get-traderoom-promo-codes": () => ({ name: "traderoom-promo-codes", payload: [] }),
-  "promo-codes.get-used-promo-codes": () => ({ name: "used-promo-codes", payload: [] }),
+
+  "promo-codes.get-traderoom-promo-codes": async (body, { account }) => ({
+    name: "traderoom-promo-codes",
+    payload: await traderoomPromoCodes(account.userId, body?.types),
+  }),
+
+  "promo-codes.get-used-promo-codes": async (body, { account }) => ({
+    name: "used-promo-codes",
+    payload: await usedPromoCodes(account.userId, Number(body?.limit) || 100, Number(body?.offset) || 0),
+  }),
+
+  "promo-codes.get-promo-code-details": async (body) => {
+    const details = await promoCodeDetails(body?.id);
+    if (!details) return { error: `no promo code ${body?.id}`, status: STATUS.NOT_FOUND };
+    return { name: "promo-code-details", payload: details };
+  },
+
+  "promo-codes.apply-promo-code": async (body, { account }) => {
+    const applied = await applyPromoCode(body?.code ?? body?.promo_code, account.userId);
+    if (applied.error) return { error: applied.error, status: STATUS.BAD_REQUEST };
+    return { name: "applied-promo-code", payload: applied };
+  },
 
   ...underlyingListHandlers(),
   ...instrumentCallHandlers(),

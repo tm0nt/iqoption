@@ -219,6 +219,8 @@ model User {
   positions       Position[]
   transactions    Transaction[]
   tournamentEntries TournamentEntry[]
+  priceAlerts       PriceAlert[]
+  promoCodeUses     PromoCodeUse[]
   tradingSessions TradingSession[]
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -602,4 +604,91 @@ model TournamentEntry {
   @@unique([tournamentId, userId])
   @@index([tournamentId, pnl])
   @@map("tournament_entries")
+}
+
+/// A price watch someone set on an instrument. The engine draws it as a line
+/// on the chart and tells them when it is crossed.
+model PriceAlert {
+  id Int @id @default(autoincrement())
+
+  userId Int  @map("user_id")
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// The protocol's `active_id`.
+  assetId Int @map("asset_id")
+  /// Which families the alert applies to, e.g. `["marginal-forex"]`.
+  instrumentTypes Json @map("instrument_types")
+
+  /// `price` or `market_open`, which are the two the panel asks for.
+  type String @default("price") @db.VarChar(24)
+
+  /// How many times it may fire before it stops. One is the panel's default.
+  activations Int @default(1)
+
+  /// The quote to watch for. Eight decimals, like a quote.
+  value Decimal @db.Decimal(18, 8)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId, assetId])
+  @@map("price_alerts")
+}
+
+/// A code someone types to get a bonus. Written by an administrator; the
+/// traderoom lists the ones on offer and the ones already used.
+model PromoCode {
+  id Int @id @default(autoincrement())
+
+  code  String @unique @db.VarChar(48)
+  title String @db.VarChar(160)
+
+  /// The long text on the detail page, and the one line in the list.
+  description      String? @db.Text
+  descriptionShort String? @map("description_short") @db.VarChar(255)
+
+  /// `deposit_bonus` is the one the recording shows; `higher_payouts` is the
+  /// type the traderoom's own strip asks for by name.
+  type String @default("deposit_bonus") @db.VarChar(32)
+
+  /**
+   * The three free-shaped blocks the panel renders.
+   *
+   * `params` carries whatever the type needs — a bonus percent, a minimum
+   * deposit. `instructions` is `{title, steps: [{title, description}]}` and
+   * `information` the detail copy. They are JSON because the platform treats
+   * them as opaque: it renders what is there and nothing validates the shape
+   * beyond the panel itself.
+   */
+  params       Json?
+  instructions Json?
+  information  Json?
+
+  /// After this the code stops being offered. Null never expires.
+  endsAt DateTime? @map("ends_at")
+
+  enabled Boolean @default(true)
+
+  uses PromoCodeUse[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("promo_codes")
+}
+
+/// One person's use of one code, which is what the "used" tab lists.
+model PromoCodeUse {
+  id Int @id @default(autoincrement())
+
+  promoCodeId Int       @map("promo_code_id")
+  promoCode   PromoCode @relation(fields: [promoCodeId], references: [id], onDelete: Cascade)
+
+  userId Int  @map("user_id")
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  usedAt DateTime @default(now()) @map("used_at")
+
+  /// A code is used once per person.
+  @@unique([promoCodeId, userId])
+  @@map("promo_code_uses")
 }
