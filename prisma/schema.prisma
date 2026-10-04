@@ -469,3 +469,57 @@ model ContentItem {
   @@index([kind, enabled, priority])
   @@map("content_items")
 }
+
+/// A dated release on the economic calendar, which is what this platform's
+/// "Market Analysis" panel shows. Separate from `ContentItem` because an item
+/// here is a measurement, not an article: it has a country, an importance and
+/// three numbers that arrive at different times.
+model CalendarEvent {
+  id Int @id @default(autoincrement())
+
+  /// ISO 3166-1 alpha-2, lower case — `us`, `br` — which is how the wire
+  /// spells it and how the panel looks up its flag.
+  country String @db.Char(2)
+  name    String @db.VarChar(255)
+  /// The source's own symbol for the series, e.g. `UNITEDSTANONMANPMI`.
+  ticker  String? @db.VarChar(64)
+  /// What the figure covers: `Sep`, `Q3`, `Oct/22`.
+  period  String? @db.VarChar(32)
+
+  /// 1 low, 2 medium, 3 high. The panel filters on it and colours by it.
+  importance Int @default(2)
+  /// Which filter group it belongs to: `prices`, `labour`, `gdp`, …
+  categoryGroup String? @map("category_group") @db.VarChar(32)
+
+  /// When it is published.
+  releasedAt DateTime @map("released_at")
+
+  /**
+   * Strings, not numbers.
+   *
+   * A release carries its own units and precision — "55.4", "3.26%", "-1.2K"
+   * — and the panel prints them as given. Parsing them into a number would
+   * mean choosing a format to print them back in, which is a decision the
+   * source already made.
+   *
+   * `actual` is empty until the figure is out, which is what makes a row
+   * upcoming rather than past.
+   */
+  actual   String? @db.VarChar(32)
+  forecast String? @db.VarChar(32)
+  previous String? @db.VarChar(32)
+
+  description String? @db.Text
+
+  /// `active_id`s the release moves, shown as "assets affected".
+  assetIds Json? @map("asset_ids")
+
+  enabled Boolean @default(true)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([releasedAt])
+  @@index([country, importance])
+  @@map("calendar_events")
+}

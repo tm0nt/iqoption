@@ -19,6 +19,7 @@ import {
   saveBalance,
   setActiveBalance,
 } from "../accounts.mjs";
+import { calendarEvents, calendarEventsInfo, calendarFilters } from "../data/calendar.mjs";
 import { contentCategories, epoch } from "../data/content.mjs";
 import { featureRows } from "../data/features.mjs";
 import { defaultUserConfig } from "../data/user-settings.mjs";
@@ -739,6 +740,29 @@ export const CALLS = {
    */
 
   /**
+   * The economic calendar — this platform's "Market Analysis".
+   *
+   * Three calls, with the shapes a recording gives (docs/avalon-panels.md).
+   * `get-economic-calendar-events` sends `{offset: -20, limit: 60, …}`, where
+   * the offset is a window around now rather than a page: twenty releases
+   * already out, then the ones still to come.
+   */
+  "get-economic-calendar-filters": async () => ({
+    name: "economic-calendar-filters",
+    payload: await calendarFilters(),
+  }),
+
+  "get-economic-calendar-events": async (body) => ({
+    name: "economic-calendar-events",
+    payload: { events: await calendarEvents(body) },
+  }),
+
+  "get-economic-calendar-events-info": async (body) => ({
+    name: "economic-calendar-events-info",
+    payload: { events: await calendarEventsInfo(body?.ids) },
+  }),
+
+  /**
    * Opening a binary option.
    *
    * The deal panel sends `{user_balance_id, active_id, option_type_id,
@@ -844,7 +868,6 @@ export const CALLS = {
     const locale = engineLocale(body, account);
     const wanted = Number(body?.category_filter) || 0;
     const groups = await contentCategories("TUTORIAL", locale.short);
-    const platform = String(body?.platform ?? "desktop");
     const now = Math.floor(Date.now() / 1000);
 
     const videos = [];
