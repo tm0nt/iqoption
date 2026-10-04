@@ -9,11 +9,11 @@
  */
 
 import { ACTIVES, ACTIVE_GROUPS, activeById, groupIdFor } from "../market/actives.mjs";
-import { balancesFrame, profileFrame } from "../accounts.mjs";
+import { balanceChangedFrame, balancesFrame, marginalBalanceFrame, profileFrame } from "../accounts.mjs";
 import { featureRows } from "../data/features.mjs";
 import { defaultUserConfig } from "../data/user-settings.mjs";
 import { halfSpread, priceAt, round } from "../market/prices.mjs";
-import { openOption, openPositions, positionState } from "../market/positions.mjs";
+import { openOption, openPositions, optionReply, portfolioEvent, positionState } from "../market/positions.mjs";
 import { optionActive } from "./active.mjs";
 
 /** Status codes, mirroring the ones the live feed uses. */
@@ -40,9 +40,12 @@ function historyDepth(size) {
   return Math.min(Math.max(size, 7), 600) * DAY;
 }
 
-/** One wallet in the shape `balances` carries, for an incremental update. */
-function walletFrame(account, balanceId) {
-  return balancesFrame(account).find((entry) => entry.id === balanceId);
+/** The account's own wallet record, which the balance events report on. */
+function walletOf(account, balanceId) {
+  return (
+    account.balances.find((balance) => balance.id === Number(balanceId)) ??
+    account.balances.find((balance) => balance.id === account.activeBalanceId)
+  );
 }
 
 /** How long the client may treat a `positions-state` frame as current. */
@@ -648,17 +651,24 @@ export const CALLS = {
     const position = openOption(account, body, feed);
     if (position.error) return { error: position.error, status: STATUS.BAD_REQUEST };
 
-    pushEvent("portfolio.position-changed", position);
+    pushEvent("portfolio.position-changed", portfolioEvent(position));
     /*
      * The header balance follows `internal-billing.balance-changed`, which is
      * what the client subscribes to; a whole `balances` frame is the snapshot
-     * it reads once at login and does not treat as an update.
+     * it reads once at login and does not treat as an update. A recording of
+     * the live feed confirms the order: the `option` reply, then the position,
+     * then the debited wallet — the stake leaves the balance when the deal
+     * opens, not when it settles.
      */
-    pushEvent("internal-billing.balance-changed", walletFrame(account, position.user_balance_id));
+    const wallet = walletOf(account, position.user_balance_id);
+    pushEvent("internal-billing.balance-changed", balanceChangedFrame(account, wallet));
+    // The header reads the margin view, not the billing one: a recorded stake
+    // moves both, and pushing only the first leaves the corner balance stale.
+    pushEvent("marginal-portfolio.balance-changed", marginalBalanceFrame(account, wallet));
     // The incremental event is what the deal panel listens on; the snapshot is
     // what the header read at login, and re-sending it keeps the two agreeing.
     send({ name: "balances", msg: balancesFrame(account) });
-    return { name: "option", payload: position };
+    return { name: "option", payload: optionReply(position) };
   },
 
   /**
@@ -903,45 +913,11 @@ export const CALLS = {
     payload: { id: body?.user_balance_id ?? 0 },
   }),
 
-  /**
-   * Margin state for one wallet. Every amount is a decimal **string**, not a
-   * number — the client parses them itself to keep the precision the exchange
-   * reports.
-   */
+  /** Margin state for one wallet; the shape lives with the other wallet frames. */
   "marginal-portfolio.get-marginal-balance": (body, { account }) => {
     const id = Number(body?.user_balance_id ?? account.activeBalanceId);
-    const wallet = account.balances.find((b) => b.id === id) ?? account.balances[0];
-    const zero = "0";
-    return {
-      name: "marginal-balance",
-      payload: {
-        id: wallet.id,
-        index: Date.now(),
-        generated_at: Date.now(),
-        user_id: account.userId,
-        type: wallet.type,
-        currency: wallet.currency,
-        cash: String(wallet.amount),
-        bonus: zero,
-        pnl: zero,
-        isolated_pnl: zero,
-        equity: String(wallet.amount),
-        equity_usd: String(wallet.amount),
-        swap: zero,
-        dividends: zero,
-        pnl_net: zero,
-        isolated_swap: zero,
-        isolated_dividends: zero,
-        isolated_pnl_net: zero,
-        margin: zero,
-        isolated_margin: zero,
-        available: String(wallet.amount),
-        stop_out_level: "50",
-        additional_margin_step: 20,
-        additional_margin_refund_offset: 5,
-        position_pnls: [],
-      },
-    };
+    const wallet = account.balances.find((balance) => balance.id === id) ?? account.balances[0];
+    return { name: "marginal-balance", payload: marginalBalanceFrame(account, wallet) };
   },
 
   /** Pending orders, as opposed to open positions. Also empty here. */

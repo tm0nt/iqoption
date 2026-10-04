@@ -16,7 +16,7 @@ import { ACTIVES } from "../market/actives.mjs";
 
 const DEFAULTS = {
   "traderoom_gl_common": {
-    "balanceId": 1251576862,
+    "balanceId": 900000001,
     "theme": "black",
     "isSoundDisabled": false,
     "openedLeftPanelSections": "",

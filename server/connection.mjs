@@ -9,8 +9,8 @@
 
 import { CALLS, PASSIVE_STREAMS, STATUS, STREAMS } from "./protocol/router.mjs";
 import { record } from "./transcript.mjs";
-import { balancesFrame, profileFrame, resolveSession } from "./accounts.mjs";
-import { settleDue } from "./market/positions.mjs";
+import { balanceChangedFrame, balancesFrame, marginalBalanceFrame, profileFrame, resolveSession } from "./accounts.mjs";
+import { portfolioEvent, settleDue } from "./market/positions.mjs";
 
 const TIME_SYNC_MS = 1_000;
 const HEARTBEAT_MS = 20_000;
@@ -50,12 +50,27 @@ export class Connection {
         if (!this.account) return;
         const closed = settleDue(this.account, this.feed);
         if (!closed.length) return;
+
+        const credited = new Set();
         for (const position of closed) {
-          this.pushEvent("portfolio.position-changed", position);
+          this.pushEvent("portfolio.position-changed", portfolioEvent(position));
+          /*
+           * Only a win moves the balance here. The stake left it when the deal
+           * opened, so a loss has nothing left to settle — and the live feed
+           * sends no `balance-changed` after a losing deal closes, which is how
+           * the client knows not to debit twice.
+           */
+          if (position.profit_amount > 0) credited.add(position.user_balance_id);
         }
+        if (!credited.size) return;
+
         // The same channel the deal panel listens on when a stake is taken.
-        for (const entry of balancesFrame(this.account)) {
-          this.pushEvent("internal-billing.balance-changed", entry);
+        for (const balance of this.account.balances) {
+          if (!credited.has(balance.id)) continue;
+          this.pushEvent("internal-billing.balance-changed", balanceChangedFrame(this.account, balance));
+          // The header follows the margin view; the billing event alone leaves
+          // the balance in the corner unchanged.
+          this.pushEvent("marginal-portfolio.balance-changed", marginalBalanceFrame(this.account, balance));
         }
         this.send({ name: "balances", msg: balancesFrame(this.account) });
       }, SETTLE_MS),
@@ -209,11 +224,16 @@ export class Connection {
       });
     }
 
+    /*
+     * No `microserviceName` here. Events carry one — just the service, as
+     * `pushEvent` builds it — but a reply does not: across sixty-five replies
+     * recorded from the live feed, spanning nine different frame names, not one
+     * carries the field. The client tolerates it, which is why it went unnoticed.
+     */
     this.send({
       name: result.name,
       request_id: frame.request_id,
       status: result.envelope ? 0 : STATUS.OK,
-      microserviceName: name,
       msg: result.envelope
         ? { isSuccessful: true, message: [], result: result.payload }
         : result.payload,

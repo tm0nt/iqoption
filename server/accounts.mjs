@@ -19,11 +19,19 @@ const DEMO_START_BALANCE = 10_000;
  * It has to agree with `user_id` in the `check-session` stub the engine host
  * serves: the client compares the two, and a mismatch leaves it on its login
  * view with the traderoom never built.
+ *
+ * The value is arbitrary, and deliberately synthetic. Both seeds here once held
+ * the ids from a recorded session of the live site — they work, because any
+ * number works, but they identify a real account and have no business in a
+ * fixture. When a recording answers a question, take the shape from it and
+ * leave the identity behind.
  */
-export const FIRST_USER_ID = 196_366_061;
+export const FIRST_USER_ID = 100_000_001;
 
 let nextUserId = FIRST_USER_ID;
-let nextBalanceId = 1_251_576_862;
+
+/** Matches `balanceId` in the default user settings, for the same reason. */
+let nextBalanceId = 900_000_001;
 
 /** sessionId -> userId */
 const sessions = new Map();
@@ -93,6 +101,9 @@ export function resolveSession(sessionId, { allowUnknown = true } = {}) {
  * and `orders_amount` from `amount` to show what is actually available, and
  * reads `equivalent` for the account's display currency.
  */
+/** Sequence number carried by every `balance-changed` event. */
+let nextBalanceIndex = 5_000_000_000;
+
 function balanceFrame(account, balance) {
   return {
     id: balance.id,
@@ -113,6 +124,88 @@ function balanceFrame(account, balance) {
     is_marginal: true,
     has_deposits: false,
     created: account.created,
+  };
+}
+
+/**
+ * One wallet, in the shape `internal-billing.balance-changed` reports.
+ *
+ * This is not the snapshot entry: the event wraps the wallet in
+ * `current_balance` and carries the deal's own `id` and `user_id` beside it.
+ * Recorded from the live feed, where the header follows this event and treats
+ * the `balances` snapshot as a login-time read only — which is why a stake has
+ * to be announced here to move the balance before the deal settles.
+ *
+ * `new_amount` repeats `amount`; the live feed sends both and the client reads
+ * whichever the view it is updating asks for. `index` is the event's own
+ * sequence number, not the wallet's.
+ */
+export function balanceChangedFrame(account, balance) {
+  return {
+    current_balance: {
+      id: balance.id,
+      amount: balance.amount,
+      enrolled_amount: balance.amount,
+      bonus_amount: 0,
+      bonus_enrolled_amount: 0,
+      currency: balance.currency,
+      type: balance.type,
+      index: (nextBalanceIndex += 1),
+      is_fiat: balance.is_fiat,
+      new_amount: balance.amount,
+      bonus_total_amount: 0,
+      is_marginal: true,
+      created: new Date(account.created).toISOString(),
+      parent_id: null,
+      staking_info: null,
+    },
+    id: balance.id,
+    user_id: account.userId,
+  };
+}
+
+/**
+ * One wallet's margin state, as `marginal-balance` reports it.
+ *
+ * Every amount is a decimal **string**, not a number — the client parses them
+ * itself to keep the precision the exchange reports. That is the opposite of
+ * `positions-state`, where the same kinds of number travel bare; the two
+ * conventions coexist and a recording is the only way to tell which applies.
+ *
+ * The same shape is what `marginal-portfolio.balance-changed` pushes. A
+ * recording of the live feed shows a stake moving both this and
+ * `internal-billing.balance-changed`, and the header follows this one: sending
+ * only the billing event leaves the balance in the corner unchanged.
+ */
+export function marginalBalanceFrame(account, balance) {
+  const amount = String(balance.amount);
+  const zero = "0";
+  return {
+    id: balance.id,
+    index: (nextBalanceIndex += 1),
+    generated_at: Date.now(),
+    user_id: account.userId,
+    type: balance.type,
+    currency: balance.currency,
+    cash: amount,
+    bonus: zero,
+    pnl: zero,
+    isolated_pnl: zero,
+    equity: amount,
+    equity_usd: amount,
+    swap: zero,
+    dividends: zero,
+    pnl_net: zero,
+    isolated_swap: zero,
+    isolated_dividends: zero,
+    isolated_pnl_net: zero,
+    margin: zero,
+    isolated_margin: zero,
+    available: amount,
+    stop_out_level: "50",
+    additional_margin_step: 20,
+    additional_margin_refund_offset: 5,
+    position_pnls: [],
   };
 }
 

@@ -485,12 +485,23 @@ subscribes `position-changed` filtered by `instrument_type: "turbo-option"`
 while the payload must say `turbo`. And `F2::getOptionType()` accepts
 `turbo-option`, but it is not the table the JSON reader uses.
 
+Both live in the same frame. A recorded `position-changed` carries
+`instrument_type: "blitz-option"` at the top level and `option_type: "blitz"`
+inside its own `raw_event` — the portfolio's events use the suffixed form, which
+is also what the client filters on when it subscribes, and the deal enum does
+not. `blitz` is a third member beside `turbo` and `binary`, with
+`option_type_id: 12`.
+
 A lower-case `none` where `KYCLevel` wants `NONE` is what held the login view
 shut: the KYC service never initialised, and the gate waits on it.
 
 ### Types that look interchangeable and are not
 
 - `qcalc::BigDecimal` travels as a **string**: `"markup": "0.4"`, `"pnl": "0.78"`.
+  This is not uniform across the protocol, and only a recording settles it:
+  `marginal-balance` sends `cash`, `equity` and `available` as strings, while
+  `positions-state` sends `pnl`, `margin` and `expected_profit` as bare numbers.
+  Guessing by analogy gets one of the two wrong.
 - A timestamp read with `getInteger` cannot carry a fraction. `Date.now()/1000`
   produces one, and the field then reads as nothing.
 - `external_id` on a deal is stored as a 64-bit integer, not a string.
@@ -527,20 +538,72 @@ plotter per open tab; a tab without one falls back to the engine's default and
 drags the axis with it. `plotType` is `candles`, plural; the grid dimensions are
 percentages (`[100]`), and `indicators` is JSON held in a string.
 
+### A deal's life, as the live feed tells it
+
+Recorded from a signed-in session on the practice balance, opening seven blitz
+options. The order is fixed and each frame does a different job:
+
+1. `option` answers `binary-options.open-option` with the broker's view of the
+   order — `act`, `exp`, `value` and `exp_value` (the same quote scaled by a
+   million, as the request's own `value` is), `profit_income` as the whole
+   multiplier (185 for an 85% payout).
+2. `portfolio.position-changed` announces the position. Its top level carries
+   the portfolio's normalised numbers in **milliseconds**; everything specific
+   to a binary option — direction, expiry, option type, currency — lives only
+   inside `raw_event.binary_options_option_changed1`. An empty `raw_event` works
+   solely if those fields are duplicated at the top, which the live feed never
+   does.
+3. `internal-billing.balance-changed` and `marginal-portfolio.balance-changed`
+   both report the debited wallet. **The stake leaves the balance when the deal
+   opens**, not when it settles.
+
+At expiry `position-changed` comes back with a different field set, not the same
+one with empty slots: `status: "closed"`, and `sell_profit`, `expected_profit`,
+`current_price` and `quote_timestamp` are replaced by `close_quote`,
+`close_reason`, `close_time`, `close_profit` (gross) and `pnl`/`pnl_realized`
+(net). A win is then announced on both balance channels; **a loss sends no
+balance event at all**, because the stake is already gone — sending one debits
+the wallet twice.
+
+### The header reads the margin balance
+
+`internal-billing.balance-changed` alone does not move the balance in the
+corner. Pushing it with a wallet set to a different amount and nothing else
+leaves the header where it was; adding `marginal-portfolio.balance-changed`
+moves it immediately. The live feed sends both on every change, and the header
+follows the second.
+
+### The engine host must be opened on `localhost`
+
+`replaceHostSubdomain` replaces the first label of a host that has more than two
+labels, so `127.0.0.1` becomes `auth.0.0.1` — a host whose trailing numeric
+label forces IPv4 parsing, which then fails. `new URL()` rejects it, the HTTP
+shim cannot match a route, and `check-session` is issued against an unparseable
+host; the traderoom never opens. On `localhost` the same routine produces
+`auth.localhost` and everything resolves. The engine carries this routine in C++
+and compares results, so the JS cannot be made more forgiving without diverging.
+
 ## Known gaps
 
 - **Buyback.** `price-splitter.client-buyback-generated` is acknowledged and
   silent, so "P/L after sell" stays zero and the Sell button has no price. Its
   parser does not go through the attribute binders, so the shape was not
-  recovered from the build; a capture of a live sale is the cheaper route.
-- **The balance during an open deal.** The wallet is debited and announced on
-  both channels, but the header only moves at settlement. The accounting is
-  right; whether the live feed behaves the same is unverified.
-- **`Failed to parse input JSON: The document is empty`** — eight per boot,
-  source unidentified, no visible effect. One attempt to silence it (giving
-  `/api/geoip/getmycountry` an object instead of its bare `"BR"`) replaced it
-  with a real failure and was reverted.
-- **Only turbo options are exercised.** Digital with its strike ladder and the
+  recovered from the build. A live capture was taken but did not answer it: the
+  session traded blitz options with a five-second expiry, which cannot be sold
+  early, so no buyback frame was exchanged. The capture needs a turbo or binary
+  deal held long enough to sell.
+- **`Failed to parse input JSON: The document is empty`** — four per boot, each
+  logged twice. No visible effect, and the source is still unidentified, but the
+  following are ruled out by measurement rather than by argument: every HTTP body
+  the engine reads (none is zero-length, measured as `byteLength` because the
+  engine asks for ArrayBuffers); `localStorage` and `sessionStorage` (the four
+  missing keys are all read long before the first error); JS-side `JSON.parse`
+  (never called with an empty string); absent cookies; empty strings passed to
+  any of the 194 `Module` entry points; and `openedLeftPanelSections`, which the
+  live site also sends as `""`. Instrumenting the HTTP path shifts the shell's
+  host-table race, so the probe must not await a body before returning it.
+- **Only turbo options are exercised.** Blitz is now described by a recording
+  but is not served. Digital with its strike ladder and the
   marginal families are served but never traded against. Asset switching,
   timeframe changes from the UI, several open deals at once and the history
   panel are likewise untested.
@@ -549,3 +612,12 @@ percentages (`[100]`), and `indicators` is JSON held in a string.
   `get-initialization-data` but not against every family.
 - **No real identity.** Any unknown session id is accepted and handed a fresh
   demo account. That is deliberate for development and must not be deployed.
+
+## Recordings are for shapes, not identities
+
+A recording answers what a frame looks like. It also contains whoever made it.
+The seeds in `server/accounts.mjs` and the `user_id` in the `check-session` stub
+once held the real ids from a captured session — they worked, because any number
+works, and they sat in version control identifying a real account. They are now
+synthetic and must stay that way. The same applies to `skey`, balances and email:
+take the field and its type from a capture, and leave the value behind.

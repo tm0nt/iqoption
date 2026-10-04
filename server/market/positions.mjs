@@ -27,17 +27,38 @@ function expiryAfter(now, size) {
  * The instrument family an option belongs to, from the id the panel sends.
  *
  * `instrument_type` and `option_type` are both read through
- * `enum<F2::IQOptionType>`, whose members are `turbo` and `binary` — not
+ * `enum<F2::IQOptionType>`, whose members are bare — `turbo`, not
  * `turbo-option`. A value outside the table reads back as zero, and
  * `DealBinary::isValid()` rejects a position whose instrument is zero, so the
  * portfolio drops it with "Bad binary received."
  *
- * The subscription filter spells the same family `turbo-option`, but that is
- * the server's routing vocabulary; the payload has to use the enum's.
+ * The ids are the live panel's: a recorded `open-option` for a five-second deal
+ * carries `option_type_id: 12`, and its events come back as `blitz`.
  */
+const OPTION_TYPES = { 1: "binary", 3: "turbo", 12: "blitz" };
+
 function instrumentTypeOf(optionTypeId) {
-  return Number(optionTypeId) === 1 ? "binary" : "turbo";
+  return OPTION_TYPES[Number(optionTypeId)] ?? "turbo";
 }
+
+/**
+ * The same family as the portfolio spells it, with the `-option` suffix.
+ *
+ * The two vocabularies coexist and are not interchangeable. A recorded
+ * `position-changed` carries `instrument_type: "blitz-option"` at the top level
+ * while its own `raw_event` says `option_type: "blitz"` — so the portfolio's
+ * events use the suffixed form and the deal enum does not.
+ */
+function portfolioTypeOf(optionTypeId) {
+  return `${instrumentTypeOf(optionTypeId)}-option`;
+}
+
+/** Quotes travel as integers scaled by a million in the deal frames. */
+const QUOTE_SCALE = 1_000_000;
+
+/** Every portfolio event carries a version; the client keeps the highest. */
+let nextVersion = 45_000_000_000;
+let nextEventIndex = 14_000_000_000;
 
 function walletOf(account, balanceId) {
   return (
@@ -73,8 +94,15 @@ export function openOption(account, body, feed) {
 
   wallet.amount = round(wallet.amount - invest, 2);
 
+  const openedAt = now * 1_000;
   const position = {
     id: (nextId += 1),
+    /*
+     * The broker's own id for the option, which is what `raw_event` reports and
+     * what the `option` reply hands back. The portfolio's `id` is a separate,
+     * string-shaped identifier.
+     */
+    option_id: nextId,
     /*
      * This is what `DealBinary::getId()` reads: the parser stores `external_id`
      * as a 64-bit integer at the offset `isValid()` checks for a non-zero id.
@@ -115,6 +143,16 @@ export function openOption(account, body, feed) {
     buyback_state: "open",
     buyback_time: 0,
     client_platform_id: 190,
+    /*
+     * Milliseconds. The portfolio's events timestamp in them — `open_time`
+     * there is `open_time_millisecond` here — while the deal enum's fields stay
+     * in whole seconds.
+     */
+    open_time_ms: openedAt,
+    requested_at: openedAt,
+    created_at: openedAt + 1,
+    updated_at: openedAt + 1,
+    close_time_ms: 0,
     /*
      * `DealBinary::isValid()` rejects a position with a zero id, a zero
      * instrument, an epoch expiry or an empty instrument descriptor, and the
@@ -161,6 +199,8 @@ export function settleDue(account, feed) {
     position.close_quote = quote;
     position.open = position.open_time;
     position.closed = position.expiration_time;
+    position.close_time_ms = position.expiration_time * 1_000;
+    position.updated_at = position.close_time_ms + 36;
     position.close_reason = tied ? "equal" : won ? "win" : "loose";
     position.result = position.close_reason;
     // `status` carries the same `IQDealStatus` member; there is no "closed".
@@ -183,10 +223,13 @@ export function settleDue(account, feed) {
 /**
  * A running deal's live numbers, for the `positions-state` stream.
  *
- * The shape is `F2::services::json_io<...TickingPortfolioDeal>`: `id`,
- * `expected_profit`, `pnl`, `pnl_net` and `current_price` are mandatory, and
- * every money field is a `qcalc::BigDecimal`, which travels as a string the way
- * `markup` and `min_qty` do elsewhere in this protocol. `id` is a string too.
+ * The shape is `F2::services::json_io<...TickingPortfolioDeal>`. A recording of
+ * the live stream settles two things the build could not: every money field is a
+ * plain number — not a `BigDecimal` string, the way `markup` and `min_qty` are
+ * elsewhere in this protocol — while `id` alone is a string. A running binary
+ * deal reports `expected_profit: 0` and leaves `pnl` at the open stake's
+ * distance from zero; `margin` carries the stake and `currency_conversion` is
+ * present and zero.
  */
 export function positionState(position, feed) {
   const active = activeById(position.active_id);
@@ -197,18 +240,161 @@ export function positionState(position, feed) {
 
   return {
     id: String(position.external_id),
-    instrument_type: position.instrument_type,
-    expected_profit: String(winning ? round(position.invest + payout, 2) : 0),
-    pnl: String(payout),
-    pnl_net: String(payout),
-    sell_profit: "0",
-    open_price: position.open_quote,
+    instrument_type: portfolioTypeOf(position.option_type_id),
+    sell_profit: 0,
+    margin: position.invest,
     current_price: quote,
-    quote_timestamp: Math.floor(feed.now()),
+    quote_timestamp: Math.floor(feed.now()) * 1_000,
+    pnl: payout,
+    pnl_net: payout,
+    open_price: position.open_quote,
+    expected_profit: winning ? round(position.invest + payout, 2) : 0,
+    currency_conversion: 0,
   };
 }
 
 /** The positions still running, newest first, as the portfolio lists them. */
 export function openPositions(account) {
   return (account.positions ?? []).filter((position) => !position.closed).reverse();
+}
+
+/**
+ * A deal as `portfolio.position-changed` announces it.
+ *
+ * This is not the deal-enum field set that `get-positions` answers with. A
+ * recording of the live feed shows the portfolio's event carrying its own
+ * normalised numbers at the top level — milliseconds, `pnl`, `invest` — and
+ * putting everything specific to a binary option inside
+ * `raw_event.binary_options_option_changed1`: the direction, the expiry, the
+ * option type id and the currency all live there and nowhere else. Our earlier
+ * `raw_event: {}` only worked because those fields were duplicated at the top,
+ * which the live feed never does.
+ *
+ * The open and closed forms are different field sets, not one set with empty
+ * slots: a closed deal drops `sell_profit`, `expected_profit`, `current_price`
+ * and `quote_timestamp`, and gains `close_*`, `pnl_realized` and `actual_expire`.
+ *
+ * `profit_percent` inside the event is the whole multiplier — 185 for an 85%
+ * payout — while the panel's request sends the 85.
+ */
+export function portfolioEvent(position) {
+  const closed = Boolean(position.closed);
+  const payout = position.profit_amount;
+
+  const rawEvent = {
+    index: (nextEventIndex += 1),
+    option_id: position.option_id,
+    user_id: position.user_id,
+    balance_id: position.user_balance_id,
+    option_type_id: position.option_type_id,
+    option_type: instrumentTypeOf(position.option_type_id),
+    active_id: position.active_id,
+    platform_id: position.client_platform_id,
+    profit_percent: 100 + position.profit_percent,
+    user_balance_type: 4,
+    currency: position.currency,
+    direction: position.direction,
+    result: closed ? position.result : "opened",
+    amount: position.invest,
+    enrolled_amount: position.invest_enrolled,
+    profit_amount: closed ? payout : null,
+    win_enrolled_amount: closed ? payout : null,
+    value: position.open_quote,
+    expiration_value: closed ? position.close_quote : null,
+    open_time: position.open_time,
+    open_time_millisecond: position.open_time_ms,
+    expiration_time: position.expiration_time,
+    expiration_size: position.expiration_size,
+    actual_expire: closed ? position.expiration_time : null,
+    user_group_id: 270,
+    requested_at: position.requested_at,
+    created_at: position.created_at,
+    updated_at: position.updated_at,
+  };
+
+  const common = {
+    raw_event: { binary_options_option_changed1: rawEvent },
+    version: (nextVersion += 1),
+    id: String(position.external_id),
+    user_id: position.user_id,
+    user_balance_id: position.user_balance_id,
+    platform_id: position.client_platform_id,
+    // An integer, unlike `id`: the portfolio reads it through `getInteger`, and
+    // a string reads back as zero, which `DealBinary::isValid()` rejects.
+    external_id: position.external_id,
+    active_id: position.active_id,
+    instrument_id: String(position.active_id),
+    source: "binary-options",
+    instrument_type: portfolioTypeOf(position.option_type_id),
+    open_time: position.open_time_ms,
+    open_quote: position.open_quote,
+    invest: position.invest,
+    invest_enrolled: position.invest_enrolled,
+    swap: 0,
+  };
+
+  if (!closed) {
+    return {
+      ...common,
+      status: "open",
+      sell_profit: 0,
+      sell_profit_enrolled: 0,
+      // Mirrors the live feed, which reports the stake here while the deal runs
+      // rather than the payout it would pay out.
+      expected_profit: position.invest,
+      expected_profit_enrolled: position.invest,
+      pnl: 0,
+      pnl_net: 0,
+      current_price: position.open_quote,
+      // Milliseconds truncated to the second, which is how the live feed stamps
+      // a quote: 1791076852000 beside an `open_time` of 1791076852013.
+      quote_timestamp: position.open_time * 1_000,
+    };
+  }
+
+  // Gross on `close_profit`, net on `pnl`: a 513 stake returning 949.05 reports
+  // both, and the client shows the difference.
+  const net = round(payout - position.invest, 2);
+  return {
+    ...common,
+    status: "closed",
+    close_quote: position.close_quote,
+    close_reason: position.close_reason,
+    close_time: position.close_time_ms,
+    close_profit: payout,
+    close_profit_enrolled: payout,
+    pnl: net,
+    pnl_realized: net,
+    pnl_net: net,
+  };
+}
+
+/**
+ * The `option` frame that answers `binary-options.open-option`.
+ *
+ * Recorded from the live feed, which answers with the broker's own view of the
+ * order rather than with the portfolio position: `act` is the instrument,
+ * `exp` the expiry in whole seconds, `value` the quote and `exp_value` the same
+ * quote scaled by a million, as the request's own `value` is.
+ */
+export function optionReply(position) {
+  return {
+    user_id: position.user_id,
+    id: position.option_id,
+    refund_value: 0,
+    price: position.invest,
+    exp: position.expiration_time,
+    created: position.open_time,
+    created_millisecond: position.open_time_ms,
+    time_rate: position.open_time,
+    type: instrumentTypeOf(position.option_type_id),
+    act: position.active_id,
+    direction: position.direction,
+    exp_value: Math.round(position.open_quote * QUOTE_SCALE),
+    value: position.open_quote,
+    profit_income: 100 + position.profit_percent,
+    profit_return: 0,
+    robot_id: null,
+    client_platform_id: position.client_platform_id,
+  };
 }
