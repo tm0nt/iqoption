@@ -106,12 +106,17 @@ const ALLOW_ANONYMOUS = process.env.AVALON_ALLOW_ANONYMOUS === "1";
 export async function resolveSession(sessionId) {
   if (!sessionId) return null;
 
-  const known = sessions.get(sessionId);
-  if (known !== undefined) {
-    const cached = accounts.get(known);
-    if (cached) return cached;
-  }
-
+  /*
+   * The database decides, every time — there is no cache of "this ssid is fine".
+   *
+   * Signing out deletes the row, and an id that kept working because this
+   * process remembered it would make logging out meaningless: the session
+   * lasts twelve hours, and on a shared machine that is exactly the window
+   * logging out is meant to close. It did keep working until this was checked.
+   *
+   * The account object is still cached by user id below; that one has to be,
+   * because the open deals live on it.
+   */
   const rows = await pool().query(
     `SELECT u.id, u.email, u.name, u.locale, u.is_active, s.expires_at
        FROM trading_sessions s

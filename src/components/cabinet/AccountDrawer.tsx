@@ -133,7 +133,7 @@ export function AccountDrawer({
 
           <button
             type="button"
-            onClick={() => signOut({ callbackUrl: `/${locale}/login` })}
+            onClick={() => signOut({ redirectTo: `/${locale}/login` })}
             className="flex w-full items-center gap-3 py-[11px] text-[14px] text-avalon-text-strong transition-colors hover:text-avalon-primary"
           >
             <LogoutIcon className="shrink-0 text-avalon-text" width={15} height={16} />

@@ -112,6 +112,25 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
 
+  events: {
+    /**
+     * Signing out ends the trading session too.
+     *
+     * The traderoom does not use the web session: it is handed an opaque ssid
+     * that the market server resolves in `trading_sessions`, and that row
+     * outlives the cookie by its own expiry. Without this, logging out leaves
+     * an id that still opens deals on the account for the next twelve hours —
+     * on a shared machine, that is the whole point of logging out undone.
+     */
+    async signOut(message) {
+      const platformId = "token" in message ? message.token?.platformId : undefined;
+      if (typeof platformId !== "number") return;
+      await prisma.tradingSession
+        .deleteMany({ where: { userId: platformId } })
+        .catch((error) => console.error("could not clear trading sessions:", error));
+    },
+  },
+
   callbacks: {
     jwt({ token, user }) {
       // `user` is only present on the request that signs in.
