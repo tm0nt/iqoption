@@ -19,6 +19,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { DEFAULT_LOCALE, isLocale } from "@/i18n/avalon";
 import { COUNTRY_HEADERS, LOCALE_COOKIE, negotiateLocale } from "@/i18n/negotiate";
+import { TRACKING_PARAMS } from "@/lib/affiliate/params";
 
 /** `/pt/traderoom` -> `pt`, falling back when the path carries no locale. */
 function localeOf(pathname: string) {
@@ -41,6 +42,7 @@ const PROTECTED = new Set([
   "transactions",
   "trading",
   "counting",
+  "affiliate",
 ]);
 /**
  * Paths the engine calls by a fixed, locale-free URL built into the WASM.
@@ -102,9 +104,36 @@ export default auth((request) => {
       country,
     });
 
+    /*
+     * The bare domain lands on the login form — except from an affiliate's
+     * link, which is someone being invited to open an account.
+     */
+    const landing = request.nextUrl.searchParams.has("ref") ? "/register" : "/login";
     const url = request.nextUrl.clone();
-    url.pathname = `/${picked}${pathname === "/" ? "/login" : pathname}`;
+    url.pathname = `/${picked}${pathname === "/" ? landing : pathname}`;
     return NextResponse.redirect(url);
+  }
+
+  /*
+   * An affiliate's link: any page with `?ref=CODE`.
+   *
+   * Sent through the click route, which records the visit, hands the browser
+   * the signed cookie that will attribute an account to the affiliate, and
+   * sends it back here without the tracking parameters — so the address bar,
+   * a bookmark and a shared link all lose the code instead of re-counting it.
+   */
+  if (!localised && request.nextUrl.searchParams.has("ref")) {
+    const target = request.nextUrl.clone();
+    const click = request.nextUrl.clone();
+    click.pathname = "/api/affiliate/click";
+    click.search = "";
+    for (const name of TRACKING_PARAMS) {
+      const value = request.nextUrl.searchParams.get(name);
+      if (value) click.searchParams.set(name, value);
+      target.searchParams.delete(name);
+    }
+    click.searchParams.set("to", `${target.pathname}${target.search}`);
+    return NextResponse.redirect(click);
   }
 
   if (pathname.startsWith("/api/admin")) {

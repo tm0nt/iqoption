@@ -2,15 +2,8 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { cabinetExtra } from "@/i18n/cabinet-extra";
 import { CloseIcon } from "./icons";
-
-const RULES = [
-  "sexually explicit or pornographic images",
-  "images intended to incite ethnic or racial hatred or hostility",
-  "photos of people under the age of 18",
-  "third-party copyright-protected photos",
-  "images larger than 5 MB and in a format other than JPG or PNG",
-];
 
 /**
  * The profile photo dialog.
@@ -23,7 +16,8 @@ const RULES = [
  * this check exists so a 40 MB photo is refused before it is uploaded, and the
  * server's exists because this one is a courtesy a client can skip.
  */
-export function ProfilePhotoModal({ closeHref, hasPhoto }: { closeHref: string; hasPhoto: boolean }) {
+export function ProfilePhotoModal({ closeHref, hasPhoto, locale }: { closeHref: string; hasPhoto: boolean; locale: string }) {
+  const t = cabinetExtra(locale).profile;
   const router = useRouter();
   const input = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
@@ -35,11 +29,11 @@ export function ProfilePhotoModal({ closeHref, hasPhoto }: { closeHref: string; 
 
   async function upload(file: File) {
     if (file.size > 5 * 1024 * 1024) {
-      setError("That image is larger than 5 MB.");
+      setError(t.tooLarge);
       return;
     }
     if (!["image/png", "image/jpeg"].includes(file.type)) {
-      setError("Only JPG and PNG images are accepted.");
+      setError(t.wrongType);
       return;
     }
 
@@ -49,15 +43,15 @@ export function ProfilePhotoModal({ closeHref, hasPhoto }: { closeHref: string; 
       const body = new FormData();
       body.append("photo", file);
       const response = await fetch("/api/profile/avatar", { method: "POST", body });
-      const answer = await response.json();
       if (!response.ok) {
-        setError(answer.errors?.photo?.[0] ?? answer.error ?? "The upload was refused.");
+        // The server's reasons are the same three checks, already worded here.
+        setError(response.status === 413 ? t.tooLarge : response.status === 415 ? t.wrongType : t.uploadRefused);
         return;
       }
       router.push(closeHref);
       router.refresh();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Could not reach the server.");
+      setError(reason instanceof Error ? reason.message : t.unreachable);
     } finally {
       setBusy(false);
     }
@@ -72,40 +66,34 @@ export function ProfilePhotoModal({ closeHref, hasPhoto }: { closeHref: string; 
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/80 px-6 py-[60px]">
-      <div className="relative w-full max-w-[840px] bg-white px-6 pb-0 pt-[30px]">
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/80 px-4 py-6 sm:px-6 sm:py-[60px]">
+      <div role="dialog" aria-modal="true" aria-label={t.photoTitle} className="relative w-full max-w-[840px] bg-white px-5 pb-0 pt-[30px] sm:px-6">
         <button
           type="button"
           onClick={close}
-          aria-label="Close"
+          aria-label={t.cancel}
           className="absolute right-5 top-5 text-avalon-text transition-colors hover:text-avalon-text-strong"
         >
           <CloseIcon width={14} height={14} />
         </button>
 
-        <h2 className="text-center text-[23px] font-semibold leading-[20px] text-avalon-text">Your profile photo</h2>
+        <h2 className="px-6 text-center text-[20px] font-semibold leading-[26px] text-avalon-text sm:text-[23px]">{t.photoTitle}</h2>
 
         <div className="mx-auto mt-10 max-w-[644px]">
-          <p className="text-center text-[16px] font-medium text-avalon-text">It is not allowed to publish:</p>
+          <p className="text-center text-[16px] font-medium text-avalon-text">{t.notAllowed}</p>
 
           <ul className="mt-5 bg-[#fdeff1] px-5 py-5 text-[15px] leading-[23px] text-avalon-text">
-            {RULES.map((rule) => (
+            {t.rules.map((rule) => (
               <li key={rule}>— {rule}</li>
             ))}
           </ul>
 
-          <p className="mt-9 text-center text-[15px] leading-[23px] text-avalon-text">
-            Your face must be clearly visible in the photo.
-            <br />
-            All photos and videos you upload must meet these requirements
-            <br />
-            or they may be removed.
-          </p>
+          <p className="mx-auto mt-9 max-w-[480px] text-center text-[15px] leading-[23px] text-avalon-text">{t.faceVisible}</p>
 
           {error && <p className="mt-6 text-center text-[14px] text-avalon-danger">{error}</p>}
         </div>
 
-        <div className="-mx-6 mt-10 flex items-center justify-center gap-4 bg-avalon-surface-hover px-6 py-[16px]">
+        <div className="-mx-5 mt-10 flex items-center justify-center gap-4 bg-avalon-surface-hover px-6 py-[16px] sm:-mx-6">
           <input
             ref={input}
             type="file"
@@ -122,7 +110,7 @@ export function ProfilePhotoModal({ closeHref, hasPhoto }: { closeHref: string; 
             disabled={busy}
             className="h-[41px] rounded-[2px] bg-avalon-primary px-6 text-[15px] font-medium text-white transition-colors hover:bg-avalon-primary-hover disabled:opacity-60"
           >
-            {busy ? "Uploading…" : "Select a Photo"}
+            {busy ? t.uploading : t.selectPhoto}
           </button>
 
           {hasPhoto && (
@@ -132,7 +120,7 @@ export function ProfilePhotoModal({ closeHref, hasPhoto }: { closeHref: string; 
               disabled={busy}
               className="h-[41px] rounded-[2px] px-4 text-[15px] text-avalon-text transition-colors hover:text-avalon-danger disabled:opacity-60"
             >
-              Remove
+              {t.removePhoto}
             </button>
           )}
         </div>

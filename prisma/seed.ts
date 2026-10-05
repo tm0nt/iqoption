@@ -96,6 +96,8 @@ const SETTINGS = [
   },
   {
     key: "brand",
+    /* Edited in the admin; seeding again must not undo that. */
+    keep: true,
     description: "Shown by the engine's shell: company name, support contact and the country it reports.",
     value: { name: "Avalon", supportEmail: "support@localhost", countryId: 30, countryFlag: "BR" },
   },
@@ -107,6 +109,7 @@ const SETTINGS = [
   },
   {
     key: "cashier.methods",
+    keep: true,
     description:
       "The rails the cashier offers, in the order it lists them. `deposit` and `withdrawal` say where each one appears; `days` is the settlement window shown under the name.",
     value: {
@@ -159,11 +162,17 @@ async function main() {
     await prisma.asset.upsert({ where: { id: seed.id }, create: row, update: row });
   }
 
-  for (const setting of SETTINGS) {
+  /*
+   * A setting marked `keep` is only created. The brand and the cashier are
+   * edited from the admin's own screens, and a re-seed that overwrote them
+   * would quietly put back the minimum deposit, the fees and the logo an
+   * operator had changed.
+   */
+  for (const { keep, ...setting } of SETTINGS as (typeof SETTINGS[number] & { keep?: boolean })[]) {
     await prisma.platformSetting.upsert({
       where: { key: setting.key },
       create: setting,
-      update: { value: setting.value, description: setting.description },
+      update: keep ? { description: setting.description } : { value: setting.value, description: setting.description },
     });
   }
 

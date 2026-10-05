@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { CabinetShell } from "@/components/cabinet/CabinetShell";
-import { ProfileNav } from "@/components/cabinet/ProfileNav";
-import { ProfileHeader } from "@/components/cabinet/ProfileHeader";
+import { ProfileFrame } from "@/components/cabinet/ProfileFrame";
 import { NotificationForm } from "@/components/cabinet/NotificationForm";
 import { loadProfile } from "@/lib/cabinet/profile";
 import { readSettings } from "@/lib/cabinet/notifications";
@@ -29,15 +28,9 @@ export default async function NotificationSettingsPage(props: PageProps<"/[lang]
 
   return (
     <CabinetShell locale={lang} account={account} brand={brand}>
-      <ProfileHeader locale={lang} createdAt={user.createdAt} id={user.id} />
-
-      <div className="mt-6 flex gap-12">
-        <ProfileNav locale={lang} />
-        <div className="min-w-0 grow">
-          <h1 className="pb-2 text-[28px] font-semibold text-avalon-text-strong">{copy.profile.notificationSettings}</h1>
-          <NotificationForm settings={settings} locale={lang} />
-        </div>
-      </div>
+      <ProfileFrame locale={lang} createdAt={user.createdAt} id={user.id} title={copy.profile.notificationSettings}>
+        <NotificationForm settings={settings} locale={lang} />
+      </ProfileFrame>
     </CabinetShell>
   );
 }

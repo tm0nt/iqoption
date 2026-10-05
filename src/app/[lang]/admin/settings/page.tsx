@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
 import { SettingsEditor, type AdminSetting } from "@/components/admin/SettingsEditor";
 import { adminCopy } from "@/i18n/admin";
+import { PageHeader } from "@/components/admin/ui";
 
 export async function generateMetadata(props: PageProps<"/[lang]/admin/settings">): Promise<Metadata> {
   const { lang } = await props.params;
@@ -17,10 +18,7 @@ export default async function AdminSettings(props: PageProps<"/[lang]/admin/sett
 
   return (
     <div className="space-y-6">
-      <section>
-        <h1 className="text-[20px] font-semibold">{t.settings.heading}</h1>
-        <p className="mt-1 text-[13px] text-[#a0a1a6]">{t.settings.lead}</p>
-      </section>
+      <PageHeader title={t.settings.heading} lead={t.settings.lead} />
 
       <SettingsEditor
         settings={settings.map((setting) => ({

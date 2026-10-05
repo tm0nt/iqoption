@@ -7,27 +7,24 @@
  * requested twice, and the second request is discovered only when someone tries
  * to pay it.
  *
- * Nothing here pays anybody. There is no payment rail behind it, and the
- * account that approves these does not exist yet; see
- * docs/engine-host-pendencias.md.
+ * The fee, once the month's free withdrawals are used, is part of the amount:
+ * the balance moves by what was asked for and the person is paid that minus the
+ * fee. A refund then gives back exactly what left.
+ *
+ * Nothing here pays anybody. There is no payment rail behind it; an
+ * administrator settles it in the admin's cashier.
  */
 import { NextResponse } from "next/server";
 import { Prisma } from "@/generated/prisma/client";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { REAL } from "@/lib/cabinet/wallet";
-import { cashierSettings } from "@/lib/cabinet/cashier";
+import { cashierSettings, freeWithdrawalsLeft, withdrawalFee } from "@/lib/cabinet/cashier";
+import { parseAmount } from "@/lib/cabinet/money";
+import { formatMoney } from "@/lib/cabinet/format";
+import { cabinetExtra } from "@/i18n/cabinet-extra";
 
 export const dynamic = "force-dynamic";
-
-/** Accepts "1234.5" and "1.234,50"; refuses anything that is not a number. */
-function parseAmount(raw: string): number | null {
-  const cleaned = raw.trim().replace(/\s/g, "").replace(/\.(?=\d{3}\b)/g, "").replace(",", ".");
-  const value = Number(cleaned);
-  if (!Number.isFinite(value) || value <= 0) return null;
-  // Money has two decimal places; more is a typo, not a precision requirement.
-  return Math.round(value * 100) / 100;
-}
 
 export async function POST(request: Request) {
   const session = await auth();
@@ -36,38 +33,52 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
   if (!body) return NextResponse.json({ error: "expected a JSON object" }, { status: 400 });
 
+  const locale = typeof body.locale === "string" ? body.locale : "en";
+  const t = cabinetExtra(locale).cashier;
+  const userId = session.user.platformId;
+
   const settings = await cashierSettings();
-  const method = settings.methods.find(
-    (candidate) => candidate.withdrawal && candidate.id === body.method,
-  );
-  if (!method) return NextResponse.json({ error: "unknown withdrawal method" }, { status: 400 });
+  const method = settings.methods.find((candidate) => candidate.withdrawal && candidate.id === body.method);
+  if (!method) return NextResponse.json({ error: t.unknownMethod, errors: { form: [t.unknownMethod] } }, { status: 400 });
 
+  if (settings.requireKycForWithdrawal) {
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { kycStatus: true } });
+    if (user?.kycStatus !== "APPROVED") {
+      return NextResponse.json({ error: t.kycRequired, errors: { form: [t.kycRequired] } }, { status: 403 });
+    }
+  }
+
+  /*
+   * The real wallet, named rather than taken as the first of the list. Practice
+   * money is not money: it cannot be paid out, and leaving the choice to an
+   * ordering means the day a third wallet is added the cashier quietly starts
+   * moving the wrong one.
+   */
+  const wallet = await prisma.balance.findFirst({ where: { userId, type: REAL } });
+  if (!wallet) return NextResponse.json({ error: t.noRealWallet, errors: { form: [t.noRealWallet] } }, { status: 400 });
+
+  const money = (n: number) => formatMoney(n, wallet.currency, locale);
   const errors: Record<string, string[]> = {};
-  const amount = parseAmount(typeof body.amount === "string" ? body.amount : "");
-  const destination = typeof body.destination === "string" ? body.destination.trim() : "";
+  const amount = parseAmount(body.amount);
+  const destination = typeof body.destination === "string" ? body.destination.trim().slice(0, 255) : "";
 
-  if (amount === null) errors.amount = ["Enter an amount."];
-  else if (amount < settings.minWithdrawal) {
-    errors.amount = [`The smallest withdrawal is ${settings.minWithdrawal}.`];
+  if (amount === null) errors.amount = [t.amountRequired];
+  else if (amount < settings.minWithdrawal) errors.amount = [t.belowMinWithdrawal(money(settings.minWithdrawal))];
+  else if (settings.maxWithdrawal > 0 && amount > settings.maxWithdrawal) {
+    errors.amount = [t.aboveMaxWithdrawal(money(settings.maxWithdrawal))];
   }
-  if (destination.length < 6) {
-    errors.destination = [method.kind === "bank" ? "Enter your PIX key." : "Enter a wallet address."];
-  }
+  if (destination.length < 6) errors.destination = [method.kind === "bank" ? t.pixKeyRequired : t.walletRequired];
 
   if (Object.keys(errors).length > 0) {
     return NextResponse.json({ error: "invalid submission", errors }, { status: 400 });
   }
 
   /*
-   * The real wallet, named rather than taken as the first of the list. Practice
-   * money is not money: it cannot be paid out and a deposit does not land in
-   * it, and leaving the choice to an ordering means the day a third wallet is
-   * added the cashier quietly starts moving the wrong one.
+   * Counted before the write, so two requests at the same instant could both
+   * be free. The cost of that race is one fee not charged, which is the right
+   * way round for it to fail.
    */
-  const wallet = await prisma.balance.findFirst({
-    where: { userId: session.user.platformId, type: REAL },
-  });
-  if (!wallet) return NextResponse.json({ error: "no real wallet" }, { status: 400 });
+  const fee = withdrawalFee(settings, amount!, await freeWithdrawalsLeft(userId, settings));
 
   /*
    * The debit and the record are one transaction, and the debit is conditional
@@ -84,26 +95,24 @@ export async function POST(request: Request) {
 
       return tx.transaction.create({
         data: {
-          userId: session.user.platformId,
+          userId,
           balanceId: wallet.id,
           kind: "WITHDRAWAL",
           status: "PENDING",
           amount: new Prisma.Decimal(amount!),
+          fee: new Prisma.Decimal(fee),
           currency: wallet.currency,
           method: method.name,
           destination,
         },
-        select: { id: true, amount: true, status: true, method: true },
+        select: { id: true, amount: true, fee: true, status: true, method: true },
       });
     });
 
     return NextResponse.json({ transaction: result }, { status: 201 });
   } catch (error) {
     if (error instanceof Error && error.message === "INSUFFICIENT") {
-      return NextResponse.json(
-        { error: "insufficient funds", errors: { amount: ["That is more than your balance."] } },
-        { status: 409 },
-      );
+      return NextResponse.json({ error: "insufficient funds", errors: { amount: [t.insufficient] } }, { status: 409 });
     }
     throw error;
   }

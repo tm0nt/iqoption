@@ -253,6 +253,11 @@ model User {
   promoCodeUses     PromoCodeUse[]
   tradingSessions TradingSession[]
 
+  /// Set when this person promotes the platform. See `Affiliate`.
+  affiliate Affiliate?
+  /// Set when this person arrived through someone else's link.
+  referral  Referral?
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -434,6 +439,22 @@ model Transaction {
   destination String? @db.VarChar(255)
   /// Why it was rejected, or anything else a person needs to read later.
   note        String? @db.Text
+
+  /**
+   * What the platform keeps of a withdrawal, inside `amount`.
+   *
+   * Part of the amount rather than added to it: the balance moves by `amount`
+   * and the person is paid `amount - fee`, so a refund gives back exactly what
+   * left and nobody has to remember that a fee was once charged on top.
+   */
+  fee         Decimal @default(0) @db.Decimal(18, 2)
+  /// A promo code's bonus, credited with the deposit when it is approved.
+  bonus       Decimal @default(0) @db.Decimal(18, 2)
+  /// The code that earned `bonus`. Not a relation: a code can be deleted and
+  /// the record of what it paid should outlive it.
+  promoCodeId Int?    @map("promo_code_id")
+  /// The administrator who settled it, for whoever audits the queue later.
+  settledById Int?    @map("settled_by_id")
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
@@ -777,4 +798,240 @@ model PriceAlertTrigger {
 
   @@index([userId, firedAt])
   @@map("price_alert_triggers")
+}
+
+/// Where someone is in the affiliate programme.
+enum AffiliateStatus {
+  /// Asked to join; an administrator has not looked yet. Links do not track.
+  PENDING
+  ACTIVE
+  /// Stopped by an administrator. Links stop tracking and nothing new accrues,
+  /// but what was already earned stays on the ledger.
+  SUSPENDED
+}
+
+/// How an affiliate is paid.
+enum CommissionPlan {
+  /// A fixed amount once per referred person who qualifies.
+  CPA
+  /// A share of what the platform makes on a referred person's real trades.
+  REVSHARE
+  /// Both.
+  HYBRID
+}
+
+/// One line on an affiliate's ledger.
+enum CommissionKind {
+  CPA
+  REVSHARE
+  /// Written by hand by an administrator, positive or negative.
+  ADJUSTMENT
+}
+
+/**
+ * Someone who brings people to the platform and is paid for it.
+ * Not columns on `User`: most people are never affiliates, and the programme
+ * carries its own settings, status and history. One per person.
+ * The commercial terms are nullable on purpose. Null means "whatever the
+ * programme pays", so changing the default in the admin changes it for every
+ * affiliate who has not been given a deal of their own.
+ */
+model Affiliate {
+  id Int @id @default(autoincrement())
+
+  userId Int  @unique @map("user_id")
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// What goes in the link: `?ref=CODE`. Upper case, letters and digits.
+  code   String          @unique @db.VarChar(32)
+  status AffiliateStatus @default(PENDING)
+
+  plan            CommissionPlan?
+  cpaAmount       Decimal?        @map("cpa_amount") @db.Decimal(18, 2)
+  revsharePercent Decimal?        @map("revshare_percent") @db.Decimal(5, 2)
+
+  /**
+   * Called server to server when something happens to one of their referrals,
+   * with the click's sub id in it, so their own tracker can attribute it. See
+   * src/lib/affiliate/postback.ts for the macros and the checks on the address.
+   */
+  postbackUrl String? @map("postback_url") @db.VarChar(1024)
+
+  /// For the administrators. Never shown to the affiliate.
+  note String? @db.Text
+
+  approvedAt DateTime? @map("approved_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  clicks      AffiliateClick[]
+  referrals   Referral[]
+  commissions AffiliateCommission[]
+  payouts     AffiliatePayout[]
+  postbacks   AffiliatePostback[]
+
+  @@index([status])
+  @@map("affiliates")
+}
+
+/// One visit through an affiliate's link.
+model AffiliateClick {
+  id Int @id @default(autoincrement())
+
+  affiliateId Int       @map("affiliate_id")
+  affiliate   Affiliate @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+
+  /// The affiliate's own label for where the visit came from: `?sub=`.
+  subId       String? @map("sub_id") @db.VarChar(64)
+  utmSource   String? @map("utm_source") @db.VarChar(128)
+  utmMedium   String? @map("utm_medium") @db.VarChar(128)
+  utmCampaign String? @map("utm_campaign") @db.VarChar(128)
+
+  /// The page the link pointed at, and the page the visitor came from.
+  landing String? @db.VarChar(512)
+  referer String? @db.VarChar(512)
+
+  /// Kept to spot one person clicking their own link a thousand times, and to
+  /// count unique visitors. Never shown to the affiliate.
+  ip        String? @db.VarChar(45)
+  userAgent String? @map("user_agent") @db.VarChar(255)
+  /// ISO 3166-1 alpha-2, from the proxy in front of the app when it says.
+  country   String? @db.Char(2)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  referrals Referral[]
+
+  @@index([affiliateId, createdAt])
+  @@map("affiliate_clicks")
+}
+
+/**
+ * Who brought whom.
+ * Written once, when the account is created, from the click the visitor's
+ * browser was carrying. The first deposit is recorded here too, because it is
+ * the moment most affiliate deals are about and asking for it every time from
+ * the transactions table means asking "the earliest approved deposit of each of
+ * these people", which is the expensive query.
+ */
+model Referral {
+  id Int @id @default(autoincrement())
+
+  userId Int  @unique @map("user_id")
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  affiliateId Int       @map("affiliate_id")
+  affiliate   Affiliate @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+
+  clickId Int?            @map("click_id")
+  click   AffiliateClick? @relation(fields: [clickId], references: [id], onDelete: SetNull)
+
+  /// Copied from the click, so the sub-id report does not depend on it.
+  subId String? @map("sub_id") @db.VarChar(64)
+  /// The address the account was created from.
+  ip    String? @db.VarChar(45)
+
+  /// First approved deposit.
+  ftdAt     DateTime? @map("ftd_at")
+  ftdAmount Decimal?  @map("ftd_amount") @db.Decimal(18, 2)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([affiliateId, createdAt])
+  @@map("referrals")
+}
+
+/**
+ * Money an affiliate has earned, or lost.
+ * A ledger rather than a balance column: the balance is the sum of these minus
+ * what has been paid out, so it cannot drift from the record of how it came to
+ * be. Revenue share is signed — a referred person who wins takes the
+ * affiliate's share down with the platform's.
+ * `(kind, sourceId)` is what makes accrual safe to run twice. A revenue-share
+ * line is keyed by the deal it came from and a CPA line by the person it was
+ * paid for, so writing the same one again is refused by the database instead
+ * of paid twice. An adjustment has no source, and MySQL lets any number of
+ * NULLs through a unique index, which is exactly right for those.
+ */
+model AffiliateCommission {
+  id Int @id @default(autoincrement())
+
+  affiliateId Int       @map("affiliate_id")
+  affiliate   Affiliate @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+
+  /// Not a relation: an account can be erased and the line must stay.
+  referredUserId Int? @map("referred_user_id")
+
+  kind     CommissionKind
+  amount   Decimal        @db.Decimal(18, 2)
+  /// What it was computed from: the platform's result on the deal, or the
+  /// deposits that qualified the CPA. Null for an adjustment.
+  base     Decimal?       @db.Decimal(18, 2)
+  /// The percent applied, for revenue share.
+  rate     Decimal?       @db.Decimal(5, 2)
+  currency String         @default("USD")
+
+  /// The deal for REVSHARE, the referred user for CPA, null for ADJUSTMENT.
+  sourceId Int?    @map("source_id")
+  note     String? @db.VarChar(255)
+
+  /// When the money was made — the deal's close, the deposit's approval —
+  /// not when this row was written, which can be later.
+  earnedAt    DateTime  @map("earned_at")
+  /// Until then it is held, so a chargeback or a reversed deposit can be
+  /// caught before it has been paid out.
+  availableAt DateTime  @map("available_at")
+  /// Set by an administrator who takes it back. A reversed line counts for
+  /// nothing but stays visible, so the history explains the balance.
+  reversedAt  DateTime? @map("reversed_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([kind, sourceId])
+  @@index([affiliateId, earnedAt])
+  @@map("affiliate_commissions")
+}
+
+/// An affiliate asking to be paid what they have earned.
+model AffiliatePayout {
+  id Int @id @default(autoincrement())
+
+  affiliateId Int       @map("affiliate_id")
+  affiliate   Affiliate @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+
+  amount      Decimal           @db.Decimal(18, 2)
+  currency    String            @default("USD")
+  method      String            @db.VarChar(64)
+  destination String            @db.VarChar(255)
+  status      TransactionStatus @default(PENDING)
+  note        String?           @db.Text
+
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  settledAt   DateTime? @map("settled_at")
+  settledById Int?      @map("settled_by_id")
+
+  @@index([affiliateId, createdAt])
+  @@index([status])
+  @@map("affiliate_payouts")
+}
+
+/// One server-to-server call to an affiliate's tracker, and how it went.
+model AffiliatePostback {
+  id Int @id @default(autoincrement())
+
+  affiliateId Int       @map("affiliate_id")
+  affiliate   Affiliate @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+
+  /// `registration`, `ftd`, `cpa`.
+  event  String  @db.VarChar(24)
+  url    String  @db.VarChar(1024)
+  /// The HTTP status that came back, or null when nothing did.
+  status Int?
+  error  String? @db.VarChar(255)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([affiliateId, createdAt])
+  @@map("affiliate_postbacks")
 }

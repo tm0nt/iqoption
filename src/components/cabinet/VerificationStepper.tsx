@@ -12,7 +12,7 @@ export type Step = { label: string; note?: string; state: StepState };
 
 export function VerificationStepper({ steps }: { steps: Step[] }) {
   return (
-    <ol className="w-[306px] shrink-0">
+    <ol className="w-full md:w-[306px] md:shrink-0">
       {steps.map((step, index) => {
         const last = index === steps.length - 1;
         const behind = step.state === "done";

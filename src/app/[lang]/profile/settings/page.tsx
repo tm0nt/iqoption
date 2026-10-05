@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { CabinetShell } from "@/components/cabinet/CabinetShell";
-import { ProfileNav } from "@/components/cabinet/ProfileNav";
-import { ProfileHeader } from "@/components/cabinet/ProfileHeader";
+import { ProfileFrame } from "@/components/cabinet/ProfileFrame";
 import { AccountSettingsForm } from "@/components/cabinet/AccountSettingsForm";
 import { loadProfile } from "@/lib/cabinet/profile";
 import { isLocale } from "@/i18n/avalon";
@@ -27,22 +26,16 @@ export default async function AccountSettingsPage(props: PageProps<"/[lang]/prof
 
   return (
     <CabinetShell locale={lang} account={account} brand={brand}>
-      <ProfileHeader locale={lang} createdAt={user.createdAt} id={user.id} />
-
-      <div className="mt-6 flex gap-12">
-        <ProfileNav locale={lang} />
-        <div className="min-w-0 grow">
-          <h1 className="pb-2 text-[28px] font-semibold text-avalon-text-strong">{copy.profile.accountSettings}</h1>
-          <AccountSettingsForm
-            publicProfile={user.publicProfile}
-            /* Nobody has rolled one yet: the e-mail's local part stands in
-               until they do, rather than an empty line where a name goes. */
-            displayName={user.displayName ?? user.email.split("@")[0]}
-            deletionRequested={user.deletionRequestedAt !== null}
-            locale={lang}
-          />
-        </div>
-      </div>
+      <ProfileFrame locale={lang} createdAt={user.createdAt} id={user.id} title={copy.profile.accountSettings}>
+        <AccountSettingsForm
+          publicProfile={user.publicProfile}
+          /* Nobody has rolled one yet: the e-mail's local part stands in
+             until they do, rather than an empty line where a name goes. */
+          displayName={user.displayName ?? user.email.split("@")[0]}
+          deletionRequested={user.deletionRequestedAt !== null}
+          locale={lang}
+        />
+      </ProfileFrame>
     </CabinetShell>
   );
 }
