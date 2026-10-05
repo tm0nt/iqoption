@@ -974,9 +974,15 @@ export const CALLS = {
    * runs with no answer to either, which is observable right now. A reply with
    * the wrong shape is not known-safe — `get-cashbox-counting` is part of the
    * boot sequence, and a throw inside the engine's own code there can stop the
-   * traderoom from opening. Worse is that the panels they feed are not used:
-   * the deposit view is replaced with the platform's own cashier page before
-   * the engine draws it, so nothing on screen depends on these.
+   * traderoom from opening.
+   *
+   * They are also not what anyone looks at. Every door into the billing flow
+   * is replaced with the platform's own cashier page before the dialog can
+   * settle — `dialogSelectAccount` from the header button, `dialogDeposit`
+   * from the left bar's tab — so the page navigates away and the retries stop
+   * with it. That was not true until the tab was covered too: the retries in
+   * the log and the spinner somebody watched were the same thing seen from
+   * two ends. See REPLACED_VIEWS in src/lib/engine/host.ts.
    *
    * What they need is a recording of the live platform's cashier, which needs
    * somebody to open it there. `scripts/record-live.mjs` is the harness.

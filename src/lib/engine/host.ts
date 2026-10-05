@@ -459,19 +459,27 @@ export function bootEngine(options: EngineHostOptions): void {
   /**
    * Views the engine opens that only its own backend can fill.
    *
-   * "Deposit" does not open a cashier: it opens `dialogSelectAccount`, the
-   * first step of Quadcode's billing flow, which then waits on
-   * `billing.trade.avalonbroker.com`. That service is theirs, this platform
-   * has its own cashier, and the dialog asks for nothing over the socket or
-   * over HTTP — so left alone it spins on "Loading…" for as long as anyone is
-   * willing to watch.
+   * "Deposit" does not open a cashier: it opens the first step of Quadcode's
+   * billing flow, which then waits on `billing.trade.avalonbroker.com`. That
+   * service is theirs, this platform has its own cashier, and the dialog asks
+   * for nothing this server can answer — so left alone it spins on "Loading…"
+   * for as long as anyone is willing to watch.
    *
-   * Sending the person to our own page is the honest answer. The view name
-   * comes from the engine's automation API rather than from guessing at
-   * pixels, so this notices exactly the dialog it means and nothing else.
+   * There is more than one door into it, which is how this was got wrong the
+   * first time. The header button opens `dialogSelectAccount`; the left bar's
+   * Deposit tab opens `dialogDeposit`, and only the first was listed here — so
+   * the button worked and the tab still hung. All three names are in the
+   * build's own string table (`dialog[A-Z]…`, eighteen of them), and the
+   * welcome variant is the same flow for an account that has never funded.
+   *
+   * Sending the person to our own page is the honest answer. The names come
+   * from the engine's automation API rather than from guessing at pixels, so
+   * this notices exactly the dialogs it means and nothing else.
    */
   const REPLACED_VIEWS: Record<string, string> = {
     dialogSelectAccount: `/${locale}/counting`,
+    dialogSelectAccountWelcome: `/${locale}/counting`,
+    dialogDeposit: `/${locale}/counting`,
   };
 
   /**
@@ -482,6 +490,8 @@ export function bootEngine(options: EngineHostOptions): void {
    * function call. It stops at the first match, because by then the page is
    * navigating away.
    */
+  let lastSeenView = "";
+
   function watchViews() {
     const engine = shell.GLEngineModule;
     const current = engine?.["automation.getCurrentView"];
@@ -497,7 +507,23 @@ export function bootEngine(options: EngineHostOptions): void {
     }
 
     const destination = REPLACED_VIEWS[name];
-    if (!destination) return;
+    if (!destination) {
+      /*
+       * Every other view, named once in the overlay.
+       *
+       * This is here because the one bug this watcher exists to prevent came
+       * back through a door it did not know about: the Deposit tab opens a
+       * different dialog than the Deposit button, and the symptom — a spinner
+       * that never resolves — says nothing about which. Naming each view as it
+       * opens turns the next one of these into a single reload instead of a
+       * hunt through a 99 MB binary.
+       */
+      if (name && name !== lastSeenView) {
+        lastSeenView = name;
+        statusOnce(`view:${name}`, `view  ${name}`);
+      }
+      return;
+    }
 
     clearInterval(timer);
     status(`view ${name} -> ${destination}`, "good");
