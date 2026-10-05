@@ -32,7 +32,7 @@ import {
 import { leaderboardPosition, leaderboardTop } from "../data/leaderboard.mjs";
 import { registerInTournament, tournamentsInfo, tournamentWinners } from "../data/tournaments.mjs";
 import { featureRows } from "../data/features.mjs";
-import { defaultUserConfig } from "../data/user-settings.mjs";
+import { defaultUserConfig, withBrandTheme } from "../data/user-settings.mjs";
 import { halfSpread, priceAt, round } from "../market/prices.mjs";
 import {
   closedPositions,
@@ -532,12 +532,22 @@ export const CALLS = {
   "get-user-settings": (body, { account }) => ({
     name: "user-settings",
     payload: {
-      configs: (body?.configs ?? []).map((config) => ({
-        name: config.name,
-        version: config.version,
-        config:
-          account.settings.get(config.name)?.config ?? defaultUserConfig(config.name, account),
-      })),
+      configs: (body?.configs ?? []).map((config) => {
+        const stored = account.settings.get(config.name)?.config;
+        return {
+          name: config.name,
+          version: config.version,
+          /*
+           * A stored config answers for everything except the theme, which is
+           * the platform's and is laid over the top. See `withBrandTheme`.
+           */
+          config: stored
+            ? config.name === "traderoom_gl_common"
+              ? withBrandTheme({ ...stored })
+              : stored
+            : defaultUserConfig(config.name, account),
+        };
+      }),
     },
   }),
 

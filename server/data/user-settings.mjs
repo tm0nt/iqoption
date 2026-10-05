@@ -304,13 +304,32 @@ export function defaultUserConfig(name, account) {
   // The wallet is per account, so it cannot live in a static default.
   if (name === "traderoom_gl_common") {
     copy.balanceId = account.activeBalanceId;
-    /*
-     * The theme is the platform's, not this file's. The engine carries four in
-     * its bundle — black, white, blue and grey — and this is the only thing
-     * that decides which one the chart opens in.
-     */
-    const brand = SETTINGS.brand;
-    if (brand?.theme) copy.theme = brand.theme;
+    withBrandTheme(copy);
   }
   return copy;
+}
+
+/**
+ * Puts the platform's theme on a traderoom config, defaults or stored.
+ *
+ * The theme is the platform's, not this file's and not the account's. The
+ * engine carries four in its bundle — black, white, blue and grey — and this
+ * is the only thing that decides which one the chart opens in.
+ *
+ * It has to apply to a *stored* config too, which is the part that was
+ * missing. The engine writes its whole `traderoom_gl_common` back whenever
+ * anything in it changes, theme included, and a stored config used to win
+ * outright — so an account that had ever saved one kept its old theme and the
+ * choice made on the Brand screen did nothing. Setting it to black and being
+ * handed back "blue" is how that surfaced.
+ *
+ * The trade is deliberate: a theme picked inside the engine will not outlive a
+ * reload. On a white-label platform the operator's choice is the one that
+ * should hold, and a setting that silently loses to a client's memory of
+ * itself is indistinguishable from a setting that does not work.
+ */
+export function withBrandTheme(config) {
+  const brand = SETTINGS.brand;
+  if (brand?.theme) config.theme = brand.theme;
+  return config;
 }
