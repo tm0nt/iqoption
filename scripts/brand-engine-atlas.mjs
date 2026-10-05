@@ -30,8 +30,20 @@ const ENGINE = path.join(ROOT, "public", "engine");
 const OUT = path.join(ROOT, "public", "storage", "brand-atlas");
 const UPLOADS = path.join(ROOT, "var", "uploads", "brand");
 
-/** Which brand file belongs in which sprite. Wide wordmarks, then square marks. */
+/**
+ * Which brand file belongs in which sprite.
+ *
+ * `fill` means the logo is fitted to the whole rectangle, which is right for
+ * the wordmarks and icons — the rectangle *is* the logo. `map` is different:
+ * it is the chart's background, a wide canvas with a small mark floating in
+ * the middle, so the logo takes a share of it and the rest stays empty.
+ *
+ * That sprite is called `map`, which is why searching the atlas for anything
+ * logo-shaped never turned it up. The engine's own stylesheet names it —
+ * `.plotBackgroundStyle { bg: 'map'; … }` — inside `glengineaa60ee59.data`.
+ */
 const SLOTS = [
+  { sprite: "map", from: "big", share: 0.5 },
   { sprite: "logobig", from: "big" },
   { sprite: "logobig_black", from: "big" },
   { sprite: "logos/logo", from: "main" },
@@ -87,7 +99,7 @@ export async function brandAtlas(brand, log = console.log) {
     const file = await brandFile(brand, slot.from);
     if (!file) continue;
     if (!work.has(rect.atlas)) work.set(rect.atlas, []);
-    work.get(rect.atlas).push({ ...rect, file, sprite: slot.sprite });
+    work.get(rect.atlas).push({ ...rect, file, sprite: slot.sprite, share: slot.share });
   }
 
   if (work.size === 0) {
@@ -108,8 +120,22 @@ export async function brandAtlas(brand, log = console.log) {
      */
     const layers = [];
     for (const rect of rects) {
+      /*
+       * A share below 1 keeps the logo small inside a large rectangle and
+       * centres it; the default fills the rectangle outright.
+       */
+      const share = rect.share ?? 1;
+      const boxW = Math.round(rect.w * share);
+      const boxH = Math.round(rect.h * share);
       const logo = await sharp(rect.file)
-        .resize(rect.w, rect.h, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
+        .resize(boxW, boxH, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
+        .extend({
+          top: Math.floor((rect.h - boxH) / 2),
+          bottom: Math.ceil((rect.h - boxH) / 2),
+          left: Math.floor((rect.w - boxW) / 2),
+          right: Math.ceil((rect.w - boxW) / 2),
+          background: { r: 0, g: 0, b: 0, alpha: 0 },
+        })
         .png()
         .toBuffer();
       /*
