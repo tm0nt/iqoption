@@ -66,6 +66,8 @@ type Shell = {
     "automation.getViewName"?: (view: unknown) => string;
   };
   __gl?: string[];
+  /** Everything the host has reported, for pasting into a bug report. */
+  __host?: string[];
   MozWebSocket?: typeof WebSocket;
 };
 
@@ -112,6 +114,12 @@ export function bootEngine(options: EngineHostOptions): void {
       statusElement.scrollTop = statusElement.scrollHeight;
     }
     console.log("[host]", line);
+    /*
+     * Also on `window`, because every diagnosis of this page so far has gone
+     * through "reload and tell me what the overlay says". `window.__host` is
+     * one paste instead of a transcription.
+     */
+    shell.__host = lines.map((entry) => entry.line);
   }
 
   /** Reports each distinct request once, so a polling loop cannot flood. */
@@ -557,11 +565,39 @@ export function bootEngine(options: EngineHostOptions): void {
    */
   let lastSeenView = "";
 
+  /** How many polls have gone by without the engine's automation API. */
+  let waitedForAutomation = 0;
+
   function watchViews() {
     const engine = shell.GLEngineModule;
     const current = engine?.["automation.getCurrentView"];
     const nameOf = engine?.["automation.getViewName"];
-    if (typeof current !== "function" || typeof nameOf !== "function") return;
+    if (typeof current !== "function" || typeof nameOf !== "function") {
+      /*
+       * The whole mechanism rests on two functions the engine exposes, and
+       * until now a build that did not expose them made this return quietly
+       * for the life of the page: no view ever named, no dialog ever replaced,
+       * and nothing anywhere saying why. A spinner that never resolves looks
+       * identical whether the watcher is wrong about a name or is not running
+       * at all, and those need different fixes.
+       *
+       * Sixty polls is thirty seconds, which is far longer than the engine
+       * takes to come up.
+       */
+      waitedForAutomation += 1;
+      if (waitedForAutomation === 60) {
+        statusOnce(
+          "automation",
+          "view  the engine never exposed automation.getCurrentView — no dialog can be replaced",
+          "bad",
+        );
+      }
+      return;
+    }
+    if (waitedForAutomation > 0) {
+      waitedForAutomation = 0;
+      statusOnce("automation-ok", "view  watching the engine's views", "good");
+    }
 
     let name: string;
     try {

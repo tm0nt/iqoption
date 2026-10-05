@@ -71,3 +71,6 @@ server/.transcript.jsonl
 
 # Uploaded files. They belong to whoever uploaded them, not to the repository.
 /var
+
+# Mirrored third-party artwork, refetched by scripts/download-artwork.mjs
+public/storage/
