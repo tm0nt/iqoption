@@ -156,26 +156,70 @@ export function bootEngine(options: EngineHostOptions): void {
     const Native = window.WebSocket;
 
     /*
-     * `4010` is the feed saying the ssid is no longer a session.
+     * `4010` is the feed saying the ssid is no longer a trading session.
      *
-     * It means the row is gone or expired — someone logged out, here or in
-     * another tab, or the twelve hours ran out. The engine's own answer to a
-     * closed socket is to open another one, immediately and forever: a tab left
-     * open after a logout reconnected 1175 times before this was noticed, and
-     * every one of those printed the dead token in the feed's log.
+     * The row is gone or expired — someone logged out, here or in another tab,
+     * the twelve hours ran out, or the session was ended from Safety &
+     * Security. The engine's own answer to a closed socket is to open another
+     * one, immediately and forever: a tab left open after a logout reconnected
+     * 1175 times before this was noticed. The retry is inside the WASM, so
+     * nothing it can be told will stop it. The page has to act.
      *
-     * Nothing the engine can be told will stop that, because the retry is
-     * inside the WASM. The page has to leave. One close with this code is
-     * decisive — the feed looks the session up in the database every time, so
-     * it is not a race or a restart — so this navigates on the first one.
+     * **Not by going to the login page.** That was the first attempt and it
+     * built a loop: the web session and the trading session are different
+     * things, and a person whose trading session died usually still has a
+     * perfectly good web session — so the middleware sends anyone signed in
+     * straight back from /login to /traderoom, the engine boots, takes another
+     * 4010, and the page bounces between the two forever without ever drawing.
+     *
+     * A reload is the right move, because minting a trading session is
+     * something the traderoom page does on every load. Once, guarded by a
+     * per-tab flag, so a refusal that survives the reload cannot loop. If it
+     * does survive, this stops and says so — and if the web session is gone
+     * too, the reload never reaches here, because the middleware turns it away
+     * at the door.
      */
+    const RETRIED = "engine:trading-session-retried";
+    const read = () => {
+      try {
+        return sessionStorage.getItem(RETRIED) === "1";
+      } catch {
+        // Private mode, or storage blocked. One reload is still better than a
+        // tab that hammers forever, and the engine's own retry stops once the
+        // page unloads.
+        return false;
+      }
+    };
+    const write = (value: string | null) => {
+      try {
+        if (value === null) sessionStorage.removeItem(RETRIED);
+        else sessionStorage.setItem(RETRIED, value);
+      } catch {
+        /* nothing to do; see above */
+      }
+    };
+
     let leaving = false;
     const sessionGone = () => {
       if (leaving) return;
       leaving = true;
-      status("ws    session is gone — going to the login page", "bad");
-      const next = encodeURIComponent(`${location.pathname}${location.search}`);
-      location.replace(`/${locale}/login?next=${next}`);
+
+      if (!read()) {
+        write("1");
+        status("ws    trading session refused — reloading to mint a new one", "bad");
+        location.reload();
+        return;
+      }
+
+      status(
+        "ws    the feed refused this trading session twice — sign out and in again",
+        "bad",
+      );
+      console.error(
+        "[host] The market feed refused this trading session twice. The web session is " +
+          "probably still valid, which is why this is not a redirect to the login page — " +
+          "signing out and back in is what issues a new trading session.",
+      );
     };
 
     const Redirected = function (this: unknown, url: string | URL, protocols?: string | string[]) {
@@ -185,6 +229,17 @@ export function bootEngine(options: EngineHostOptions): void {
       const target = /\/echo\/websocket/.test(original) ? wsUrl : original;
       status(target === original ? `ws    ${original} (not redirected)` : `ws    ${original} -> ${target}`);
       const socket = protocols === undefined ? new Native(target) : new Native(target, protocols);
+      /*
+       * A socket that has been up for a while is the only evidence that the
+       * reload above worked, so that is when the flag is cleared. Clearing it
+       * on `open` would not do: the feed accepts the connection first and
+       * refuses the session a moment later.
+       */
+      socket.addEventListener("open", () => {
+        setTimeout(() => {
+          if (!leaving && socket.readyState === Native.OPEN) write(null);
+        }, 15_000);
+      });
       socket.addEventListener("close", (event) => {
         if (event.code === 4010) sessionGone();
       });
@@ -478,9 +533,19 @@ export function bootEngine(options: EngineHostOptions): void {
    */
   const REPLACED_VIEWS: Record<string, string> = {
     dialogSelectAccount: `/${locale}/counting`,
-    dialogSelectAccountWelcome: `/${locale}/counting`,
     dialogDeposit: `/${locale}/counting`,
   };
+
+  /*
+   * `dialogSelectAccountWelcome` is deliberately not in that table.
+   *
+   * It was, briefly, on the reasoning that it is the same billing flow for an
+   * account that has never funded. That is a guess, and its name says it may
+   * open *at boot* for a new account — which is the one moment when sending
+   * the person to the cashier means they can never reach the traderoom at all.
+   * The watcher below names every view it does not replace, so if it ever
+   * appears the log will say so and it can be added on evidence.
+   */
 
   /**
    * Watches what the engine is showing.
