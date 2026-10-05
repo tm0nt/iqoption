@@ -92,9 +92,32 @@ volta ao saldo na mesma transação. Um código promocional `deposit_bonus` (com
 pedido e o bônus é creditado junto com o depósito, na aprovação, uma vez por
 pessoa e código.
 
-O que **continua faltando**: provedor de pagamento. Aprovar é a afirmação de que
-o dinheiro chegou — nada aqui verifica que chegou. Para operar de verdade falta
-conciliação automática com o provedor.
+O que **continua faltando**: provedor de pagamento para PIX e cripto. Aprovar é
+a afirmação de que o dinheiro chegou — nada aqui verifica que chegou. Para
+operar de verdade falta conciliação automática com o provedor.
+
+**Cartão** já tem a estrutura inteira, atrás de um processador plugável
+(`src/lib/payments/cards/`): um meio do tipo "Cartão" em Limites e taxas (só
+depósito), cartões salvos em Métodos de pagamento, e o depósito cobrando o
+cartão escolhido. A resposta do processador decide: aprovado passa pelo mesmo
+`settleTransaction` da aprovação manual (carteira, bônus, FTD do afiliado);
+recusado vira `REJECTED` com o motivo; em análise — ou sem resposta — fica na
+fila do caixa. Nunca se guarda número nem CVV: só o token do processador,
+bandeira, 4 últimos dígitos, validade e titular. Travas contra teste de cartão:
+5 cartões ativos, 10 adicionados por dia, 5 recusas por dia fecham o cartão
+para a conta até o dia seguinte; opcionalmente, exigir KYC aprovado antes do
+primeiro depósito com cartão. O admin vê no caixa o cartão, o titular (marcado
+quando não bate com o nome da conta) e a referência do processador.
+
+O único processador hoje é o **sandbox** (`CARD_PROVIDER=sandbox`): os campos
+rodam no navegador e só aceitam cartões de teste, então nem em teste um número
+real sai do navegador. Num build de produção ele é ignorado sem
+`ALLOW_CARD_SANDBOX=1`, porque uma cobrança de teste aprovada credita a
+carteira real. Falta o adaptador de um PSP de verdade — os campos dele (iframe
+do processador) no lugar de `CardForm`, as três chamadas de `CardProvider` e um
+webhook para as cobranças que ficam em análise. Stripe e Mercado Pago costumam
+proibir corretoras de opções binárias nos termos; o mais provável é um PSP de
+alto risco.
 
 ### 3. A liquidação não é transacional
 
@@ -216,8 +239,9 @@ aqui, não embutidas.
 
 O que **não** está pronto nelas:
 
-- **Nenhum provedor de pagamento.** Depósitos e saques são resolvidos à mão no
-  caixa do admin; veja o item 2.
+- **Nenhum provedor de pagamento real.** PIX, cripto e saques são resolvidos à
+  mão no caixa do admin; cartão funciona com o processador sandbox e espera um
+  PSP de verdade. Veja o item 2.
 - **Conferência automática de documento.** O envio existe — frente, verso
   (menos passaporte) e selfie segurando o documento, com os documentos aceitos
   por país editáveis em Verificação (KYC) no admin; CPF conferido pelos dígitos
@@ -227,8 +251,10 @@ O que **não** está pronto nelas:
   dono e a administradores; num deploy com mais de uma máquina ou disco
   efêmero (Vercel) esse diretório precisa virar um bucket privado.
 - **Logos de bandeiras de cartão.** O original alinha Visa e Mastercard no
-  rodapé do depósito. São marcas de terceiros e exibi-las afirmaria uma relação
-  de pagamento que não existe; a linha diz o que é verdade no lugar.
+  rodapé do depósito. São marcas de terceiros; os cartões salvos aparecem com
+  um selo com o nome da bandeira na cor dela, e o rodapé diz o que acontece com
+  o cartão. Os ícones dos meios (`/storage/cashier/methods/*.svg`, como
+  `pix.svg` e `bitcoin.svg`) não estão no repositório e respondem 404.
 
 ## Verificação em duas etapas
 
