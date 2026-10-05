@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { cabinetCopy } from "@/i18n/cabinet";
 import Link from "next/link";
 import { AccountDrawer, type DrawerAccount } from "./AccountDrawer";
 import { UserIcon } from "./icons";
@@ -101,7 +102,7 @@ export function CabinetShell({
             <button
               type="button"
               onClick={() => setMenuOpen(true)}
-              aria-label="Account menu"
+              aria-label={cabinetCopy(locale).nav.accountMenu}
               className="flex size-8 items-center justify-center overflow-hidden rounded-full bg-avalon-surface-hover text-avalon-border-muted"
             >
               <UserIcon width={18} height={18} />

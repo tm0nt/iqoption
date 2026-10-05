@@ -4,20 +4,24 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { CabinetShell } from "@/components/cabinet/CabinetShell";
 import { ProfileNav } from "@/components/cabinet/ProfileNav";
+import { ProfileHeader } from "@/components/cabinet/ProfileHeader";
 import { ProfilePhotoModal } from "@/components/cabinet/ProfilePhotoModal";
 import { prisma } from "@/lib/db";
 import { activeWallet } from "@/lib/cabinet/wallet";
 import { isLocale } from "@/i18n/avalon";
+import { cabinetCopy } from "@/i18n/cabinet";
 
-export const metadata: Metadata = { title: "Personal Data" };
+/*
+ * The tab title follows the page's language, which a static `metadata` cannot
+ * do: it is evaluated once, before anyone has asked for a locale.
+ */
+export async function generateMetadata(props: PageProps<"/[lang]/profile/personal">): Promise<Metadata> {
+  const { lang } = await props.params;
+  return { title: cabinetCopy(lang).nav.personalData };
+}
 export const dynamic = "force-dynamic";
 
 const MONEY = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-/** "October 2, 2026", as the live page writes the registration date. */
-function longDate(date: Date) {
-  return date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
-}
 
 /** "02.10.2026", as the account-statement range writes it. */
 function shortDate(date: Date) {
@@ -78,11 +82,7 @@ export default async function PersonalDataPage(props: PageProps<"/[lang]/profile
         verified: user.emailVerified !== null,
       }}
     >
-      <p className="pt-7 text-right text-[12px] leading-5 text-avalon-text">
-        Date registered: {longDate(user.createdAt)}
-        <br />
-        Profile ID: {user.id}
-      </p>
+      <ProfileHeader locale={lang} createdAt={user.createdAt} id={user.id} />
 
       <div className="mt-6 flex gap-12">
         <ProfileNav locale={lang} />

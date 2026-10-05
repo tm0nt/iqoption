@@ -3,13 +3,22 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CabinetShell } from "@/components/cabinet/CabinetShell";
 import { ProfileNav } from "@/components/cabinet/ProfileNav";
+import { ProfileHeader } from "@/components/cabinet/ProfileHeader";
 import { ProfileSection } from "@/components/cabinet/ProfileSection";
 import { SessionList, type SessionRow } from "@/components/cabinet/SessionList";
 import { loadProfile, longDate } from "@/lib/cabinet/profile";
 import { prisma } from "@/lib/db";
 import { isLocale } from "@/i18n/avalon";
+import { cabinetCopy } from "@/i18n/cabinet";
 
-export const metadata: Metadata = { title: "Safety & Security" };
+/*
+ * The tab title follows the page's language, which a static `metadata` cannot
+ * do: it is evaluated once, before anyone has asked for a locale.
+ */
+export async function generateMetadata(props: PageProps<"/[lang]/profile/security">): Promise<Metadata> {
+  const { lang } = await props.params;
+  return { title: cabinetCopy(lang).profile.safetySecurity };
+}
 export const dynamic = "force-dynamic";
 
 /**
@@ -44,6 +53,7 @@ export default async function SecurityPage(props: PageProps<"/[lang]/profile/sec
   const { lang } = await props.params;
   if (!isLocale(lang)) notFound();
 
+  const copy = cabinetCopy(lang);
   const { user, account } = await loadProfile(lang, "security");
 
   const rows = await prisma.tradingSession.findMany({
@@ -64,17 +74,13 @@ export default async function SecurityPage(props: PageProps<"/[lang]/profile/sec
 
   return (
     <CabinetShell locale={lang} account={account}>
-      <p className="pt-7 text-right text-[12px] leading-5 text-avalon-text">
-        Date registered: {longDate(user.createdAt)}
-        <br />
-        Profile ID: {user.id}
-      </p>
+      <ProfileHeader locale={lang} createdAt={user.createdAt} id={user.id} />
 
       <div className="mt-6 flex gap-12">
         <ProfileNav locale={lang} />
 
         <div className="min-w-0 grow">
-          <h1 className="pb-2 text-[28px] font-semibold text-avalon-text-strong">Safety &amp; Security</h1>
+          <h1 className="pb-2 text-[28px] font-semibold text-avalon-text-strong">{copy.profile.safetySecurity}</h1>
 
           <ProfileSection title="2-Step Authentication">
             <p>You will receive an extra confirmation code to log in to your account.</p>

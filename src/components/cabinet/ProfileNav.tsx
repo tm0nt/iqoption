@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { cabinetCopy } from "@/i18n/cabinet";
 
 /**
  * The sub-navigation down the left of every profile page.
@@ -10,22 +11,29 @@ import { usePathname } from "next/navigation";
  * teal — the live site marks the current page by colour alone, with no bar or
  * background, which is why the active link carries no other treatment here.
  */
-const ITEMS = [
-  { slug: "personal", label: "Personal Data" },
-  { slug: "subscribes", label: "Notification Settings" },
-  { slug: "settings", label: "Account Settings" },
-  { slug: "socials", label: "Social Networks" },
-  { slug: "payments", label: "Payment Methods" },
-  { slug: "security", label: "Safety & Security" },
-];
+/** The six, in the order the live page lists them. */
+const SLUGS = ["personal", "subscribes", "settings", "socials", "payments", "security"] as const;
 
 export function ProfileNav({ locale }: { locale: string }) {
   const pathname = usePathname();
+  const copy = cabinetCopy(locale);
+
+  const items = SLUGS.map((slug) => ({
+    slug,
+    label: {
+      personal: copy.nav.personalData,
+      subscribes: copy.profile.notificationSettings,
+      settings: copy.profile.accountSettings,
+      socials: copy.profile.socialNetworks,
+      payments: copy.profile.paymentMethods,
+      security: copy.profile.safetySecurity,
+    }[slug],
+  }));
 
   return (
     <nav className="w-[240px] shrink-0">
       <ul>
-        {ITEMS.map(({ slug, label }) => {
+        {items.map(({ slug, label }) => {
           const href = `/${locale}/profile/${slug}`;
           const active = pathname === href;
           return (

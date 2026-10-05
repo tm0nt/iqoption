@@ -2,10 +2,19 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { CabinetShell } from "@/components/cabinet/CabinetShell";
 import { ProfileNav } from "@/components/cabinet/ProfileNav";
-import { loadProfile, longDate } from "@/lib/cabinet/profile";
+import { ProfileHeader } from "@/components/cabinet/ProfileHeader";
+import { loadProfile } from "@/lib/cabinet/profile";
 import { isLocale } from "@/i18n/avalon";
+import { cabinetCopy } from "@/i18n/cabinet";
 
-export const metadata: Metadata = { title: "Social Networks" };
+/*
+ * The tab title follows the page's language, which a static `metadata` cannot
+ * do: it is evaluated once, before anyone has asked for a locale.
+ */
+export async function generateMetadata(props: PageProps<"/[lang]/profile/socials">): Promise<Metadata> {
+  const { lang } = await props.params;
+  return { title: cabinetCopy(lang).profile.socialNetworks };
+}
 export const dynamic = "force-dynamic";
 
 /**
@@ -20,21 +29,18 @@ export default async function SocialNetworksPage(props: PageProps<"/[lang]/profi
   const { lang } = await props.params;
   if (!isLocale(lang)) notFound();
 
+  const copy = cabinetCopy(lang);
   const { user, account } = await loadProfile(lang, "socials");
 
   return (
     <CabinetShell locale={lang} account={account}>
-      <p className="pt-7 text-right text-[12px] leading-5 text-avalon-text">
-        Date registered: {longDate(user.createdAt)}
-        <br />
-        Profile ID: {user.id}
-      </p>
+      <ProfileHeader locale={lang} createdAt={user.createdAt} id={user.id} />
 
       <div className="mt-6 flex gap-12">
         <ProfileNav locale={lang} />
 
         <div className="min-w-0 grow">
-          <h1 className="pb-2 text-[28px] font-semibold text-avalon-text-strong">Social Networks</h1>
+          <h1 className="pb-2 text-[28px] font-semibold text-avalon-text-strong">{copy.profile.socialNetworks}</h1>
 
           <p className="max-w-[640px] pt-5 text-[14px] leading-[22px] text-avalon-text">
             You can use your social media accounts to log in to our site, as well as to share your

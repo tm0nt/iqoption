@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { signOut } from "next-auth/react";
+import { cabinetCopy } from "@/i18n/cabinet";
 import {
   CloseIcon,
   LogoutIcon,
@@ -50,19 +51,21 @@ export function AccountDrawer({
    * comes back when there is a channel for it to open; an item that goes
    * nowhere is worse than no item.
    */
+  const copy = cabinetCopy(locale).nav;
+
   const items = [
-    { href: `/${locale}/profile/personal`, label: "Personal Data", Icon: PersonalCircleIcon },
-    { href: `/${locale}/verification`, label: "Verification", Icon: VerificationIcon, alert: !account.verified },
-    { href: `/${locale}/portfolio`, label: "Portfolio", Icon: PortfolioIcon },
-    { href: `/${locale}/withdrawal`, label: "Withdraw Funds", Icon: WithdrawCircleIcon },
-    { href: `/${locale}/transactions`, label: "Balance History", Icon: OperationsCircleIcon },
-    { href: `/${locale}/trading`, label: "Trading History", Icon: TradingCircleIcon },
+    { href: `/${locale}/profile/personal`, label: copy.personalData, Icon: PersonalCircleIcon },
+    { href: `/${locale}/verification`, label: copy.verification, Icon: VerificationIcon, alert: !account.verified },
+    { href: `/${locale}/portfolio`, label: copy.portfolio, Icon: PortfolioIcon },
+    { href: `/${locale}/withdrawal`, label: copy.withdrawFunds, Icon: WithdrawCircleIcon },
+    { href: `/${locale}/transactions`, label: copy.balanceHistory, Icon: OperationsCircleIcon },
+    { href: `/${locale}/trading`, label: copy.tradingHistory, Icon: TradingCircleIcon },
   ];
 
   return (
     <>
       {/* Closes on a click anywhere else, which is how the live drawer behaves. */}
-      {open && <button type="button" aria-label="Close menu" onClick={onClose} className="fixed inset-0 z-40 cursor-default" />}
+      {open && <button type="button" aria-label={copy.closeMenu} onClick={onClose} className="fixed inset-0 z-40 cursor-default" />}
 
       <aside
         aria-hidden={!open}
@@ -78,7 +81,7 @@ export function AccountDrawer({
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={copy.close}
             className="ml-auto text-avalon-text transition-colors hover:text-avalon-text-strong"
           >
             <CloseIcon width={14} height={14} />
@@ -99,7 +102,7 @@ export function AccountDrawer({
             <span className="flex size-4 shrink-0 items-center justify-center rounded-full bg-avalon-danger text-[10px] font-bold text-white">
               !
             </span>
-            Add personal info
+            {copy.addPersonalInfo}
           </Link>
         )}
 
@@ -109,14 +112,14 @@ export function AccountDrawer({
             onClick={onClose}
             className="flex h-[50px] flex-1 items-center justify-center rounded-[2px] bg-avalon-primary text-[14px] font-medium text-white transition-colors hover:bg-avalon-primary-hover"
           >
-            Deposit
+            {copy.deposit}
           </Link>
           <Link
             href={`/${locale}/traderoom`}
             onClick={onClose}
             className="flex h-[50px] flex-1 items-center justify-center rounded-[2px] bg-avalon-primary text-[14px] font-medium text-white transition-colors hover:bg-avalon-primary-hover"
           >
-            Trade Now
+            {copy.tradeNow}
           </Link>
         </div>
 
@@ -145,7 +148,7 @@ export function AccountDrawer({
             className="flex w-full items-center gap-3 py-[11px] text-[14px] text-avalon-text-strong transition-colors hover:text-avalon-primary"
           >
             <LogoutIcon className="shrink-0 text-avalon-text" width={15} height={16} />
-            Log Out
+            {copy.logOut}
           </button>
         </nav>
       </aside>
