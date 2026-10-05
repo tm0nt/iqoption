@@ -168,6 +168,29 @@ export class Connection {
     this.send({ name: "balances", msg: balancesFrame(this.account) });
   }
 
+  /**
+   * Tells this connection that one of its alerts went off.
+   *
+   * The event, not the list: the panel keeps its own and adds to it. The
+   * settlement loop fires alerts for everyone and calls this only for the
+   * connections that belong to the person whose alert it was.
+   */
+  announceAlert(trigger) {
+    if (!this.account || this.account.userId !== trigger.userId) return;
+
+    this.pushEvent("user-alerts.alert-triggered", {
+      id: trigger.alertId,
+      user_id: trigger.userId,
+      asset_id: trigger.assetId,
+      type: trigger.type,
+      value: trigger.value,
+      // What the market actually was when it crossed, beside what was asked.
+      quote: trigger.quote,
+      activations: Math.max(trigger.activationsLeft, 0),
+      activated_at: Math.floor(Date.now() / 1000),
+    });
+  }
+
   async authenticate(frame) {
     // Two spellings reach us. The older one carries the session id as the whole
     // message; the engine's `authenticate` wraps it in an object alongside a

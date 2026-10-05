@@ -19,6 +19,7 @@
 import { accountsInMemory, loadAccountById, saveBalances } from "../accounts.mjs";
 import { pool } from "../db/pool.mjs";
 import { portfolioEvent, settleDue } from "./positions.mjs";
+import { fireDueAlerts } from "../data/alerts.mjs";
 
 /** How often expiries are checked. */
 const TICK_MS = 1_000;
@@ -111,6 +112,27 @@ export function startSettlement(feed, log = () => {}) {
         console.error(`[avalon] settling ${account.userId} failed:`, error.message);
       }
     }
+
+    /*
+     * Price alerts ride the same tick.
+     *
+     * They are the same kind of promise a deal's expiry is — about the market,
+     * not about anyone's browser — so they are checked for everyone rather
+     * than for whoever happens to be connected. Being *told* is what needs a
+     * connection, and that is what the watchers below are for.
+     *
+     * Unawaited and caught: an alert that fails to fire must not stop a deal
+     * from settling.
+     */
+    fireDueAlerts(feed)
+      .then((fired) => {
+        for (const trigger of fired) {
+          for (const connection of watchers.get(trigger.userId) ?? []) {
+            connection.announceAlert(trigger);
+          }
+        }
+      })
+      .catch((error) => console.error("[avalon] firing alerts failed:", error.message));
   }, TICK_MS);
 
   sweeper = setInterval(() => {

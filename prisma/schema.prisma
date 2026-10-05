@@ -245,6 +245,7 @@ model User {
   transactions    Transaction[]
   tournamentEntries TournamentEntry[]
   priceAlerts       PriceAlert[]
+  alertTriggers     PriceAlertTrigger[]
   promoCodeUses     PromoCodeUse[]
   tradingSessions TradingSession[]
 
@@ -673,6 +674,16 @@ model PriceAlert {
   /// The quote to watch for. Eight decimals, like a quote.
   value Decimal @db.Decimal(18, 8)
 
+  /**
+   * What the instrument cost when the alert was set.
+   *
+   * It is what gives the alert a direction. "Tell me at 1.0855" means
+   * something different from above and from below, and without knowing which
+   * side it started on, an alert set at a price the market is already past
+   * fires the instant it is made.
+   */
+  createdQuote Decimal @map("created_quote") @db.Decimal(18, 8)
+
   createdAt DateTime @default(now()) @map("created_at")
 
   @@index([userId, assetId])
@@ -736,4 +747,30 @@ model PromoCodeUse {
   /// A code is used once per person.
   @@unique([promoCodeId, userId])
   @@map("promo_code_uses")
+}
+
+
+/// An alert that went off. Kept apart from the alert so that deleting one does
+/// not erase the record that it fired — the history tab is a log, and a log
+/// that forgets is not one.
+model PriceAlertTrigger {
+  id Int @id @default(autoincrement())
+
+  /// Null once the alert itself is gone.
+  alertId Int? @map("alert_id")
+
+  userId Int  @map("user_id")
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  assetId Int    @map("asset_id")
+  type    String @default("price") @db.VarChar(24)
+
+  /// What it was watching for, and what the market actually did.
+  value Decimal @db.Decimal(18, 8)
+  quote Decimal @db.Decimal(18, 8)
+
+  firedAt DateTime @default(now()) @map("fired_at")
+
+  @@index([userId, firedAt])
+  @@map("price_alert_triggers")
 }

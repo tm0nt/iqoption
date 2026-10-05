@@ -26,7 +26,10 @@ export async function contentItems(kind, locale, limit = 50) {
   if (hit && Date.now() - hit.at < TTL_MS) return hit.rows;
 
   const rows = await pool().query(
-    `SELECT id, title, summary, body, image_url, link_url, author, category, starts_at, duration_mins, priority, created_at, updated_at
+    `SELECT id, title, summary, body, image_url, link_url, author, category, duration_mins, priority,
+              UNIX_TIMESTAMP(starts_at) AS starts_at,
+              UNIX_TIMESTAMP(created_at) AS created_at,
+              UNIX_TIMESTAMP(updated_at) AS updated_at
        FROM content_items
       WHERE kind = ?
         AND enabled = 1
@@ -48,9 +51,8 @@ export function forgetContent() {
 
 /** Seconds since the epoch, which is how every frame here carries a time. */
 export function epoch(value) {
-  if (!value) return 0;
-  const time = value instanceof Date ? value.getTime() : new Date(value).getTime();
-  return Number.isFinite(time) ? Math.floor(time / 1000) : 0;
+  // Already seconds: the query asks for `UNIX_TIMESTAMP`. See db/pool.mjs.
+  return Number(value) || 0;
 }
 
 /**

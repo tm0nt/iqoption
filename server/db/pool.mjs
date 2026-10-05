@@ -27,6 +27,20 @@ export function pool() {
      * object for DECIMAL columns, and neither survives `JSON.stringify` on the
      * way to the client. Every id and every amount here fits a double.
      */
+    /*
+     * Dates come back as epoch seconds, not as Date objects.
+     *
+     * The database keeps its clock in UTC and this process may not, and the
+     * driver reads a DATETIME back as if it were in the process's own zone.
+     * On a machine at UTC-3 that put the economic calendar, the webinar
+     * schedule, the tournament countdown and the alert history three hours
+     * out — all plausible-looking and all wrong. Setting the connector's
+     * `timezone` to "Z" did not change it.
+     *
+     * So every query here asks for `UNIX_TIMESTAMP(column)` instead, which is
+     * a count of seconds and cannot be in the wrong zone. The wire wants
+     * exactly that anyway.
+     */
     insertIdAsNumber: true,
     decimalAsNumber: true,
     bigIntAsNumber: true,

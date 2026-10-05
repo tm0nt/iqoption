@@ -19,7 +19,8 @@ async function allEvents() {
   if (cache && Date.now() - cache.at < TTL_MS) return cache.rows;
   const rows = await pool().query(
     `SELECT id, country, name, ticker, period, importance, category_group,
-            released_at, actual, forecast, previous, description, asset_ids
+            UNIX_TIMESTAMP(released_at) AS released_at, actual, forecast, previous,
+            description, asset_ids
        FROM calendar_events
       WHERE enabled = 1
       ORDER BY released_at ASC`,
@@ -32,7 +33,8 @@ export function forgetCalendar() {
   cache = null;
 }
 
-const seconds = (value) => (value ? Math.floor(new Date(value).getTime() / 1000) : 0);
+/** Already seconds: the query asks for `UNIX_TIMESTAMP`. See db/pool.mjs. */
+const seconds = (value) => Number(value) || 0;
 
 function readAssets(value) {
   if (Array.isArray(value)) return value;
@@ -68,7 +70,7 @@ export async function calendarEvents(body) {
   });
 
   const now = Date.now();
-  const firstAhead = matching.findIndex((row) => new Date(row.released_at).getTime() >= now);
+  const firstAhead = matching.findIndex((row) => seconds(row.released_at) * 1000 >= now);
   const anchor = firstAhead === -1 ? matching.length : firstAhead;
 
   const offset = Number.isFinite(Number(body?.offset)) ? Number(body.offset) : 0;

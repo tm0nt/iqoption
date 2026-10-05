@@ -326,6 +326,24 @@ O caminho que resta é o de sempre: **gravar a resposta verdadeira**. Exige uma
 conta com saldo real na plataforma deles e clicar em entrar num torneio. Até lá
 o servidor está pronto e só a última porta da interface está fechada.
 
+## Datas no servidor de mercado
+
+O banco guarda a hora em UTC. O driver `mariadb`, sem ser avisado, lê um
+`DATETIME` como se estivesse no fuso do processo — numa máquina em UTC−3, tudo
+saía **três horas adiantado**: calendário econômico, agenda de webinars,
+contagem de torneio e histórico de alertas. Plausível o bastante para passar
+despercebido, e errado.
+
+Ajustar `timezone: "Z"` no conector **não resolveu**. A solução é as consultas
+pedirem `UNIX_TIMESTAMP(coluna)`: é contagem de segundos, não existe fuso
+errado, e é exatamente o que o protocolo quer no fio.
+
+O app web não tem o problema — o Prisma converte certo, verificado comparando a
+mesma linha pelos dois caminhos.
+
+Regra para quem continuar: **no servidor de mercado, data lida do banco é
+`UNIX_TIMESTAMP`.** Nunca um `DATETIME` convertido em `Date`.
+
 ## Sobras do caminho
 
 ### O traderoom em React ficou órfão

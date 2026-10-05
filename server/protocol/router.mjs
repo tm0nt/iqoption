@@ -20,7 +20,7 @@ import {
   setActiveBalance,
 } from "../accounts.mjs";
 import { calendarEvents, calendarEventsInfo, calendarFilters } from "../data/calendar.mjs";
-import { createAlert, deleteAlert, listAlerts } from "../data/alerts.mjs";
+import { createAlert, deleteAlert, listAlerts, listTriggers } from "../data/alerts.mjs";
 import { contentCategories, epoch } from "../data/content.mjs";
 import {
   applyPromoCode,
@@ -619,8 +619,8 @@ export const CALLS = {
     payload: await listAlerts(body, account.userId),
   }),
 
-  "create-alert": async (body, { account, pushEvent }) => {
-    const alert = await createAlert(body, account.userId);
+  "create-alert": async (body, { account, pushEvent, feed }) => {
+    const alert = await createAlert(body, account.userId, feed);
     if (alert.error) return { error: alert.error, status: STATUS.BAD_REQUEST };
 
     /*
@@ -633,6 +633,18 @@ export const CALLS = {
     pushEvent("user-alerts.alert-changed", alert);
     return { name: "alert", payload: alert };
   },
+
+  /**
+   * The alerts that have already gone off, which is the panel's HISTORY tab.
+   *
+   * The call turned up as an unanswered one in the feed's log the first time
+   * that tab was opened. The reply name follows the rule the rest of this
+   * protocol keeps: the call without its `get-`.
+   */
+  "get-triggers": async (body, { account }) => ({
+    name: "triggers",
+    payload: await listTriggers(body, account.userId),
+  }),
 
   /*
    * Not in the recording — nothing was deleted while it ran — so the name is

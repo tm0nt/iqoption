@@ -14,7 +14,8 @@ import { round } from "../market/prices.mjs";
 export const STATUS = { REGISTERING: 2, RUNNING: 3, FINISHED: 5 };
 const STATUS_OF = { REGISTERING: 2, RUNNING: 3, FINISHED: 5 };
 
-const seconds = (value) => (value ? Math.floor(new Date(value).getTime() / 1000) : 0);
+/** Already seconds: the queries ask for `UNIX_TIMESTAMP`. See db/pool.mjs. */
+const seconds = (value) => Number(value) || 0;
 
 function readList(value) {
   if (Array.isArray(value)) return value;
@@ -43,7 +44,9 @@ export async function tournamentsInfo(body, userId) {
     pool().query(
       `SELECT t.id, t.name, t.description, t.image_url, t.status, t.cost, t.rebuy,
               t.rebuy_cost, t.starting_balance, t.prize_pool, t.prize_type,
-              t.currency, t.countries, t.starts_at, t.ends_at,
+              t.currency, t.countries,
+              UNIX_TIMESTAMP(t.starts_at) AS starts_at,
+              UNIX_TIMESTAMP(t.ends_at) AS ends_at,
               (SELECT COUNT(*) FROM tournament_entries e WHERE e.tournament_id = t.id) AS users_count
          FROM tournaments t
         WHERE t.enabled = 1
@@ -157,14 +160,15 @@ export async function registerInTournament(tournamentId, account, force = false)
   if (!Number.isInteger(id) || id <= 0) return { error: "unknown tournament" };
 
   const rows = await pool().query(
-    `SELECT id, name, status, cost, starting_balance, currency, ends_at
+    `SELECT id, name, status, cost, starting_balance, currency,
+              UNIX_TIMESTAMP(ends_at) AS ends_at
        FROM tournaments WHERE id = ? AND enabled = 1 LIMIT 1`,
     [id],
   );
   const tournament = rows[0];
   if (!tournament) return { error: "unknown tournament" };
   if (tournament.status === "FINISHED") return { error: "that tournament is over" };
-  if (new Date(tournament.ends_at).getTime() < Date.now()) return { error: "that tournament is over" };
+  if (seconds(tournament.ends_at) * 1000 < Date.now()) return { error: "that tournament is over" };
 
   /*
    * Registering twice is not an error, it is the same answer again.
