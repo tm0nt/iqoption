@@ -28,6 +28,30 @@ const STATIC_ROOTS = [
   path.join(process.cwd(), "public", "engine-host"),
 ];
 
+/**
+ * The engine's own dictionary, speaking this platform's name.
+ *
+ * Fifteen strings per locale carry the broker's name — the sign-in prompt, the
+ * footer's copyright, the welcome, the "please restart" notice — and they are
+ * the only place the traderoom says a name out loud. Everything else it draws
+ * is a picture.
+ *
+ * `AvalonBay` is skipped, and that is not a detail. It is AvalonBay
+ * Communities, a real company the platform lists as a tradable instrument, so
+ * renaming it would rename somebody else's stock in the asset list.
+ *
+ * Done on the way out rather than in the files: the name is a row, the files
+ * are a mirror of somebody else's build, and rewriting a mirror means the next
+ * refetch silently undoes it.
+ */
+function rebrand(json: string, name: string) {
+  if (!name || name === "Avalon") return json;
+  // JSON.stringify to escape whatever an administrator typed — a quote or a
+  // backslash in the name would otherwise break the document.
+  const safe = JSON.stringify(name).slice(1, -1);
+  return json.replace(/Avalon(?!Bay)/g, safe);
+}
+
 const CONTENT_TYPES: Record<string, string> = {
   ".json": "application/json",
   ".png": "image/png",
@@ -149,13 +173,14 @@ export async function GET(request: Request, context: { params: Promise<{ file: s
    * the wrong language is better than one that will not start.
    */
   if (file === "lang-route-translations.json") {
+    const { brand } = await engineConfig();
     const locale = (new URL(request.url).searchParams.get("locale") ?? "en").replace(/[^a-z]/g, "").slice(0, 5);
     const candidates = [`lang-route-translations.${locale}.json`, file];
     for (const root of STATIC_ROOTS) {
       for (const candidate of candidates) {
         try {
-          const body = await readFile(path.join(root, candidate));
-          return new NextResponse(new Uint8Array(body), {
+          const body = await readFile(path.join(root, candidate), "utf8");
+          return new NextResponse(rebrand(body, brand.name), {
             headers: { "content-type": "application/json", "cache-control": "public, max-age=300" },
           });
         } catch {

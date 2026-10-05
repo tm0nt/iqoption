@@ -72,6 +72,19 @@ const ENGINE_LOGOS: Record<string, string> = {
 export default auth((request) => {
   const { pathname } = request.nextUrl;
 
+  /*
+   * The atlases carry the engine's own wordmark, the big mark behind the chart
+   * and the square icons — drawn from inside the sheet rather than from a file
+   * the page asks for, which is why replacing logo.png never touched them.
+   */
+  const atlas = /^\/engine\/(atlas_[a-z0-9_]+\.(?:png|webp))$/.exec(pathname);
+  if (atlas) {
+    const url = request.nextUrl.clone();
+    url.pathname = `/api/brand/atlas/${atlas[1]}`;
+    url.search = "";
+    return NextResponse.rewrite(url);
+  }
+
   const logo = ENGINE_LOGOS[pathname];
   if (logo) {
     const url = request.nextUrl.clone();
@@ -211,6 +224,12 @@ export const config = {
      */
     "/engine/logo.png",
     "/engine/logo-big.png",
+    /*
+     * And the atlases, which are the engine's own copy of the mark. Only the
+     * generic sheets carry it, but the pattern covers them all rather than
+     * naming hashes that change with every build.
+     */
+    "/engine/:atlas(atlas_[a-z0-9_]+\\.(?:png|webp))",
   ],
 };
 

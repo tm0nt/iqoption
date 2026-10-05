@@ -22,6 +22,25 @@ import { setting } from "@/lib/engine/settings";
 
 export const dynamic = "force-dynamic";
 
+
+/**
+ * Rebuilds the engine's branded atlas, without letting it break the save.
+ *
+ * The traderoom draws its own wordmark from inside a sprite sheet, so a logo
+ * that only reaches `logo.png` leaves the chart still showing the old mark.
+ * This is a best-effort step: the brand row is already written by the time it
+ * runs, and a platform whose atlas failed to rebuild is a platform with an old
+ * logo in one place, not a platform that lost the upload.
+ */
+async function rebuildEngineAtlas(brand: unknown) {
+  try {
+    const { brandAtlas } = await import("../../../../../../scripts/brand-engine-atlas.mjs");
+    await brandAtlas(brand, () => {});
+  } catch (reason) {
+    console.error("[brand] could not rebuild the engine atlas:", reason);
+  }
+}
+
 const MAX_BYTES = 2 * 1024 * 1024;
 export const BRAND_DIR = path.join(process.cwd(), "var", "uploads", "brand");
 
@@ -80,6 +99,10 @@ export async function POST(request: Request) {
     update: { value: { ...brand, [slot]: url } },
     create: { key: "brand", value: { ...brand, [slot]: url } },
   });
+
+  // The engine keeps its own copy of the mark inside a sprite sheet, which no
+  // amount of replacing `logo.png` reaches.
+  await rebuildEngineAtlas({ ...brand, [slot]: url });
 
   // The tab icon is in the root layout's metadata, so the prerendered pages
   // under it have to be told. Same reason as the rename next door.

@@ -12,6 +12,25 @@ import { setting, type Brand } from "@/lib/engine/settings";
 
 export const dynamic = "force-dynamic";
 
+
+/**
+ * Rebuilds the engine's branded atlas, without letting it break the save.
+ *
+ * The traderoom draws its own wordmark from inside a sprite sheet, so a logo
+ * that only reaches `logo.png` leaves the chart still showing the old mark.
+ * This is a best-effort step: the brand row is already written by the time it
+ * runs, and a platform whose atlas failed to rebuild is a platform with an old
+ * logo in one place, not a platform that lost the upload.
+ */
+async function rebuildEngineAtlas(brand: unknown) {
+  try {
+    const { brandAtlas } = await import("../../../../../scripts/brand-engine-atlas.mjs");
+    await brandAtlas(brand, () => {});
+  } catch (reason) {
+    console.error("[brand] could not rebuild the engine atlas:", reason);
+  }
+}
+
 const THEMES = ["black", "white", "blue", "grey"];
 
 export async function GET() {
@@ -112,6 +131,7 @@ export async function PATCH(request: Request) {
    * From a route handler this marks the paths rather than rebuilding them now,
    * so the cost falls on the first visit to each after a rename.
    */
+  await rebuildEngineAtlas(next);
   revalidatePath("/", "layout");
 
   return NextResponse.json({ brand: next });
