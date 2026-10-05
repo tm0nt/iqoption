@@ -28,8 +28,9 @@ function readMethod(value: unknown): CashierMethod | null {
     name: raw.name,
     days: typeof raw.days === "string" ? raw.days : CASHIER_DEFAULTS.methods[0].days,
     deposit: raw.deposit !== false,
-    withdrawal: raw.withdrawal !== false,
-    kind: raw.kind === "crypto" ? "crypto" : "bank",
+    // Money is not paid out to a card here: a card rail only ever takes deposits.
+    withdrawal: raw.kind !== "card" && raw.withdrawal !== false,
+    kind: raw.kind === "crypto" || raw.kind === "card" ? raw.kind : "bank",
   };
 }
 
@@ -63,6 +64,7 @@ export function readCashier(value: unknown): CashierSettings {
     withdrawalFeePercent: num(raw.withdrawalFeePercent, CASHIER_DEFAULTS.withdrawalFeePercent),
     withdrawalFeeFixed: num(raw.withdrawalFeeFixed, CASHIER_DEFAULTS.withdrawalFeeFixed),
     requireKycForWithdrawal: raw.requireKycForWithdrawal === true,
+    requireKycForCard: raw.requireKycForCard === true,
     termsUrl: typeof raw.termsUrl === "string" ? raw.termsUrl : CASHIER_DEFAULTS.termsUrl,
   };
 }

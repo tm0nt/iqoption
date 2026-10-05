@@ -7,6 +7,8 @@ import { cashierSettings, withinLimits } from "@/lib/cabinet/cashier";
 import { loadCabinet } from "@/lib/cabinet/profile";
 import { formatDateTime, formatMoney } from "@/lib/cabinet/format";
 import { prisma } from "@/lib/db";
+import { cardProviderInfo } from "@/lib/payments/cards/provider";
+import { savedCards } from "@/lib/payments/cards/saved";
 import { isLocale } from "@/i18n/avalon";
 import { cabinetCopy } from "@/i18n/cabinet";
 import { cabinetExtra } from "@/i18n/cabinet-extra";
@@ -35,16 +37,22 @@ export default async function DepositPage(props: PageProps<"/[lang]/counting">) 
   const x = cabinetExtra(lang).cashier;
 
   const { user, account, brand, real, wallet } = await loadCabinet(lang, `/${lang}/counting`);
-  const [settings, requests] = await Promise.all([
+  const provider = cardProviderInfo();
+  const [settings, requests, cards] = await Promise.all([
     cashierSettings(),
     prisma.transaction.findMany({
       where: { userId: user.id, kind: "DEPOSIT" },
       orderBy: { createdAt: "desc" },
       take: 10,
     }),
+    provider ? savedCards(user.id, provider.id) : [],
   ]);
 
   const currency = real?.currency ?? wallet?.currency ?? "USD";
+  const methods = settings.methods.filter((method) => method.deposit && (method.kind !== "card" || provider));
+  const k = cabinetExtra(lang).cards;
+  // The answers below describe the rails a person settles by hand; a card is charged on the spot, and says so.
+  const faq = methods.some((method) => method.kind === "card") ? [{ q: k.faqQ, a: k.faqA }, ...f.items] : f.items;
   // A button for an amount the route would refuse is a button that only fails.
   const presets = settings.depositPresets.filter((preset) => withinLimits(preset, settings.minDeposit, settings.maxDeposit));
 
@@ -65,13 +73,17 @@ export default async function DepositPage(props: PageProps<"/[lang]/counting">) 
 
       <div className="mt-5">
         <DepositPanel
-          methods={settings.methods.filter((method) => method.deposit)}
+          // A card rail with no processor behind it could only fail, so it is not offered.
+          methods={methods}
           presets={presets}
           currency={currency}
           minimum={settings.minDeposit}
           maximum={settings.maxDeposit}
           termsUrl={settings.termsUrl}
           locale={lang}
+          cards={cards}
+          cardProvider={provider}
+          holder={[user.firstName, user.lastName].filter(Boolean).join(" ")}
         />
       </div>
 
@@ -83,7 +95,7 @@ export default async function DepositPage(props: PageProps<"/[lang]/counting">) 
         <h2 className="text-center text-[20px] font-bold text-avalon-text">{f.heading}</h2>
 
         <dl className="mx-auto mt-8 max-w-[968px]">
-          {f.items.map((item) => (
+          {faq.map((item) => (
             <div key={item.q} className="border-b border-avalon-surface-hover py-5">
               <dt className="text-[15px] font-medium text-avalon-text-strong">{item.q}</dt>
               <dd className="mt-2 text-[14px] leading-[22px] text-avalon-text">{item.a}</dd>

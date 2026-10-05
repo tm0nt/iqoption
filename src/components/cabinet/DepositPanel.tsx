@@ -9,6 +9,11 @@ import { MethodMark } from "@/components/cabinet/MethodMark";
 import { formatMoney, localeTag } from "@/lib/cabinet/format";
 import { cabinetCopy } from "@/i18n/cabinet";
 import { cabinetExtra } from "@/i18n/cabinet-extra";
+import { expiryLabel, type CardProviderInfo, type SavedCard } from "@/lib/payments/cards/card-types";
+import { CardChip } from "./CardChip";
+import { CardForm } from "./CardForm";
+
+type Done = { ref: string; outcome: "recorded" | "approved" | "pending" };
 
 /**
  * Choosing a rail, an amount, a promo code, and agreeing to the terms.
@@ -20,6 +25,11 @@ import { cabinetExtra } from "@/i18n/cabinet-extra";
  * A promo code that has been checked is tied to the amount it was checked
  * against — its bonus is a percentage of it — so changing the amount takes the
  * check back rather than leaving a bonus on screen that no longer applies.
+ *
+ * A card rail adds the saved cards to choose from, and the card fields for a
+ * new one. Its answer comes back at once — approved, declined, or held for
+ * review — and the screen after it says which, because "recorded" is the
+ * wrong word for money that is already in the balance.
  */
 export function DepositPanel({
   methods,
@@ -29,6 +39,9 @@ export function DepositPanel({
   maximum,
   termsUrl,
   locale,
+  cards,
+  cardProvider,
+  holder,
 }: {
   methods: CashierMethod[];
   presets: number[];
@@ -38,7 +51,14 @@ export function DepositPanel({
   maximum: number;
   termsUrl: string;
   locale: string;
+  /** The person's saved cards, for a card rail. */
+  cards: SavedCard[];
+  /** Null when no card processor is configured, in which case no card rail is offered. */
+  cardProvider: CardProviderInfo | null;
+  /** The account's name, to start the card form's "name on the card" with. */
+  holder: string;
 }) {
+  const k = cabinetExtra(locale).cards;
   const c = cabinetCopy(locale).cashier;
   const x = cabinetExtra(locale).cashier;
   const router = useRouter();
@@ -51,9 +71,15 @@ export function DepositPanel({
   const [checking, setChecking] = useState(false);
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState<Record<string, string[]>>({});
-  const [done, setDone] = useState<string | null>(null);
+  const [done, setDone] = useState<Done | null>(null);
+  const [added, setAdded] = useState<SavedCard[]>([]);
+  const usable = [...added.filter((card) => !cards.some((known) => known.id === card.id)), ...cards];
+  const [cardId, setCardId] = useState<number | null>(cards.find((card) => !card.expired)?.id ?? null);
+  const [addingCard, setAddingCard] = useState(false);
+  const [needKyc, setNeedKyc] = useState(false);
 
   const method = methods.find((candidate) => candidate.id === selected) ?? methods[0];
+  const byCard = method?.kind === "card" && cardProvider !== null;
   const whole = new Intl.NumberFormat(localeTag(locale), { maximumFractionDigits: 0 });
   const money = (n: number) => formatMoney(n, currency, locale);
 
@@ -87,19 +113,33 @@ export function DepositPanel({
     if (busy || !method) return;
     setBusy(true);
     setErrors({});
+    setNeedKyc(false);
 
     try {
       const response = await fetch("/api/cashier/deposit", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ method: method.id, amount, acceptedTerms: accepted, promo: promo.trim(), locale }),
+        body: JSON.stringify({
+          method: method.id,
+          amount,
+          acceptedTerms: accepted,
+          promo: promo.trim(),
+          locale,
+          ...(byCard ? { cardId } : {}),
+        }),
       });
       const body = await response.json().catch(() => null);
       if (!response.ok) {
         setErrors(body?.errors ?? { form: [body?.error ?? c.refused] });
+        setNeedKyc(body?.needKyc === true);
+        // A declined charge is still a row in the history below.
+        if (body?.outcome === "declined") router.refresh();
         return;
       }
-      setDone(body?.transaction?.id ? `#${body.transaction.id}` : "");
+      setDone({
+        ref: body?.transaction?.id ? `#${body.transaction.id}` : "",
+        outcome: body?.outcome === "approved" ? "approved" : body?.outcome === "pending" ? "pending" : "recorded",
+      });
       setPromo("");
       setApplied(null);
       router.refresh();
@@ -159,8 +199,12 @@ export function DepositPanel({
         ) : done !== null ? (
           <div className="py-12 text-center">
             <span className="mx-auto flex size-12 items-center justify-center rounded-full bg-avalon-primary/10 text-[22px] text-avalon-primary">✓</span>
-            <h2 className="mt-4 text-[20px] font-semibold text-avalon-text-strong">{x.depositRecorded(done)}</h2>
-            <p className="mx-auto mt-3 max-w-[440px] text-[14px] leading-[22px] text-avalon-text">{x.depositPendingBody}</p>
+            <h2 className="mt-4 text-[20px] font-semibold text-avalon-text-strong">
+              {done.outcome === "approved" ? k.approvedTitle : done.outcome === "pending" ? k.pendingTitle : x.depositRecorded(done.ref)}
+            </h2>
+            <p className="mx-auto mt-3 max-w-[440px] text-[14px] leading-[22px] text-avalon-text">
+              {done.outcome === "approved" ? k.approvedBody : done.outcome === "pending" ? k.pendingBody : x.depositPendingBody}
+            </p>
             <div className="mt-6 flex flex-wrap justify-center gap-3">
               <button
                 type="button"
@@ -183,6 +227,67 @@ export function DepositPanel({
               <MethodMark method={method} size={32} />
               <h2 className="text-[16px] font-semibold text-avalon-text-strong">{method.name}</h2>
             </div>
+
+            {byCard && (
+              <div className="mt-5">
+                <p className="mb-2 text-[12px] text-avalon-text">{k.payWith}</p>
+                {usable.length > 0 && (
+                  <ul className="flex flex-wrap gap-2">
+                    {usable.map((card) => (
+                      <li key={card.id}>
+                        <button
+                          type="button"
+                          aria-pressed={cardId === card.id}
+                          disabled={card.expired || busy}
+                          onClick={() => {
+                            setCardId(card.id);
+                            setAddingCard(false);
+                          }}
+                          className={`flex h-[46px] items-center gap-2.5 rounded-[2px] border px-3 text-[13px] transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                            cardId === card.id
+                              ? "border-avalon-primary text-avalon-text-strong"
+                              : "border-avalon-surface-hover bg-avalon-surface text-avalon-text hover:border-avalon-border-muted"
+                          }`}
+                        >
+                          <CardChip brand={card.brand} />
+                          <span className="font-mono">•••• {card.last4}</span>
+                          <span className="text-[11px] text-avalon-text">{card.expired ? k.expired : expiryLabel(card)}</span>
+                        </button>
+                      </li>
+                    ))}
+                    {!addingCard && (
+                      <li>
+                        <button
+                          type="button"
+                          onClick={() => setAddingCard(true)}
+                          className="flex h-[46px] items-center gap-1.5 rounded-[2px] border border-dashed border-avalon-border-muted px-4 text-[13px] text-avalon-text-strong transition-colors hover:border-avalon-primary hover:text-avalon-primary"
+                        >
+                          <span className="text-[16px] leading-none">+</span> {k.newCard}
+                        </button>
+                      </li>
+                    )}
+                  </ul>
+                )}
+                {(addingCard || usable.length === 0) && (
+                  <div className="mt-3 max-w-[480px]">
+                    <CardForm
+                      provider={cardProvider}
+                      locale={locale}
+                      holder={holder}
+                      onSaved={(card) => {
+                        setAdded((current) => [card, ...current]);
+                        setCardId(card.id);
+                        setAddingCard(false);
+                        setErrors((current) => ({ ...current, card: [] }));
+                        router.refresh();
+                      }}
+                      onCancel={usable.length > 0 ? () => setAddingCard(false) : undefined}
+                    />
+                  </div>
+                )}
+                <FormError className="mt-2">{error("card")}</FormError>
+              </div>
+            )}
 
             <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:gap-8">
               {presets.length > 0 && (
@@ -289,11 +394,16 @@ export function DepositPanel({
                   </span>
                 </label>
                 <FormError className="mt-2">{error("acceptedTerms") ?? error("form")}</FormError>
+                {needKyc && (
+                  <Link href={`/${locale}/verification`} className="mt-1 inline-block text-[13px] text-avalon-primary hover:underline">
+                    {k.verifyNow} →
+                  </Link>
+                )}
 
                 <button
                   type="button"
                   onClick={submit}
-                  disabled={busy || !accepted}
+                  disabled={busy || !accepted || (byCard && cardId === null)}
                   className="mt-5 h-[46px] w-full rounded-[2px] bg-avalon-primary text-[14px] font-medium text-white transition-colors hover:bg-avalon-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {busy ? c.sending : c.proceed}
@@ -304,10 +414,10 @@ export function DepositPanel({
             {/*
               The live page lines up the card networks' logos here. Those are
               their trademarks and showing them would claim a payment
-              relationship that does not exist, so this says what is true
-              instead.
+              relationship that may not exist, so this says what is true
+              instead — and on a card rail, what happens to the card.
             */}
-            <p className="mt-8 border-t border-avalon-surface-hover pt-5 text-[11px] text-avalon-text">{c.encrypted}</p>
+            <p className="mt-8 border-t border-avalon-surface-hover pt-5 text-[11px] text-avalon-text">{byCard ? k.secure : c.encrypted}</p>
           </>
         )}
       </div>

@@ -78,6 +78,9 @@ export type AdminMoneyCopy = {
     promo: string;
     kyc: string;
     via: string;
+    card: string;
+    holderMismatch: string;
+    processorRef: string;
     user: string;
     cancelled: string;
     creditsWithBonus: (bonus: string) => string;
@@ -109,6 +112,11 @@ export type AdminMoneyCopy = {
     feeExample: (amount: string, fee: string, net: string) => string;
     requireKyc: string;
     requireKycHint: string;
+    requireKycCard: string;
+    requireKycCardHint: string;
+    cardProvider: string;
+    cardProviderNone: string;
+    cardProviderSandbox: string;
     termsUrl: string;
     termsUrlHint: string;
     id: string;
@@ -117,6 +125,7 @@ export type AdminMoneyCopy = {
     kind: string;
     bank: string;
     crypto: string;
+    card: string;
     deposit: string;
     withdrawal: string;
     add: string;
@@ -408,6 +417,9 @@ const en: AdminMoneyCopy = {
     promo: "Promo",
     kyc: "Verification",
     via: "Via affiliate",
+    card: "Card",
+    holderMismatch: "name differs from the account",
+    processorRef: "Processor ref",
     user: "Account",
     cancelled: "cancelled",
     creditsWithBonus: (bonus) => `credits the wallet, plus ${bonus} bonus`,
@@ -438,7 +450,12 @@ const en: AdminMoneyCopy = {
     feeFixed: "Fixed fee after the free ones",
     feeExample: (amount, fee, net) => `A withdrawal of ${amount} after the free ones pays out ${net} (fee ${fee}).`,
     requireKyc: "Require approved verification to withdraw",
-    requireKycHint: "Verification is approved under Users. Deposits are never blocked by this.",
+    requireKycHint: "Verification is reviewed under Verification (KYC). Deposits are never blocked by this.",
+    requireKycCard: "Require approved verification to deposit by card",
+    requireKycCardHint: "A card charged by someone other than its owner comes back as a chargeback. Checking who is paying first is the cheapest defence.",
+    cardProvider: "Card processor",
+    cardProviderNone: "None configured. Set CARD_PROVIDER in the server's environment; until then a card rail is hidden from the deposit page and cards cannot be saved.",
+    cardProviderSandbox: "Sandbox — test mode. Only test cards are accepted and nothing is charged, but an approved test charge credits the real wallet. Never leave this on a live server.",
     termsUrl: "Terms & Conditions link",
     termsUrlHint: "Where the deposit form's checkbox points. Empty shows the words without a link.",
     id: "Id",
@@ -447,6 +464,7 @@ const en: AdminMoneyCopy = {
     kind: "Kind",
     bank: "Bank / PIX",
     crypto: "Crypto",
+    card: "Card",
     deposit: "Deposit",
     withdrawal: "Withdrawal",
     add: "Add a method",
@@ -745,6 +763,9 @@ const pt: AdminMoneyCopy = {
     promo: "Promo",
     kyc: "Verificação",
     via: "Via afiliado",
+    card: "Cartão",
+    holderMismatch: "titular diferente da conta",
+    processorRef: "Ref. do processador",
     user: "Conta",
     cancelled: "cancelado",
     creditsWithBonus: (bonus) => `credita a carteira, mais ${bonus} de bônus`,
@@ -775,7 +796,12 @@ const pt: AdminMoneyCopy = {
     feeFixed: "Taxa fixa após os grátis",
     feeExample: (amount, fee, net) => `Um saque de ${amount} depois dos grátis paga ${net} (taxa ${fee}).`,
     requireKyc: "Exigir verificação aprovada para sacar",
-    requireKycHint: "A verificação é aprovada em Usuários. Depósitos nunca são bloqueados por isso.",
+    requireKycHint: "A verificação é revisada em Verificação (KYC). Depósitos nunca são bloqueados por isso.",
+    requireKycCard: "Exigir verificação aprovada para depositar com cartão",
+    requireKycCardHint: "Um cartão cobrado por quem não é o dono volta como chargeback. Conferir quem está pagando antes é a defesa mais barata.",
+    cardProvider: "Processador de cartão",
+    cardProviderNone: "Nenhum configurado. Defina CARD_PROVIDER no ambiente do servidor; até lá o meio cartão fica escondido no depósito e não é possível salvar cartões.",
+    cardProviderSandbox: "Sandbox — modo de teste. Só cartões de teste são aceitos e nada é cobrado, mas uma cobrança de teste aprovada credita a carteira real. Nunca deixe ligado num servidor em produção.",
     termsUrl: "Link dos Termos e Condições",
     termsUrlHint: "Para onde aponta a caixa de seleção do depósito. Vazio mostra o texto sem link.",
     id: "Id",
@@ -784,6 +810,7 @@ const pt: AdminMoneyCopy = {
     kind: "Tipo",
     bank: "Banco / PIX",
     crypto: "Cripto",
+    card: "Cartão",
     deposit: "Depósito",
     withdrawal: "Saque",
     add: "Adicionar meio",
@@ -1082,6 +1109,9 @@ const es: AdminMoneyCopy = {
     promo: "Promo",
     kyc: "Verificación",
     via: "Vía afiliado",
+    card: "Tarjeta",
+    holderMismatch: "titular distinto de la cuenta",
+    processorRef: "Ref. del procesador",
     user: "Cuenta",
     cancelled: "cancelado",
     creditsWithBonus: (bonus) => `acredita la billetera, más ${bonus} de bono`,
@@ -1112,7 +1142,12 @@ const es: AdminMoneyCopy = {
     feeFixed: "Comisión fija tras los gratis",
     feeExample: (amount, fee, net) => `Un retiro de ${amount} tras los gratis paga ${net} (comisión ${fee}).`,
     requireKyc: "Exigir verificación aprobada para retirar",
-    requireKycHint: "La verificación se aprueba en Usuarios. Los depósitos nunca se bloquean por esto.",
+    requireKycHint: "La verificación se revisa en Verificación (KYC). Los depósitos nunca se bloquean por esto.",
+    requireKycCard: "Exigir verificación aprobada para depositar con tarjeta",
+    requireKycCardHint: "Una tarjeta cobrada por alguien que no es su titular vuelve como contracargo. Comprobar quién paga primero es la defensa más barata.",
+    cardProvider: "Procesador de tarjetas",
+    cardProviderNone: "Ninguno configurado. Define CARD_PROVIDER en el entorno del servidor; hasta entonces el medio tarjeta se oculta en el depósito y no se pueden guardar tarjetas.",
+    cardProviderSandbox: "Sandbox — modo de prueba. Solo se aceptan tarjetas de prueba y no se cobra nada, pero un cobro de prueba aprobado acredita la billetera real. Nunca lo dejes activo en un servidor en producción.",
     termsUrl: "Enlace de Términos y Condiciones",
     termsUrlHint: "A dónde apunta la casilla del depósito. Vacío muestra el texto sin enlace.",
     id: "Id",
@@ -1121,6 +1156,7 @@ const es: AdminMoneyCopy = {
     kind: "Tipo",
     bank: "Banco / PIX",
     crypto: "Cripto",
+    card: "Tarjeta",
     deposit: "Depósito",
     withdrawal: "Retiro",
     add: "Añadir método",

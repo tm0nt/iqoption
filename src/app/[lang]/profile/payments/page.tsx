@@ -9,6 +9,9 @@ import { isLocale } from "@/i18n/avalon";
 import { cabinetCopy } from "@/i18n/cabinet";
 import { cabinetExtra } from "@/i18n/cabinet-extra";
 import { formatLongDate } from "@/lib/cabinet/format";
+import { cardProviderInfo } from "@/lib/payments/cards/provider";
+import { savedCards } from "@/lib/payments/cards/saved";
+import { SavedCardsPanel } from "@/components/cabinet/SavedCardsPanel";
 
 /*
  * The tab title follows the page's language, which a static `metadata` cannot
@@ -45,6 +48,8 @@ export default async function PaymentMethodsPage(props: PageProps<"/[lang]/profi
    * moved. Grouping the transactions by method gives the same answer without a
    * second table that could disagree with the first.
    */
+  const provider = cardProviderInfo();
+  const cards = provider ? await savedCards(user.id, provider.id) : [];
   const recent = await prisma.transaction.groupBy({
     by: ["method", "currency"],
     where: { userId: user.id },
@@ -77,8 +82,15 @@ export default async function PaymentMethodsPage(props: PageProps<"/[lang]/profi
             {copy.payments.linkedCards}
           </h2>
 
-          {/* Always empty: no card network is connected, so nothing can be
-              stored and nothing should pretend to be. */}
+          {provider ? (
+            <SavedCardsPanel
+              cards={cards}
+              provider={provider}
+              holder={[user.firstName, user.lastName].filter(Boolean).join(" ")}
+              locale={lang}
+            />
+          ) : (
+          /* Without a processor nothing can be stored, and nothing should pretend to be. */
           <Nothing
             icon={
               <svg width="40" height="32" viewBox="0 0 40 32" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
@@ -91,6 +103,7 @@ export default async function PaymentMethodsPage(props: PageProps<"/[lang]/profi
             title={copy.payments.noCards}
             line={copy.payments.noCardsBody}
           />
+          )}
         </section>
 
         <section className="pt-6">
@@ -129,9 +142,11 @@ export default async function PaymentMethodsPage(props: PageProps<"/[lang]/profi
           )}
         </section>
 
-        <p className="max-w-[640px] pt-6 text-[13px] leading-5 text-avalon-text">
-          {copy.payments.byHand}
-        </p>
+        {!provider && (
+          <p className="max-w-[640px] pt-6 text-[13px] leading-5 text-avalon-text">
+            {copy.payments.byHand}
+          </p>
+        )}
       </ProfileFrame>
     </CabinetShell>
   );

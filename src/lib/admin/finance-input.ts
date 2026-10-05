@@ -42,8 +42,8 @@ function method(value: unknown, index: number, errors: string[]): CashierMethod 
     name,
     days: typeof raw.days === "string" && raw.days.trim() ? raw.days.trim().slice(0, 48) : "1 - 3 business days",
     deposit: raw.deposit === true,
-    withdrawal: raw.withdrawal === true,
-    kind: raw.kind === "crypto" ? "crypto" : "bank",
+    withdrawal: raw.kind !== "card" && raw.withdrawal === true,
+    kind: raw.kind === "crypto" || raw.kind === "card" ? raw.kind : "bank",
   };
 }
 
@@ -78,6 +78,7 @@ export function financeInput(body: unknown): { data: CashierSettings } | { error
     withdrawalFeePercent: amount(input.withdrawalFeePercent, "the withdrawal fee percent", errors, { max: 100 }),
     withdrawalFeeFixed: amount(input.withdrawalFeeFixed, "the fixed withdrawal fee", errors),
     requireKycForWithdrawal: input.requireKycForWithdrawal === true,
+    requireKycForCard: input.requireKycForCard === true,
     termsUrl: typeof input.termsUrl === "string" ? input.termsUrl.trim().slice(0, 512) : "",
   };
 

@@ -22,6 +22,17 @@ export function MethodMark({ method, size = 28 }: { method: CashierMethod; size?
    */
   const box = { width: size, height: size } as const;
 
+  if (!icon && method.kind === "card") {
+    return (
+      <span style={box} className="flex shrink-0 items-center justify-center rounded-full bg-avalon-surface-hover text-avalon-text">
+        <svg width="56%" height="56%" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+          <rect x="2.5" y="5" width="19" height="14" rx="2" />
+          <path d="M2.5 9.5h19M6 15h4" />
+        </svg>
+      </span>
+    );
+  }
+
   if (!icon) {
     return (
       <span

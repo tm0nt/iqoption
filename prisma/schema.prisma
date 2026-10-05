@@ -282,6 +282,7 @@ model User {
 
   /// Identity documents sent for review, newest last.
   kycSubmissions KycSubmission[]
+  paymentCards   PaymentCard[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -480,6 +481,12 @@ model Transaction {
   promoCodeId Int?    @map("promo_code_id")
   /// The administrator who settled it, for whoever audits the queue later.
   settledById Int?    @map("settled_by_id")
+
+  /// The saved card a card deposit was charged to. Not a relation, for the
+  /// same reason as `balanceId`: the record outlives the card.
+  cardId      Int?    @map("card_id")
+  /// The payment processor's own id for the charge, to find it on their side.
+  providerRef String? @map("provider_ref") @db.VarChar(191)
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
@@ -1114,4 +1121,42 @@ model KycSubmission {
   /// The same document sent from two accounts is the first thing a reviewer wants to know.
   @@index([country, documentNumber])
   @@map("kyc_submissions")
+}
+
+/**
+ * A card someone saved, as the payment processor describes it back.
+ *
+ * Never the number and never the security code: the card is typed into the
+ * processor's own fields, which hand back a token, and the token is what is
+ * stored and charged. What is kept besides is only what a person needs to
+ * recognise their card — brand, last four digits, expiry, the name on it —
+ * and the processor's fingerprint, which says two tokens are the same card
+ * without saying which card.
+ *
+ * Removing a card stamps `removedAt` rather than deleting the row, so the
+ * deposits charged to it can still say which card that was.
+ */
+model PaymentCard {
+  id Int @id @default(autoincrement())
+
+  userId Int  @map("user_id")
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// Which processor holds it: "sandbox" today, a real one later.
+  provider    String @db.VarChar(32)
+  token       String @db.VarChar(191)
+  fingerprint String @db.VarChar(64)
+
+  brand    String @db.VarChar(16)
+  last4    String @db.Char(4)
+  expMonth Int    @map("exp_month") @db.SmallInt
+  expYear  Int    @map("exp_year") @db.SmallInt
+  holder   String @db.VarChar(64)
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  removedAt DateTime? @map("removed_at")
+
+  @@unique([provider, token])
+  @@index([userId, removedAt])
+  @@map("payment_cards")
 }

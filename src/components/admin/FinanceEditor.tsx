@@ -28,6 +28,7 @@ type Draft = Record<NumberField, string> & {
   presets: string;
   methods: CashierMethod[];
   requireKycForWithdrawal: boolean;
+  requireKycForCard: boolean;
   termsUrl: string;
 };
 
@@ -38,6 +39,7 @@ function draftOf(settings: CashierSettings): Draft {
     presets: settings.depositPresets.join(", "),
     methods: settings.methods,
     requireKycForWithdrawal: settings.requireKycForWithdrawal,
+    requireKycForCard: settings.requireKycForCard,
     termsUrl: settings.termsUrl,
   };
 }
@@ -92,6 +94,7 @@ export function FinanceEditor({ settings, currency, locale }: { settings: Cashie
           .filter(Boolean)
           .map((value) => Number(value.replace(",", "."))),
         requireKycForWithdrawal: draft.requireKycForWithdrawal,
+        requireKycForCard: draft.requireKycForCard,
         termsUrl: draft.termsUrl,
       };
       const response = await fetch("/api/admin/finance", {
@@ -182,6 +185,18 @@ export function FinanceEditor({ settings, currency, locale }: { settings: Cashie
               <span className={`block ${hintClass} !mt-0.5`}>{t.requireKycHint}</span>
             </span>
           </label>
+          <label className="mt-3 flex items-start gap-2.5">
+            <input
+              type="checkbox"
+              checked={draft.requireKycForCard}
+              onChange={(event) => set("requireKycForCard", event.target.checked)}
+              className="mt-0.5 size-4 accent-[var(--accent)]"
+            />
+            <span>
+              <span className="block text-[13px] text-white">{t.requireKycCard}</span>
+              <span className={`block ${hintClass} !mt-0.5`}>{t.requireKycCardHint}</span>
+            </span>
+          </label>
         </Card>
       </div>
 
@@ -224,11 +239,15 @@ export function FinanceEditor({ settings, currency, locale }: { settings: Cashie
               <Field label={t.kind}>
                 <select
                   value={method.kind}
-                  onChange={(event) => setMethod(index, { kind: event.target.value === "crypto" ? "crypto" : "bank" })}
+                  onChange={(event) => {
+                    const kind = event.target.value === "crypto" || event.target.value === "card" ? event.target.value : "bank";
+                    setMethod(index, kind === "card" ? { kind, withdrawal: false } : { kind });
+                  }}
                   className={inputClass}
                 >
                   <option value="bank">{t.bank}</option>
                   <option value="crypto">{t.crypto}</option>
+                  <option value="card">{t.card}</option>
                 </select>
               </Field>
               <div className="flex flex-wrap items-center gap-3 md:pb-1.5">
@@ -245,6 +264,7 @@ export function FinanceEditor({ settings, currency, locale }: { settings: Cashie
                   <input
                     type="checkbox"
                     checked={method.withdrawal}
+                    disabled={method.kind === "card"}
                     onChange={(event) => setMethod(index, { withdrawal: event.target.checked })}
                     className="size-3.5 accent-[var(--accent)]"
                   />

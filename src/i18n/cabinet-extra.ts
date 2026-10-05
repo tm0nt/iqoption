@@ -173,6 +173,55 @@ export type CabinetExtraCopy = {
     fileSize: string;
     failed: string;
   };
+  cards: {
+    add: string;
+    number: string;
+    expiry: string;
+    cvc: string;
+    cvcHint: string;
+    holder: string;
+    save: string;
+    saving: string;
+    cancel: string;
+    remove: string;
+    confirmRemove: string;
+    expires: (date: string) => string;
+    expired: string;
+    added: (date: string) => string;
+    secure: string;
+    testMode: string;
+    testModeBody: string;
+    outcomes: Record<"approve" | "decline" | "funds" | "review", string>;
+    use: string;
+    invalidNumber: string;
+    invalidExpiry: string;
+    expiredCard: string;
+    invalidCvc: string;
+    invalidHolder: string;
+    notTestCard: string;
+    tooMany: (n: number) => string;
+    tooManyToday: string;
+    duplicate: string;
+    refused: string;
+    unavailable: string;
+    failed: string;
+    payWith: string;
+    chooseCard: string;
+    newCard: string;
+    noCardsYet: string;
+    approvedTitle: string;
+    approvedBody: string;
+    pendingTitle: string;
+    pendingBody: string;
+    declined: Record<"declined" | "funds" | "expired" | "error", string>;
+    needKyc: string;
+    verifyNow: string;
+    tooManyDeclines: string;
+    cardExpired: string;
+    chargeNote: (provider: string, card: string) => string;
+    faqQ: string;
+    faqA: string;
+  };
 };
 
 const en: CabinetExtraCopy = {
@@ -341,6 +390,60 @@ const en: CabinetExtraCopy = {
     fileType: "Only JPG, PNG or WebP photos are accepted.",
     fileSize: "That photo is larger than 8 MB.",
     failed: "Could not send that. Try again.",
+  },
+  cards: {
+    add: "Add a card",
+    number: "Card number",
+    expiry: "Expiry (MM/YY)",
+    cvc: "Security code",
+    cvcHint: "Three digits on the back, four on the front of an Amex. Never stored.",
+    holder: "Name on the card",
+    save: "Save card",
+    saving: "Saving…",
+    cancel: "Cancel",
+    remove: "Remove",
+    confirmRemove: "Remove this card?",
+    expires: (date) => `Expires ${date}`,
+    expired: "Expired",
+    added: (date) => `Added ${date}`,
+    secure: "The number and the security code go straight to the payment processor. Only the brand, the last four digits and the expiry are kept here.",
+    testMode: "Test mode",
+    testModeBody: "No real card is accepted and nothing is charged. Use one of the test cards, with any future expiry and any security code:",
+    outcomes: { approve: "approved", decline: "declined by the bank", funds: "insufficient funds", review: "held for review" },
+    use: "Use",
+    invalidNumber: "Check the card number.",
+    invalidExpiry: "Check the expiry date.",
+    expiredCard: "This card has expired.",
+    invalidCvc: "Check the security code.",
+    invalidHolder: "Enter the name as it is printed on the card.",
+    notTestCard: "In test mode only the test cards are accepted.",
+    tooMany: (n) => `You can keep up to ${n} cards. Remove one to add another.`,
+    tooManyToday: "Too many cards added today. Try again tomorrow.",
+    duplicate: "This card is already saved.",
+    refused: "The payment processor refused this card.",
+    unavailable: "Card payments are not available.",
+    failed: "That did not work. Try again.",
+    payWith: "Pay with",
+    chooseCard: "Choose a card.",
+    newCard: "New card",
+    noCardsYet: "No saved cards yet. Add one to deposit.",
+    approvedTitle: "Deposit approved",
+    approvedBody: "The money is already in your real balance.",
+    pendingTitle: "Payment under review",
+    pendingBody: "The payment processor is checking this payment. Your balance is credited as soon as it approves.",
+    declined: {
+      declined: "The bank declined this payment. Try another card.",
+      funds: "Not enough balance or limit on this card.",
+      expired: "This card has expired.",
+      error: "The payment processor did not answer. Nothing was charged; try again.",
+    },
+    needKyc: "Verify your identity before depositing by card.",
+    verifyNow: "Verify now",
+    tooManyDeclines: "Too many declined attempts today. Try again tomorrow or use another method.",
+    cardExpired: "This card has expired. Choose another one.",
+    chargeNote: (provider, card) => `Charged to ${card} via ${provider}.`,
+    faqQ: "And by card?",
+    faqA: "A card is charged on the spot. Approved, the money is in your real balance at once; declined, nothing is charged; held for review, it arrives as soon as the payment processor approves.",
   },
 };
 
@@ -511,6 +614,60 @@ const pt: CabinetExtraCopy = {
     fileSize: "Essa foto tem mais de 8 MB.",
     failed: "Não foi possível enviar. Tente de novo.",
   },
+  cards: {
+    add: "Adicionar cartão",
+    number: "Número do cartão",
+    expiry: "Validade (MM/AA)",
+    cvc: "CVV",
+    cvcHint: "Os 3 dígitos no verso (4 na frente, no American Express). Nunca é guardado.",
+    holder: "Nome impresso no cartão",
+    save: "Salvar cartão",
+    saving: "Salvando…",
+    cancel: "Cancelar",
+    remove: "Remover",
+    confirmRemove: "Remover este cartão?",
+    expires: (date) => `Validade ${date}`,
+    expired: "Vencido",
+    added: (date) => `Adicionado em ${date}`,
+    secure: "O número e o CVV vão direto para o processador de pagamento. Aqui fica só a bandeira, os 4 últimos dígitos e a validade.",
+    testMode: "Modo de teste",
+    testModeBody: "Nenhum cartão real é aceito e nada é cobrado. Use um dos cartões de teste, com qualquer validade futura e qualquer CVV:",
+    outcomes: { approve: "aprovado", decline: "recusado pelo banco", funds: "saldo insuficiente", review: "fica em análise" },
+    use: "Usar",
+    invalidNumber: "Confira o número do cartão.",
+    invalidExpiry: "Confira a validade.",
+    expiredCard: "Este cartão está vencido.",
+    invalidCvc: "Confira o CVV.",
+    invalidHolder: "Digite o nome como está impresso no cartão.",
+    notTestCard: "No modo de teste só os cartões de teste são aceitos.",
+    tooMany: (n) => `Você pode ter até ${n} cartões salvos. Remova um para adicionar outro.`,
+    tooManyToday: "Muitos cartões adicionados hoje. Tente de novo amanhã.",
+    duplicate: "Este cartão já está salvo.",
+    refused: "O processador de pagamento recusou este cartão.",
+    unavailable: "Pagamento com cartão não está disponível.",
+    failed: "Não deu certo. Tente de novo.",
+    payWith: "Pagar com",
+    chooseCard: "Escolha um cartão.",
+    newCard: "Novo cartão",
+    noCardsYet: "Nenhum cartão salvo ainda. Adicione um para depositar.",
+    approvedTitle: "Depósito aprovado",
+    approvedBody: "O valor já está no seu saldo real.",
+    pendingTitle: "Pagamento em análise",
+    pendingBody: "O processador está conferindo este pagamento. O saldo é creditado assim que ele aprovar.",
+    declined: {
+      declined: "O banco recusou este pagamento. Tente outro cartão.",
+      funds: "Saldo ou limite insuficiente neste cartão.",
+      expired: "Este cartão está vencido.",
+      error: "O processador não respondeu. Nada foi cobrado; tente de novo.",
+    },
+    needKyc: "Verifique sua identidade antes de depositar com cartão.",
+    verifyNow: "Verificar agora",
+    tooManyDeclines: "Muitas tentativas recusadas hoje. Tente amanhã ou use outro meio.",
+    cardExpired: "Este cartão está vencido. Escolha outro.",
+    chargeNote: (provider, card) => `Cobrado no ${card} via ${provider}.`,
+    faqQ: "E com cartão?",
+    faqA: "O cartão é cobrado na hora. Aprovado, o valor entra no saldo real na mesma hora; recusado, nada é cobrado; em análise, entra assim que o processador de pagamento aprovar.",
+  },
 };
 
 const es: CabinetExtraCopy = {
@@ -679,6 +836,60 @@ const es: CabinetExtraCopy = {
     fileType: "Solo se aceptan fotos JPG, PNG o WebP.",
     fileSize: "Esa foto pesa más de 8 MB.",
     failed: "No se pudo enviar. Inténtalo de nuevo.",
+  },
+  cards: {
+    add: "Añadir tarjeta",
+    number: "Número de tarjeta",
+    expiry: "Vencimiento (MM/AA)",
+    cvc: "Código de seguridad",
+    cvcHint: "Los 3 dígitos del reverso (4 en el anverso de una Amex). Nunca se guarda.",
+    holder: "Nombre impreso en la tarjeta",
+    save: "Guardar tarjeta",
+    saving: "Guardando…",
+    cancel: "Cancelar",
+    remove: "Quitar",
+    confirmRemove: "¿Quitar esta tarjeta?",
+    expires: (date) => `Vence ${date}`,
+    expired: "Vencida",
+    added: (date) => `Añadida el ${date}`,
+    secure: "El número y el código de seguridad van directo al procesador de pagos. Aquí solo se guarda la marca, los 4 últimos dígitos y el vencimiento.",
+    testMode: "Modo de prueba",
+    testModeBody: "No se acepta ninguna tarjeta real y no se cobra nada. Usa una de las tarjetas de prueba, con cualquier vencimiento futuro y cualquier código:",
+    outcomes: { approve: "aprobada", decline: "rechazada por el banco", funds: "fondos insuficientes", review: "queda en revisión" },
+    use: "Usar",
+    invalidNumber: "Revisa el número de la tarjeta.",
+    invalidExpiry: "Revisa el vencimiento.",
+    expiredCard: "Esta tarjeta está vencida.",
+    invalidCvc: "Revisa el código de seguridad.",
+    invalidHolder: "Escribe el nombre tal como aparece en la tarjeta.",
+    notTestCard: "En modo de prueba solo se aceptan las tarjetas de prueba.",
+    tooMany: (n) => `Puedes guardar hasta ${n} tarjetas. Quita una para añadir otra.`,
+    tooManyToday: "Demasiadas tarjetas añadidas hoy. Inténtalo mañana.",
+    duplicate: "Esta tarjeta ya está guardada.",
+    refused: "El procesador de pagos rechazó esta tarjeta.",
+    unavailable: "El pago con tarjeta no está disponible.",
+    failed: "No funcionó. Inténtalo de nuevo.",
+    payWith: "Pagar con",
+    chooseCard: "Elige una tarjeta.",
+    newCard: "Nueva tarjeta",
+    noCardsYet: "Todavía no hay tarjetas guardadas. Añade una para depositar.",
+    approvedTitle: "Depósito aprobado",
+    approvedBody: "El dinero ya está en tu saldo real.",
+    pendingTitle: "Pago en revisión",
+    pendingBody: "El procesador está revisando este pago. Tu saldo se acredita en cuanto lo apruebe.",
+    declined: {
+      declined: "El banco rechazó este pago. Prueba con otra tarjeta.",
+      funds: "Saldo o límite insuficiente en esta tarjeta.",
+      expired: "Esta tarjeta está vencida.",
+      error: "El procesador no respondió. No se cobró nada; inténtalo de nuevo.",
+    },
+    needKyc: "Verifica tu identidad antes de depositar con tarjeta.",
+    verifyNow: "Verificar ahora",
+    tooManyDeclines: "Demasiados intentos rechazados hoy. Inténtalo mañana o usa otro medio.",
+    cardExpired: "Esta tarjeta está vencida. Elige otra.",
+    chargeNote: (provider, card) => `Cobrado en ${card} vía ${provider}.`,
+    faqQ: "¿Y con tarjeta?",
+    faqA: "La tarjeta se cobra al momento. Aprobado, el dinero entra en tu saldo real enseguida; rechazado, no se cobra nada; en revisión, entra en cuanto el procesador de pagos lo apruebe.",
   },
 };
 

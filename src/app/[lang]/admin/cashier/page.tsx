@@ -6,6 +6,7 @@ import { isLocale } from "@/i18n/avalon";
 import { adminCopy } from "@/i18n/admin";
 import { adminMoneyCopy } from "@/i18n/admin-money";
 import { formatDateTime, formatMoney } from "@/lib/cabinet/format";
+import { cardLabel } from "@/lib/payments/cards/card-types";
 import { CashierQueue, type AdminTransaction } from "@/components/admin/CashierQueue";
 import { LinkTabs, PageHeader, Pager, buttonClass, inputClass } from "@/components/admin/ui";
 
@@ -17,6 +18,26 @@ export async function generateMetadata(props: PageProps<"/[lang]/admin/cashier">
 export const dynamic = "force-dynamic";
 
 const PAGE = 50;
+
+/** Upper-case letters only, accents gone: "José da Silva" and "JOSE DA SILVA" are the same name. */
+const words = (text: string) =>
+  text
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .split(/[^A-Z]+/)
+    .filter(Boolean);
+
+/**
+ * Whether the name on a card is someone other than the account holder: their
+ * first and last names should both be on it. Cards abbreviate middle names,
+ * so only those two are asked for. Unknown when the account has no name yet.
+ */
+function holderDiffers(holder: string, [first, last]: (string | null)[]) {
+  if (!first || !last) return false;
+  const onCard = new Set(words(holder));
+  return ![...words(first).slice(0, 1), ...words(last).slice(-1)].every((word) => onCard.has(word));
+}
 const STATUSES = ["PENDING", "APPROVED", "REJECTED", "CANCELLED"] as const;
 type Status = (typeof STATUSES)[number];
 
@@ -52,7 +73,15 @@ export default async function AdminCashierPage(props: PageProps<"/[lang]/admin/c
       // The queue oldest first, so whoever waited longest is settled first; history newest first.
       orderBy: status === "PENDING" ? { createdAt: "asc" } : { createdAt: "desc" },
       include: {
-        user: { select: { email: true, kycStatus: true, referral: { select: { affiliate: { select: { id: true, code: true } } } } } },
+        user: {
+          select: {
+            email: true,
+            kycStatus: true,
+            firstName: true,
+            lastName: true,
+            referral: { select: { affiliate: { select: { id: true, code: true } } } },
+          },
+        },
       },
       take: PAGE + 1,
       skip: (page - 1) * PAGE,
@@ -63,10 +92,15 @@ export default async function AdminCashierPage(props: PageProps<"/[lang]/admin/c
   const hasNext = rows.length > PAGE;
   const promoIds = [...new Set(rows.map((row) => row.promoCodeId).filter((id): id is number => id !== null))];
   const settlerIds = [...new Set(rows.map((row) => row.settledById).filter((id): id is number => id !== null))];
-  const [promos, settlers] = await Promise.all([
+  const cardIds = [...new Set(rows.map((row) => row.cardId).filter((id): id is number => id !== null))];
+  const [promos, settlers, cards] = await Promise.all([
     promoIds.length ? prisma.promoCode.findMany({ where: { id: { in: promoIds } }, select: { id: true, code: true } }) : [],
     settlerIds.length ? prisma.user.findMany({ where: { id: { in: settlerIds } }, select: { id: true, email: true } }) : [],
+    cardIds.length
+      ? prisma.paymentCard.findMany({ where: { id: { in: cardIds } }, select: { id: true, brand: true, last4: true, holder: true } })
+      : [],
   ]);
+  const cardOf = new Map(cards.map((card) => [card.id, card]));
   const promoCode = new Map(promos.map((promo) => [promo.id, promo.code]));
   const settler = new Map(settlers.map((user) => [user.id, user.email]));
 
@@ -93,6 +127,16 @@ export default async function AdminCashierPage(props: PageProps<"/[lang]/admin/c
       userId: row.userId,
       kyc: row.user.kycStatus,
       affiliate: row.user.referral?.affiliate ?? null,
+      card: (() => {
+        const card = row.cardId ? cardOf.get(row.cardId) : undefined;
+        if (!card) return null;
+        return {
+          label: cardLabel(card),
+          holder: card.holder,
+          holderMismatch: holderDiffers(card.holder, [row.user.firstName, row.user.lastName]),
+        };
+      })(),
+      providerRef: row.providerRef,
     };
   });
 

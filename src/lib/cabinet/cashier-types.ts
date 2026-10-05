@@ -14,7 +14,8 @@ export type CashierMethod = {
   days: string;
   deposit: boolean;
   withdrawal: boolean;
-  kind: "bank" | "crypto";
+  /** A card rail is deposit-only and charges a saved card through the card processor. */
+  kind: "bank" | "crypto" | "card";
 };
 
 /**
@@ -48,6 +49,12 @@ export type CashierSettings = {
   withdrawalFeeFixed: number;
   /** Refuse withdrawals until identity verification is approved. */
   requireKycForWithdrawal: boolean;
+  /**
+   * Refuse card deposits until identity verification is approved. A card
+   * charged by someone who is not its owner comes back as a chargeback, and
+   * checking who is paying before the first charge is the cheapest defence.
+   */
+  requireKycForCard: boolean;
 
   /** Where the deposit form's "Terms & Conditions" goes. Empty shows no link. */
   termsUrl: string;
@@ -65,6 +72,7 @@ export const CASHIER_DEFAULTS: CashierSettings = {
   withdrawalFeePercent: 0,
   withdrawalFeeFixed: 0,
   requireKycForWithdrawal: false,
+  requireKycForCard: false,
   termsUrl: "",
 };
 

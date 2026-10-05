@@ -28,6 +28,9 @@ export type AdminTransaction = {
   userId: number;
   kyc: "NONE" | "PENDING" | "APPROVED" | "REJECTED";
   affiliate: { id: number; code: string } | null;
+  /** For a card deposit: which card, whose name is on it, and the processor's id for the charge. */
+  card: { label: string; holder: string; holderMismatch: boolean } | null;
+  providerRef: string | null;
 };
 
 /**
@@ -127,11 +130,25 @@ export function CashierQueue({ transactions, queue, locale }: { transactions: Ad
 
               <div className="mt-2 text-[13px]">{who(row)}</div>
 
-              {row.destination && (
-                <p className="mt-2 break-all text-[13px] text-[#a0a1a6]">
-                  {t.to}: <span className="font-mono text-white">{row.destination}</span>
+              {row.card ? (
+                <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-[#a0a1a6]">
+                  {m.cashier.card}: <span className="font-mono text-white">{row.card.label}</span>
+                  <span>· {row.card.holder}</span>
+                  {row.card.holderMismatch && <Badge tone="danger">{m.cashier.holderMismatch}</Badge>}
+                  {row.providerRef && (
+                    <span className="text-[12px] text-[#6f7076]">
+                      · {m.cashier.processorRef} <span className="font-mono">{row.providerRef}</span>
+                    </span>
+                  )}
                 </p>
+              ) : (
+                row.destination && (
+                  <p className="mt-2 break-all text-[13px] text-[#a0a1a6]">
+                    {t.to}: <span className="font-mono text-white">{row.destination}</span>
+                  </p>
+                )
               )}
+              {row.card && row.note && <p className="mt-1 text-[12px] text-[#6f7076]">{row.note}</p>}
 
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <input
