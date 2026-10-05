@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { signOut } from "next-auth/react";
 import { cabinetCopy } from "@/i18n/cabinet";
+import { cabinetExtra } from "@/i18n/cabinet-extra";
 import {
   CloseIcon,
   LogoutIcon,
@@ -20,7 +21,21 @@ export type DrawerAccount = {
   balance: string;
   balanceLabel: string;
   verified: boolean;
+  /** Nothing submitted for verification yet. Absent means "go by `verified`". */
+  needsDetails?: boolean;
+  avatarUrl?: string | null;
 };
+
+/** Two people shaking hands, drawn to match the other icons in this list. */
+function AffiliateIcon({ className }: { className?: string }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.3" className={className} aria-hidden>
+      <circle cx="6" cy="5.5" r="2.5" />
+      <circle cx="12.5" cy="6.5" r="2" />
+      <path d="M1.5 15c0-2.8 2-4.5 4.5-4.5s4.5 1.7 4.5 4.5M10.8 11c.5-.3 1.1-.5 1.7-.5 2.2 0 4 1.5 4 4" strokeLinecap="round" />
+    </svg>
+  );
+}
 
 /**
  * The account panel the avatar opens.
@@ -52,6 +67,8 @@ export function AccountDrawer({
    * nowhere is worse than no item.
    */
   const copy = cabinetCopy(locale).nav;
+  const extra = cabinetExtra(locale).profile;
+  const needsDetails = account.needsDetails ?? !account.verified;
 
   const items = [
     { href: `/${locale}/profile/personal`, label: copy.personalData, Icon: PersonalCircleIcon },
@@ -60,6 +77,7 @@ export function AccountDrawer({
     { href: `/${locale}/withdrawal`, label: copy.withdrawFunds, Icon: WithdrawCircleIcon },
     { href: `/${locale}/transactions`, label: copy.balanceHistory, Icon: OperationsCircleIcon },
     { href: `/${locale}/trading`, label: copy.tradingHistory, Icon: TradingCircleIcon },
+    { href: `/${locale}/affiliate`, label: extra.affiliateProgram, Icon: AffiliateIcon },
   ];
 
   return (
@@ -75,7 +93,12 @@ export function AccountDrawer({
       >
         <div className="flex items-center gap-3 px-6 pb-4 pt-5">
           <span className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-avalon-surface-hover text-avalon-border-muted">
-            <UserIcon width={18} height={18} />
+            {account.avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={account.avatarUrl} alt="" className="size-full object-cover" />
+            ) : (
+              <UserIcon width={18} height={18} />
+            )}
           </span>
           <span className="truncate text-[13px] text-avalon-text">{account.email}</span>
           <button
@@ -93,7 +116,7 @@ export function AccountDrawer({
           <span className="text-[20px] font-semibold text-avalon-primary">{account.balance}</span>
         </div>
 
-        {!account.verified && (
+        {needsDetails && (
           <Link
             href={`/${locale}/verification`}
             onClick={onClose}

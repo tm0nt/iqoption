@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { cabinetCopy } from "@/i18n/cabinet";
 import Link from "next/link";
 import { AccountDrawer, type DrawerAccount } from "./AccountDrawer";
@@ -22,6 +23,23 @@ const BUILT_IN_LOGO = "/sites/trade-avalonbroker-com-6f41c8f2/en-login-301e30be/
 function Flag({ locale }: { locale: AvalonLocale }) {
   const Icon = locale === "es" ? FlagEsIcon : locale === "pt" ? FlagPtIcon : FlagEnIcon;
   return <Icon width={18} height={18} />;
+}
+
+/**
+ * The same page in another language.
+ *
+ * The switcher used to send everyone to Personal Data whatever they were
+ * reading, so changing language on the withdrawal page lost the withdrawal
+ * page. The locale is the first segment of every cabinet path; swapping it is
+ * the whole of the change.
+ */
+function inLocale(pathname: string, locale: string) {
+  const parts = pathname.split("/");
+  if (parts.length > 1 && (LOCALES as readonly string[]).includes(parts[1])) {
+    parts[1] = locale;
+    return parts.join("/");
+  }
+  return `/${locale}/profile/personal`;
 }
 
 /**
@@ -49,7 +67,7 @@ export function CabinetShell({
    * Optional so a page that has not been given one still renders — it falls
    * back to the build's own mark, which is what an unbranded install shows.
    */
-  brand?: { name: string; logoUrl: string; primary: string };
+  brand?: { name: string; logoUrl: string; primary: string; supportEmail?: string };
   /**
    * The cabinet has two column widths and the live site uses both: 1032px for
    * the profile pages, 1440px for verification, which needs room for a rail
@@ -66,19 +84,20 @@ export function CabinetShell({
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
+  const pathname = usePathname();
 
   return (
     <div className="flex min-h-screen flex-col bg-white font-avalon text-avalon-text">
       <AvalonIconSprite />
       <header className="sticky top-0 z-30 h-[60px] shrink-0 bg-white">
-        <div className="flex h-full items-center px-6">
+        <div className="flex h-full items-center gap-3 px-4 sm:px-6">
           <Link href={`/${locale}/traderoom`} aria-label={brand?.name ?? "Avalon"}>
             {/* The same file the login header uses, at the size the live cabinet draws it. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={brand?.logoUrl || BUILT_IN_LOGO} alt={brand?.name ?? "Avalon"} width={120} height={30} className="h-[30px] max-w-[160px] object-contain" />
           </Link>
 
-          <div className="ml-auto flex items-center gap-5">
+          <div className="ml-auto flex items-center gap-3 sm:gap-5">
             <div className="relative">
               <button
                 type="button"
@@ -86,14 +105,14 @@ export function CabinetShell({
                 className="flex items-center gap-1.5 text-[14px] text-avalon-text-strong"
               >
                 <Flag locale={locale} />
-                {locale.charAt(0).toUpperCase() + locale.slice(1)}
+                <span className="hidden sm:inline">{locale.charAt(0).toUpperCase() + locale.slice(1)}</span>
               </button>
               {langOpen && (
                 <ul className="absolute right-0 top-full z-40 mt-2 min-w-[140px] rounded-[2px] bg-white py-1 shadow-avalon">
                   {LOCALES.map((code) => (
                     <li key={code}>
                       <Link
-                        href={`/${code}/profile/personal`}
+                        href={inLocale(pathname, code)}
                         onClick={() => {
                           rememberLocale(code);
                           setLangOpen(false);
@@ -114,12 +133,17 @@ export function CabinetShell({
               aria-label={cabinetCopy(locale).nav.accountMenu}
               className="flex size-8 items-center justify-center overflow-hidden rounded-full bg-avalon-surface-hover text-avalon-border-muted"
             >
-              <UserIcon width={18} height={18} />
+              {account.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={account.avatarUrl} alt="" className="size-full object-cover" />
+              ) : (
+                <UserIcon width={18} height={18} />
+              )}
             </button>
 
             <Link
               href={`/${locale}/traderoom`}
-              className="flex h-10 items-center rounded-[2px] border border-avalon-primary bg-avalon-primary px-4 text-[14px] font-medium text-white transition-colors hover:bg-avalon-primary-hover"
+              className="flex h-9 items-center whitespace-nowrap rounded-[2px] border border-avalon-primary bg-avalon-primary px-3 text-[13px] font-medium text-white transition-colors hover:bg-avalon-primary-hover sm:h-10 sm:px-4 sm:text-[14px]"
             >
               {cabinetCopy(locale).nav.tradeNow}
             </Link>
@@ -129,14 +153,22 @@ export function CabinetShell({
 
       <main
         className={
-          bleed ? "w-full grow" : `mx-auto w-full grow px-6 pb-16 ${wide ? "max-w-[1440px]" : "max-w-[1032px]"}`
+          bleed ? "w-full grow" : `mx-auto w-full grow px-4 pb-16 sm:px-6 ${wide ? "max-w-[1440px]" : "max-w-[1032px]"}`
         }
       >
         {children}
       </main>
 
-      <footer className="mt-auto border-t border-avalon-surface-hover py-6 text-center text-[13px] text-avalon-text">
+      <footer className="mt-auto border-t border-avalon-surface-hover px-4 py-6 text-center text-[13px] text-avalon-text">
         {brand?.name ?? "Avalon"}
+        {brand?.supportEmail && (
+          <>
+            {" · "}
+            <a href={`mailto:${brand.supportEmail}`} className="hover:text-avalon-primary">
+              {brand.supportEmail}
+            </a>
+          </>
+        )}
       </footer>
 
       <AccountDrawer account={account} locale={locale} open={menuOpen} onClose={() => setMenuOpen(false)} />

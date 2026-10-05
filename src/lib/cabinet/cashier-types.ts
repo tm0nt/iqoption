@@ -6,6 +6,8 @@
  * that from the browser bundle drags the database driver in behind it, and the
  * build fails on `fs` with no hint of why.
  */
+import { round2 } from "./money";
+
 export type CashierMethod = {
   id: string;
   name: string;
@@ -15,13 +17,55 @@ export type CashierMethod = {
   kind: "bank" | "crypto";
 };
 
+/**
+ * Everything the operator decides about money moving in and out.
+ *
+ * A limit of 0 means "no limit" rather than "nothing allowed": a minimum of 0
+ * is meaningless and a maximum of 0 would close the cashier, which is what
+ * turning a method off is for.
+ */
 export type CashierSettings = {
   methods: CashierMethod[];
-  freeWithdrawalsPerMonth: number;
-  minWithdrawal: number;
+
   minDeposit: number;
+  /** Per request. 0 is no ceiling. */
+  maxDeposit: number;
   /** Offered as buttons on the deposit page, largest first. */
   depositPresets: number[];
+  /**
+   * How many deposits one person may have waiting at once. Every pending
+   * deposit is a row someone has to reconcile by hand, so an unbounded number
+   * is an unbounded queue. 0 is no limit.
+   */
+  maxPendingDeposits: number;
+
+  minWithdrawal: number;
+  /** Per request. 0 is no ceiling. */
+  maxWithdrawal: number;
+  freeWithdrawalsPerMonth: number;
+  /** Charged on a withdrawal once the free ones for the month are used. */
+  withdrawalFeePercent: number;
+  withdrawalFeeFixed: number;
+  /** Refuse withdrawals until identity verification is approved. */
+  requireKycForWithdrawal: boolean;
+
+  /** Where the deposit form's "Terms & Conditions" goes. Empty shows no link. */
+  termsUrl: string;
+};
+
+export const CASHIER_DEFAULTS: CashierSettings = {
+  methods: [{ id: "pix", name: "PIX (CPF)", days: "1 - 3 business days", deposit: true, withdrawal: true, kind: "bank" }],
+  minDeposit: 10,
+  maxDeposit: 0,
+  depositPresets: [5000, 2500, 1000, 500, 250, 100, 50, 25],
+  maxPendingDeposits: 3,
+  minWithdrawal: 10,
+  maxWithdrawal: 0,
+  freeWithdrawalsPerMonth: 1,
+  withdrawalFeePercent: 0,
+  withdrawalFeeFixed: 0,
+  requireKycForWithdrawal: false,
+  termsUrl: "",
 };
 
 /** Icons are drawn from the rail's own name, so a new rail needs no new code. */
@@ -38,3 +82,21 @@ export function methodInitials(method: CashierMethod) {
  * typed and is shown as typed. Translating that would overwrite their words.
  */
 export const DEFAULT_DAYS = "1 - 3 business days";
+
+/**
+ * What the platform keeps of one withdrawal.
+ *
+ * Nothing while the month's free ones last. After that the fixed part plus the
+ * percentage, never more than the amount itself — a fee that exceeds what is
+ * being withdrawn is a request that pays the person a negative sum.
+ */
+export function withdrawalFee(settings: CashierSettings, amount: number, freeLeft: number) {
+  if (freeLeft > 0) return 0;
+  const fee = round2(settings.withdrawalFeeFixed + (amount * settings.withdrawalFeePercent) / 100);
+  return Math.min(Math.max(fee, 0), amount);
+}
+
+/** True when a deposit amount sits inside the configured limits. */
+export function withinLimits(amount: number, min: number, max: number) {
+  return amount >= min && (max <= 0 || amount <= max);
+}

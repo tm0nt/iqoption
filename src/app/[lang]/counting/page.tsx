@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
-import { notFound, redirect } from "next/navigation";
-import { auth } from "@/auth";
+import { notFound } from "next/navigation";
 import { CabinetShell } from "@/components/cabinet/CabinetShell";
 import { DepositPanel } from "@/components/cabinet/DepositPanel";
-import { cashierSettings } from "@/lib/cabinet/cashier";
+import { RequestHistory, type RequestRow } from "@/components/cabinet/RequestHistory";
+import { cashierSettings, withinLimits } from "@/lib/cabinet/cashier";
+import { loadCabinet } from "@/lib/cabinet/profile";
+import { formatDateTime, formatMoney } from "@/lib/cabinet/format";
 import { prisma } from "@/lib/db";
-import { activeWallet } from "@/lib/cabinet/wallet";
 import { isLocale } from "@/i18n/avalon";
 import { cabinetCopy } from "@/i18n/cabinet";
+import { cabinetExtra } from "@/i18n/cabinet-extra";
 
 export async function generateMetadata(props: PageProps<"/[lang]/counting">): Promise<Metadata> {
   const { lang } = await props.params;
@@ -15,61 +17,66 @@ export async function generateMetadata(props: PageProps<"/[lang]/counting">): Pr
 }
 export const dynamic = "force-dynamic";
 
-const MONEY = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
 /**
- * What the live page answers below the form.
+ * The deposit page.
  *
- * Rewritten for what is true here rather than copied: the live answers describe
- * bank timings and a support desk that this platform does not have, and an FAQ
- * that answers for someone else is worse than none.
+ * The currency is the real wallet's, because that is where a deposit lands —
+ * not the wallet being traded on, which for most people is the practice one.
+ *
+ * The FAQ below the form is rewritten for what is true here rather than copied:
+ * the live answers describe bank timings and a support desk that this platform
+ * does not have, and an FAQ that answers for someone else is worse than none.
  */
 export default async function DepositPage(props: PageProps<"/[lang]/counting">) {
   const { lang } = await props.params;
   if (!isLocale(lang)) notFound();
 
   const f = cabinetCopy(lang).faq;
+  const x = cabinetExtra(lang).cashier;
 
-  const session = await auth();
-  if (!session?.user) redirect(`/${lang}/login?next=/${lang}/counting`);
-
-  const [user, settings] = await Promise.all([
-    prisma.user.findUnique({
-      where: { id: session.user.platformId },
-      select: {
-        email: true,
-        kycStatus: true,
-        activeBalanceId: true,
-        balances: { select: { id: true, amount: true, currency: true, type: true }, orderBy: { type: "asc" } },
-      },
-    }),
+  const { user, account, brand, real, wallet } = await loadCabinet(lang, `/${lang}/counting`);
+  const [settings, requests] = await Promise.all([
     cashierSettings(),
+    prisma.transaction.findMany({
+      where: { userId: user.id, kind: "DEPOSIT" },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+    }),
   ]);
-  if (!user) redirect(`/${lang}/login`);
 
-  const wallet = activeWallet(user.balances, user.activeBalanceId);
-  const currency = wallet?.currency ?? "USD";
+  const currency = real?.currency ?? wallet?.currency ?? "USD";
+  // A button for an amount the route would refuse is a button that only fails.
+  const presets = settings.depositPresets.filter((preset) => withinLimits(preset, settings.minDeposit, settings.maxDeposit));
+
+  const rows: RequestRow[] = requests.map((row) => ({
+    id: row.id,
+    when: formatDateTime(row.createdAt, lang),
+    method: row.method,
+    amount: formatMoney(Number(row.amount), row.currency, lang),
+    extra: Number(row.bonus) > 0 ? `+ ${x.bonus} ${formatMoney(Number(row.bonus), row.currency, lang)}` : null,
+    status: row.status,
+  }));
 
   return (
-    <CabinetShell
-      locale={lang}
-      account={{
-        email: user.email,
-        balance: `${MONEY.format(Number(wallet?.amount ?? 0))} ${currency}`,
-        balanceLabel: wallet?.type === 4 ? cabinetCopy(lang).account.practice : cabinetCopy(lang).account.real,
-        verified: user.kycStatus === "APPROVED",
-      }}
-    >
-      <h1 className="pt-16 text-[34px] font-normal leading-[52px] text-avalon-text">{cabinetCopy(lang).nav.deposit}</h1>
+    <CabinetShell locale={lang} account={account} brand={brand}>
+      <h1 className="pt-8 text-[28px] font-normal leading-[40px] text-avalon-text sm:pt-16 sm:text-[34px] sm:leading-[52px]">
+        {cabinetCopy(lang).nav.deposit}
+      </h1>
 
       <div className="mt-5">
         <DepositPanel
           methods={settings.methods.filter((method) => method.deposit)}
-          presets={settings.depositPresets}
+          presets={presets}
           currency={currency}
           minimum={settings.minDeposit}
+          maximum={settings.maxDeposit}
+          termsUrl={settings.termsUrl}
           locale={lang}
         />
+      </div>
+
+      <div className="mt-8">
+        <RequestHistory title={x.yourDeposits} rows={rows} locale={lang} />
       </div>
 
       <section className="mt-16 pb-16">

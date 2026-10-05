@@ -30,18 +30,25 @@ export function ProfileNav({ locale }: { locale: string }) {
     }[slug],
   }));
 
+  /*
+   * Below `md` the list runs across the top and scrolls sideways, the way a
+   * phone shows tabs; from `md` it is the live site's column.
+   */
   return (
-    <nav className="w-[240px] shrink-0">
-      <ul>
+    <nav className="-mx-4 shrink-0 overflow-x-auto px-4 md:mx-0 md:w-[240px] md:overflow-visible md:px-0">
+      <ul className="flex gap-5 border-b border-avalon-surface-hover md:block md:border-b-0">
         {items.map(({ slug, label }) => {
           const href = `/${locale}/profile/${slug}`;
           const active = pathname === href;
           return (
-            <li key={slug} className="border-b border-dotted border-avalon-border-muted/60">
+            <li key={slug} className="shrink-0 md:border-b md:border-dotted md:border-avalon-border-muted/60">
               <Link
                 href={href}
-                className={`block py-3 pr-3 text-[16px] font-medium transition-colors ${
-                  active ? "text-avalon-primary" : "text-avalon-text hover:text-avalon-text-strong"
+                aria-current={active ? "page" : undefined}
+                className={`-mb-px block whitespace-nowrap border-b-2 py-3 text-[14px] font-medium transition-colors md:mb-0 md:whitespace-normal md:border-b-0 md:pr-3 md:text-[16px] ${
+                  active
+                    ? "border-avalon-primary text-avalon-primary"
+                    : "border-transparent text-avalon-text hover:text-avalon-text-strong"
                 }`}
               >
                 {label}

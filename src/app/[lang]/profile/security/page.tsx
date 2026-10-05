@@ -2,11 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CabinetShell } from "@/components/cabinet/CabinetShell";
-import { ProfileNav } from "@/components/cabinet/ProfileNav";
-import { ProfileHeader } from "@/components/cabinet/ProfileHeader";
+import { ProfileFrame } from "@/components/cabinet/ProfileFrame";
 import { ProfileSection } from "@/components/cabinet/ProfileSection";
 import { SessionList, type SessionRow } from "@/components/cabinet/SessionList";
-import { loadProfile, longDate } from "@/lib/cabinet/profile";
+import { loadProfile } from "@/lib/cabinet/profile";
+import { formatLongDate, localeTag } from "@/lib/cabinet/format";
+import { cabinetExtra, type CabinetExtraCopy } from "@/i18n/cabinet-extra";
 import { prisma } from "@/lib/db";
 import { isLocale } from "@/i18n/avalon";
 import { cabinetCopy } from "@/i18n/cabinet";
@@ -28,25 +29,25 @@ export const dynamic = "force-dynamic";
  * their own session, not a fingerprint, and the order matters: every Chromium
  * browser also says "Chrome", and Chrome itself says "Safari".
  */
-function browserOf(agent: string | null) {
-  if (!agent) return "unknown";
+function browserOf(agent: string | null, unknown: string) {
+  if (!agent) return unknown;
   if (/Edg\//.test(agent)) return "Edge";
   if (/OPR\//.test(agent)) return "Opera";
   if (/Firefox\//.test(agent)) return "Firefox";
   if (/Chrome\//.test(agent)) return "Chrome";
   if (/Safari\//.test(agent)) return "Safari";
-  return "unknown";
+  return unknown;
 }
 
-/** "Today at 7:49 PM", or the date once it is no longer today. */
-function when(date: Date) {
-  const time = date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+/** "Today at 7:49 PM", or the date once it is no longer today — in the page's language. */
+function when(date: Date, locale: string, t: CabinetExtraCopy["profile"]) {
+  const time = date.toLocaleTimeString(localeTag(locale), { hour: "numeric", minute: "2-digit" });
   const today = new Date();
   const sameDay =
     date.getFullYear() === today.getFullYear() &&
     date.getMonth() === today.getMonth() &&
     date.getDate() === today.getDate();
-  return sameDay ? `Today at ${time}` : `${longDate(date)} at ${time}`;
+  return sameDay ? t.todayAt(time) : t.dateAt(formatLongDate(date, locale), time);
 }
 
 export default async function SecurityPage(props: PageProps<"/[lang]/profile/security">) {
@@ -54,6 +55,7 @@ export default async function SecurityPage(props: PageProps<"/[lang]/profile/sec
   if (!isLocale(lang)) notFound();
 
   const copy = cabinetCopy(lang);
+  const x = cabinetExtra(lang).profile;
   const { user, account, brand } = await loadProfile(lang, "security");
 
   const rows = await prisma.tradingSession.findMany({
@@ -64,9 +66,9 @@ export default async function SecurityPage(props: PageProps<"/[lang]/profile/sec
 
   const sessions: SessionRow[] = rows.map((row) => ({
     id: row.id,
-    browser: browserOf(row.userAgent),
+    browser: browserOf(row.userAgent, x.unknownBrowser),
     ip: row.ip,
-    when: when(row.lastSeenAt ?? row.createdAt),
+    when: when(row.lastSeenAt ?? row.createdAt, lang, x),
     // The newest one is almost certainly the tab reading this page: a fresh
     // ssid is minted on every traderoom load.
     current: row.id === rows[0]?.id,
@@ -74,42 +76,34 @@ export default async function SecurityPage(props: PageProps<"/[lang]/profile/sec
 
   return (
     <CabinetShell locale={lang} account={account} brand={brand}>
-      <ProfileHeader locale={lang} createdAt={user.createdAt} id={user.id} />
+      <ProfileFrame locale={lang} createdAt={user.createdAt} id={user.id} title={copy.profile.safetySecurity}>
+        <ProfileSection title={copy.security.twoStepTitle}>
+          <p>{copy.security.twoStepBody}</p>
+          <p className="text-avalon-border-muted">{copy.security.twoStepUnavailable}</p>
+        </ProfileSection>
 
-      <div className="mt-6 flex gap-12">
-        <ProfileNav locale={lang} />
+        <ProfileSection title={copy.security.passwordTitle}>
+          <p>{copy.security.passwordBody}</p>
+          <Link
+            href={`/${lang}/change-password`}
+            className="inline-block text-[14px] text-avalon-primary transition-colors hover:text-avalon-primary-hover"
+          >
+            {copy.security.passwordAction}
+          </Link>
+        </ProfileSection>
 
-        <div className="min-w-0 grow">
-          <h1 className="pb-2 text-[28px] font-semibold text-avalon-text-strong">{copy.profile.safetySecurity}</h1>
+        <ProfileSection title={copy.security.sessionsTitle}>
+          <p>{copy.security.sessionsBody}</p>
+          <div className="pt-3">
+            <SessionList sessions={sessions} locale={lang} />
+          </div>
+        </ProfileSection>
 
-          <ProfileSection title={copy.security.twoStepTitle}>
-            <p>{copy.security.twoStepBody}</p>
-            <p className="text-avalon-border-muted">{copy.security.twoStepUnavailable}</p>
-          </ProfileSection>
-
-          <ProfileSection title={copy.security.passwordTitle}>
-            <p>{copy.security.passwordBody}</p>
-            <Link
-              href={`/${lang}/change-password`}
-              className="inline-block text-[14px] text-avalon-primary transition-colors hover:text-avalon-primary-hover"
-            >
-              {copy.security.passwordAction}
-            </Link>
-          </ProfileSection>
-
-          <ProfileSection title={copy.security.sessionsTitle}>
-            <p>{copy.security.sessionsBody}</p>
-            <div className="pt-3">
-              <SessionList sessions={sessions} locale={lang} />
-            </div>
-          </ProfileSection>
-
-          <ProfileSection title={copy.security.historyTitle} last>
-            <p>{copy.security.historyBody}</p>
-            <p className="text-avalon-border-muted">{copy.security.historyNote}</p>
-          </ProfileSection>
-        </div>
-      </div>
+        <ProfileSection title={copy.security.historyTitle} last>
+          <p>{copy.security.historyBody}</p>
+          <p className="text-avalon-border-muted">{copy.security.historyNote}</p>
+        </ProfileSection>
+      </ProfileFrame>
     </CabinetShell>
   );
 }

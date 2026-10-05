@@ -91,27 +91,24 @@ export function PersonalDetailsForm({ defaults, locale }: { defaults: DetailsDef
 
   return (
     <form onSubmit={handleSubmit}>
-      <div className="flex gap-[34px] border-b border-avalon-surface-hover pb-8">
-        <div className="w-[220px] shrink-0">
+      <div className="flex flex-col gap-5 border-b border-avalon-surface-hover pb-8 md:flex-row md:gap-[34px]">
+        <div className="md:w-[220px] md:shrink-0">
           <p className="text-[16px] font-semibold text-avalon-text">{v.personalInfo}</p>
           <p className="mt-4 text-[13px] leading-[22px] text-avalon-text">{v.exactlyAsId}</p>
         </div>
 
-        <div className="ml-auto w-[440px] shrink-0">
-          <Field label="First Name">
+        <div className="w-full md:ml-auto md:w-[440px] md:shrink-0">
+          <Field label={v.firstName}>
             <input name="firstName" defaultValue={defaults.firstName} disabled={busy} className={BOX} autoComplete="given-name" />
           </Field>
           <FormError>{error("firstName")}</FormError>
 
-          <Field
-            label="Last Name"
-            hint="Enter your first and last name exactly as they appear on your identification document."
-          >
+          <Field label={v.lastName}>
             <input name="lastName" defaultValue={defaults.lastName} disabled={busy} className={BOX} autoComplete="family-name" />
           </Field>
           <FormError>{error("lastName")}</FormError>
 
-          <Field label="Date of Birth">
+          <Field label={v.dateOfBirth}>
             <input
               name="dateOfBirth"
               defaultValue={defaults.dateOfBirth}
@@ -123,7 +120,7 @@ export function PersonalDetailsForm({ defaults, locale }: { defaults: DetailsDef
           </Field>
           <FormError>{error("dateOfBirth")}</FormError>
 
-          <Field label="Country of citizenship">
+          <Field label={v.citizenship}>
             <select name="citizenship" defaultValue={defaults.citizenship} disabled={busy} className={`${BOX} appearance-none`}>
               {VERIFICATION_COUNTRIES.map((country) => (
                 <option key={country.code} value={country.code}>
@@ -145,13 +142,13 @@ export function PersonalDetailsForm({ defaults, locale }: { defaults: DetailsDef
         </div>
       </div>
 
-      <div className="flex gap-[34px] pt-8">
-        <div className="w-[220px] shrink-0">
+      <div className="flex flex-col gap-5 pt-8 md:flex-row md:gap-[34px]">
+        <div className="md:w-[220px] md:shrink-0">
           <p className="text-[16px] font-semibold text-avalon-text">{v.residenceInfo}</p>
           <p className="mt-4 text-[13px] leading-[22px] text-avalon-text">{v.checkResidence}</p>
         </div>
 
-        <div className="ml-auto w-[440px] shrink-0">
+        <div className="w-full md:ml-auto md:w-[440px] md:shrink-0">
           <p className="flex items-center gap-2 text-[14px] text-avalon-text-strong">
             {defaults.residenceCountry}
             <span aria-hidden className="text-[16px] leading-none">

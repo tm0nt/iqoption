@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { signOut } from "next-auth/react";
 import { cabinetCopy } from "@/i18n/cabinet";
 import { ProfileAction, ProfileSection } from "./ProfileSection";
 import { Toggle } from "./Toggle";
@@ -59,7 +60,16 @@ export function AccountSettingsForm({
       }
       if (said.displayName) setName(said.displayName);
       if (action === "reset") setDone(copy.resetDone);
-      if (action === "close") setDone(copy.closeDone);
+      if (action === "close") {
+        /*
+         * A closed account cannot sign in again, so staying signed in after
+         * closing it was a session that outlived its account. Shown first so
+         * the person reads why they are leaving.
+         */
+        setDone(copy.closeDone);
+        window.setTimeout(() => void signOut({ redirectTo: `/${locale}/login` }), 1500);
+        return;
+      }
       if (action === "delete") setDone(copy.deleteDone);
       router.refresh();
     });

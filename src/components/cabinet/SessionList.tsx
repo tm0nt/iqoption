@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { cabinetCopy } from "@/i18n/cabinet";
+import { cabinetExtra } from "@/i18n/cabinet-extra";
 
 export type SessionRow = {
   id: string;
@@ -22,6 +23,7 @@ export type SessionRow = {
  */
 export function SessionList({ sessions, locale }: { sessions: SessionRow[]; locale: string }) {
   const copy = cabinetCopy(locale).security;
+  const x = cabinetExtra(locale).profile;
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [busy, start] = useTransition();
@@ -58,9 +60,9 @@ export function SessionList({ sessions, locale }: { sessions: SessionRow[]; loca
           </span>
 
           <div className="min-w-0">
-            <p className="truncate text-[13px] text-avalon-text-strong">
-              Browser {session.browser}
-              {session.ip ? `. IP address - ${session.ip}` : ""}
+            <p className="break-words text-[13px] text-avalon-text-strong">
+              {x.browser(session.browser)}
+              {session.ip ? ` · ${x.ipAddress(session.ip)}` : ""}
               {session.current ? ` · ${copy.thisDevice}` : ""}
             </p>
             <p className="text-[13px] text-avalon-text">{session.when}</p>

@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
-import { notFound, redirect } from "next/navigation";
-import { auth } from "@/auth";
+import { notFound } from "next/navigation";
 import { CabinetShell } from "@/components/cabinet/CabinetShell";
 import { HistoryFilters } from "@/components/cabinet/HistoryFilters";
 import { prisma } from "@/lib/db";
-import { activeWallet } from "@/lib/cabinet/wallet";
+import { loadCabinet } from "@/lib/cabinet/profile";
 import { isLocale } from "@/i18n/avalon";
 import { cabinetCopy } from "@/i18n/cabinet";
 
@@ -42,8 +41,8 @@ export default async function TradingHistoryPage(props: PageProps<"/[lang]/tradi
     { value: "12", label: h.blitz },
   ];
 
-  const session = await auth();
-  if (!session?.user) redirect(`/${lang}/login?next=/${lang}/trading`);
+  const cabinet = await loadCabinet(lang, `/${lang}/trading`);
+  const user = cabinet.user;
 
   const query = await props.searchParams;
   const read = (name: string) => (typeof query[name] === "string" ? (query[name] as string) : undefined);
@@ -52,21 +51,9 @@ export default async function TradingHistoryPage(props: PageProps<"/[lang]/tradi
   const account = read("account");
   const from = read("from") ? new Date(`${read("from")}T00:00:00`) : undefined;
 
-  const [user, assets] = await Promise.all([
-    prisma.user.findUnique({
-      where: { id: session.user.platformId },
-      select: {
-        email: true,
-        kycStatus: true,
-        activeBalanceId: true,
-        balances: { select: { id: true, amount: true, currency: true, type: true }, orderBy: { type: "asc" } },
-      },
-    }),
-    prisma.asset.findMany({ select: { id: true, ticker: true, name: true } }),
-  ]);
-  if (!user) redirect(`/${lang}/login`);
+  const assets = await prisma.asset.findMany({ select: { id: true, ticker: true, name: true } });
 
-  const wallet = activeWallet(user.balances, user.activeBalanceId);
+  const wallet = cabinet.wallet;
   const currency = wallet?.currency ?? "USD";
   const walletIds = user.balances
     .filter((balance) => !account || account === "all" || balance.type === Number(account))
@@ -74,7 +61,7 @@ export default async function TradingHistoryPage(props: PageProps<"/[lang]/tradi
 
   const deals = await prisma.position.findMany({
     where: {
-      userId: session.user.platformId,
+      userId: user.id,
       // Settled only: a running deal has no result to report, and the
       // portfolio is where those are shown.
       closedAt: { gt: 0 },
@@ -105,15 +92,7 @@ export default async function TradingHistoryPage(props: PageProps<"/[lang]/tradi
   }
 
   return (
-    <CabinetShell
-      locale={lang}
-      account={{
-        email: user.email,
-        balance: `${MONEY.format(Number(wallet?.amount ?? 0))} ${currency}`,
-        balanceLabel: wallet?.type === 4 ? cabinetCopy(lang).account.practice : cabinetCopy(lang).account.real,
-        verified: user.kycStatus === "APPROVED",
-      }}
-    >
+    <CabinetShell locale={lang} account={cabinet.account} brand={cabinet.brand}>
       <h1 className="pt-12 text-[24px] font-semibold leading-8 text-avalon-text">{cabinetCopy(lang).nav.tradingHistory}</h1>
 
       <div className="mt-6">

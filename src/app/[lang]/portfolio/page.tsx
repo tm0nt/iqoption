@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
-import { auth } from "@/auth";
+import { notFound } from "next/navigation";
 import { CabinetShell } from "@/components/cabinet/CabinetShell";
 import { TopAssets } from "@/components/cabinet/TopAssets";
 import { fetchTopAssets } from "@/lib/market/server";
 import { prisma } from "@/lib/db";
-import { activeWallet } from "@/lib/cabinet/wallet";
+import { loadCabinet } from "@/lib/cabinet/profile";
 import { isLocale } from "@/i18n/avalon";
 import { cabinetCopy } from "@/i18n/cabinet";
 
@@ -45,28 +44,16 @@ export default async function PortfolioPage(props: PageProps<"/[lang]/portfolio"
   if (!isLocale(lang)) notFound();
   const t = cabinetCopy(lang).portfolio;
 
-  const session = await auth();
-  if (!session?.user) redirect(`/${lang}/login?next=/${lang}/portfolio`);
-
-  const [user, open, assets] = await Promise.all([
-    prisma.user.findUnique({
-      where: { id: session.user.platformId },
-      select: {
-        email: true,
-        kycStatus: true,
-        activeBalanceId: true,
-        balances: { select: { id: true, amount: true, currency: true, type: true }, orderBy: { type: "asc" } },
-      },
-    }),
+  const cabinet = await loadCabinet(lang, `/${lang}/portfolio`);
+  const [open, assets] = await Promise.all([
     prisma.position.findMany({
-      where: { userId: session.user.platformId, closedAt: 0 },
+      where: { userId: cabinet.user.id, closedAt: 0 },
       orderBy: { openTime: "desc" },
     }),
     fetchTopAssets(),
   ]);
-  if (!user) redirect(`/${lang}/login`);
 
-  const wallet = activeWallet(user.balances, user.activeBalanceId);
+  const wallet = cabinet.wallet;
   const currency = wallet?.currency ?? "USD";
   const cash = Number(wallet?.amount ?? 0);
 
@@ -87,16 +74,7 @@ export default async function PortfolioPage(props: PageProps<"/[lang]/portfolio"
   const grossProfit = invested ? ((ifAllWon - invested) / invested) * 100 : 0;
 
   return (
-    <CabinetShell
-      locale={lang}
-      account={{
-        email: user.email,
-        balance: money(cash, currency),
-        balanceLabel: wallet?.type === 4 ? cabinetCopy(lang).account.practice : cabinetCopy(lang).account.real,
-        verified: user.kycStatus === "APPROVED",
-      }}
-      bleed
-    >
+    <CabinetShell locale={lang} account={cabinet.account} brand={cabinet.brand} bleed>
       <section
         className="relative flex h-[230px] items-center bg-cover bg-center"
         style={{ backgroundImage: `url(${HERO})` }}
