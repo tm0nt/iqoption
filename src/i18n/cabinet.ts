@@ -117,6 +117,37 @@ export type CabinetCopy = {
     historyBody: string;
     historyNote: string;
   };
+  /** Balance History and Trading History, which share a vocabulary. */
+  history: {
+    noData: string;
+    noDataHint: string;
+    date: string;
+    status: string;
+    currency: string;
+    transactionType: string;
+    allTypes: string;
+    allStatuses: string;
+    allCurrencies: string;
+    deposits: string;
+    withdrawals: string;
+    trades: string;
+    pending: string;
+    approved: string;
+    rejected: string;
+    open: string;
+    settled: string;
+    accountType: string;
+    allAccounts: string;
+    real: string;
+    practice: string;
+    instrument: string;
+    allInstruments: string;
+    binary: string;
+    turbo: string;
+    blitz: string;
+    totalNetProfit: string;
+    periodData: string;
+  };
 };
 
 const en: CabinetCopy = {
@@ -226,6 +257,36 @@ const en: CabinetCopy = {
     historyTitle: "Session History",
     historyBody: "This section shows which devices you used to log in and when you logged in. If you suspect that someone else has access to your profile, please consider changing your password.",
     historyNote: "Only sessions that are still open are kept. An expired one is removed rather than recorded.",
+  },
+  history: {
+    noData: "No data found",
+    noDataHint: "You may want to select different parameters or change the time period.",
+    date: "Date",
+    status: "Status",
+    currency: "Currency",
+    transactionType: "Transaction type",
+    allTypes: "All types",
+    allStatuses: "All statuses",
+    allCurrencies: "All currencies",
+    deposits: "Deposits",
+    withdrawals: "Withdrawals",
+    trades: "Trades",
+    pending: "Pending",
+    approved: "Approved",
+    rejected: "Rejected",
+    open: "Open",
+    settled: "Settled",
+    accountType: "Account type",
+    allAccounts: "All accounts",
+    real: "Real",
+    practice: "Practice",
+    instrument: "Trading instrument",
+    allInstruments: "All instruments",
+    binary: "Binary options",
+    turbo: "Turbo options",
+    blitz: "Blitz options",
+    totalNetProfit: "Total Net Profit",
+    periodData: "Data for the selected period",
   },
 };
 
@@ -337,6 +398,36 @@ const pt: CabinetCopy = {
     historyBody: "Esta seção mostra de quais aparelhos você entrou e quando. Se suspeitar que outra pessoa tem acesso ao seu perfil, considere trocar a senha.",
     historyNote: "Só ficam guardadas as sessões ainda abertas. Uma sessão expirada é removida, não registrada.",
   },
+  history: {
+    noData: "Nada encontrado",
+    noDataHint: "Experimente outros filtros ou mude o período.",
+    date: "Data",
+    status: "Situação",
+    currency: "Moeda",
+    transactionType: "Tipo de transação",
+    allTypes: "Todos os tipos",
+    allStatuses: "Todas as situações",
+    allCurrencies: "Todas as moedas",
+    deposits: "Depósitos",
+    withdrawals: "Saques",
+    trades: "Negócios",
+    pending: "Pendente",
+    approved: "Aprovada",
+    rejected: "Recusada",
+    open: "Em aberto",
+    settled: "Liquidados",
+    accountType: "Tipo de conta",
+    allAccounts: "Todas as contas",
+    real: "Real",
+    practice: "Treinamento",
+    instrument: "Instrumento",
+    allInstruments: "Todos os instrumentos",
+    binary: "Opções binárias",
+    turbo: "Opções turbo",
+    blitz: "Opções blitz",
+    totalNetProfit: "Lucro líquido total",
+    periodData: "Dados do período selecionado",
+  },
 };
 
 const es: CabinetCopy = {
@@ -446,6 +537,36 @@ const es: CabinetCopy = {
     historyTitle: "Historial de sesiones",
     historyBody: "Esta sección muestra desde qué dispositivos has iniciado sesión y cuándo. Si sospechas que otra persona tiene acceso a tu perfil, considera cambiar la contraseña.",
     historyNote: "Solo se guardan las sesiones todavía abiertas. Una sesión caducada se elimina, no se registra.",
+  },
+  history: {
+    noData: "No se encontraron datos",
+    noDataHint: "Prueba con otros filtros o cambia el período.",
+    date: "Fecha",
+    status: "Estado",
+    currency: "Divisa",
+    transactionType: "Tipo de transacción",
+    allTypes: "Todos los tipos",
+    allStatuses: "Todos los estados",
+    allCurrencies: "Todas las divisas",
+    deposits: "Depósitos",
+    withdrawals: "Retiradas",
+    trades: "Operaciones",
+    pending: "Pendiente",
+    approved: "Aprobada",
+    rejected: "Rechazada",
+    open: "Abierta",
+    settled: "Liquidadas",
+    accountType: "Tipo de cuenta",
+    allAccounts: "Todas las cuentas",
+    real: "Real",
+    practice: "Práctica",
+    instrument: "Instrumento",
+    allInstruments: "Todos los instrumentos",
+    binary: "Opciones binarias",
+    turbo: "Opciones turbo",
+    blitz: "Opciones blitz",
+    totalNetProfit: "Beneficio neto total",
+    periodData: "Datos del período seleccionado",
   },
 };
 

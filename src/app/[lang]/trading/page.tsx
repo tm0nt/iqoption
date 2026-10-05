@@ -6,25 +6,18 @@ import { HistoryFilters } from "@/components/cabinet/HistoryFilters";
 import { prisma } from "@/lib/db";
 import { activeWallet } from "@/lib/cabinet/wallet";
 import { isLocale } from "@/i18n/avalon";
+import { cabinetCopy } from "@/i18n/cabinet";
 
-export const metadata: Metadata = { title: "Trading History" };
+export async function generateMetadata(props: PageProps<"/[lang]/trading">): Promise<Metadata> {
+  const { lang } = await props.params;
+  return { title: cabinetCopy(lang).nav.tradingHistory };
+}
 export const dynamic = "force-dynamic";
 
 const MONEY = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 /** `option_type_id` as the deal panel sends it; see docs/avalon-backend.md. */
-const INSTRUMENTS = [
-  { value: "all", label: "All instruments" },
-  { value: "3", label: "Turbo options" },
-  { value: "1", label: "Binary options" },
-  { value: "12", label: "Blitz options" },
-];
 
-const ACCOUNTS = [
-  { value: "all", label: "All accounts" },
-  { value: "4", label: "Practice" },
-  { value: "1", label: "Real" },
-];
 
 const OUTCOME_TONE: Record<string, string> = {
   win: "text-avalon-primary",
@@ -35,6 +28,19 @@ const OUTCOME_TONE: Record<string, string> = {
 export default async function TradingHistoryPage(props: PageProps<"/[lang]/trading">) {
   const { lang } = await props.params;
   if (!isLocale(lang)) notFound();
+
+  const h = cabinetCopy(lang).history;
+  const accounts = [
+    { value: "all", label: h.allAccounts },
+    { value: "1", label: h.real },
+    { value: "4", label: h.practice },
+  ];
+  const instruments = [
+    { value: "all", label: h.allInstruments },
+    { value: "1", label: h.binary },
+    { value: "3", label: h.turbo },
+    { value: "12", label: h.blitz },
+  ];
 
   const session = await auth();
   if (!session?.user) redirect(`/${lang}/login?next=/${lang}/trading`);
@@ -108,21 +114,22 @@ export default async function TradingHistoryPage(props: PageProps<"/[lang]/tradi
         verified: user.kycStatus === "APPROVED",
       }}
     >
-      <h1 className="pt-12 text-[24px] font-semibold leading-8 text-avalon-text">Trading History</h1>
+      <h1 className="pt-12 text-[24px] font-semibold leading-8 text-avalon-text">{cabinetCopy(lang).nav.tradingHistory}</h1>
 
       <div className="mt-6">
         <HistoryFilters
+          locale={lang}
           basePath={`/${lang}/trading`}
           current={current}
           groups={[
-            { name: "instrument", label: "Trading instrument", options: INSTRUMENTS },
-            { name: "account", label: "Account type", options: ACCOUNTS },
+            { name: "instrument", label: h.instrument, options: instruments },
+            { name: "account", label: h.accountType, options: accounts },
           ]}
         />
       </div>
 
       <div className="mt-7 border-t border-avalon-border-muted pt-4">
-        <p className="text-[16px] text-avalon-text">Data for the selected period</p>
+        <p className="text-[16px] text-avalon-text">{h.periodData}</p>
 
         <div className="mt-4 rounded-[2px] bg-avalon-surface px-6 py-4">
           <div
@@ -133,7 +140,7 @@ export default async function TradingHistoryPage(props: PageProps<"/[lang]/tradi
             {netProfit > 0 ? "+" : netProfit < 0 ? "−" : ""}
             {MONEY.format(Math.abs(netProfit))} {currency}
           </div>
-          <div className="mt-1 text-[12px] font-medium text-avalon-text">Total Net Profit</div>
+          <div className="mt-1 text-[12px] font-medium text-avalon-text">{h.totalNetProfit}</div>
         </div>
       </div>
 
@@ -143,10 +150,8 @@ export default async function TradingHistoryPage(props: PageProps<"/[lang]/tradi
             <circle cx="28" cy="28" r="16" />
             <path d="M39 39l14 14M23 23l10 10M33 23l-10 10M46 18v6M43 21h6M18 46h.01" strokeLinecap="round" />
           </svg>
-          <p className="mt-6 text-[16px] font-bold text-avalon-text">No data found</p>
-          <p className="mt-2 text-[14px] text-avalon-text">
-            You may want to select different parameters or change the time period.
-          </p>
+          <p className="mt-6 text-[16px] font-bold text-avalon-text">{h.noData}</p>
+          <p className="mt-2 text-[14px] text-avalon-text">{h.noDataHint}</p>
         </div>
       ) : (
         <table className="mt-8 w-full text-left text-[13px]">

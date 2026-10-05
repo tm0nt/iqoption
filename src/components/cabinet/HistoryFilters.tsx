@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { cabinetCopy } from "@/i18n/cabinet";
 
 export type FilterOption = { value: string; label: string };
 
@@ -16,10 +17,13 @@ export function HistoryFilters({
   basePath,
   current,
   groups,
+  locale,
 }: {
   basePath: string;
   current: Record<string, string>;
   groups: { name: string; label: string; options: FilterOption[] }[];
+  /** The route's language, for the one label this component owns. */
+  locale: string;
 }) {
   const router = useRouter();
 
@@ -69,7 +73,7 @@ export function HistoryFilters({
       ))}
 
       <label className="block min-w-[180px] flex-1 basis-[200px]">
-        <span className="mb-1.5 block text-[14px] font-medium text-avalon-text">Date</span>
+        <span className="mb-1.5 block text-[14px] font-medium text-avalon-text">{cabinetCopy(locale).history.date}</span>
         <span className="flex h-[50px] w-full items-center rounded-[4px] border border-avalon-border bg-white">
           <span className="flex size-[50px] shrink-0 items-center justify-center border-r border-avalon-border text-avalon-primary">
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden>

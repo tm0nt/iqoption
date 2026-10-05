@@ -7,27 +7,17 @@ import { balanceHistory, type HistoryFilter } from "@/lib/cabinet/balance-histor
 import { prisma } from "@/lib/db";
 import { activeWallet } from "@/lib/cabinet/wallet";
 import { isLocale } from "@/i18n/avalon";
+import { cabinetCopy } from "@/i18n/cabinet";
 
-export const metadata: Metadata = { title: "Balance History" };
+export async function generateMetadata(props: PageProps<"/[lang]/transactions">): Promise<Metadata> {
+  const { lang } = await props.params;
+  return { title: cabinetCopy(lang).nav.balanceHistory };
+}
 export const dynamic = "force-dynamic";
 
 const MONEY = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-const TYPES = [
-  { value: "all", label: "All types" },
-  { value: "deposit", label: "Deposits" },
-  { value: "withdrawal", label: "Withdrawals" },
-  { value: "trade", label: "Trades" },
-];
 
-const STATUSES = [
-  { value: "all", label: "All statuses" },
-  { value: "pending", label: "Pending" },
-  { value: "approved", label: "Approved" },
-  { value: "rejected", label: "Rejected" },
-  { value: "settled", label: "Settled" },
-  { value: "open", label: "Open" },
-];
 
 const TONE: Record<string, string> = {
   pending: "bg-amber-50 text-amber-700",
@@ -41,6 +31,22 @@ const TONE: Record<string, string> = {
 export default async function TransactionsPage(props: PageProps<"/[lang]/transactions">) {
   const { lang } = await props.params;
   if (!isLocale(lang)) notFound();
+
+  const h = cabinetCopy(lang).history;
+  const types = [
+    { value: "all", label: h.allTypes },
+    { value: "deposit", label: h.deposits },
+    { value: "withdrawal", label: h.withdrawals },
+    { value: "trade", label: h.trades },
+  ];
+  const statuses = [
+    { value: "all", label: h.allStatuses },
+    { value: "pending", label: h.pending },
+    { value: "approved", label: h.approved },
+    { value: "rejected", label: h.rejected },
+    { value: "settled", label: h.settled },
+    { value: "open", label: h.open },
+  ];
 
   const session = await auth();
   if (!session?.user) redirect(`/${lang}/login?next=/${lang}/transactions`);
@@ -88,27 +94,28 @@ export default async function TransactionsPage(props: PageProps<"/[lang]/transac
         verified: user.kycStatus === "APPROVED",
       }}
     >
-      <h1 className="pt-10 text-[30px] font-semibold leading-10 text-avalon-text">Balance History</h1>
+      <h1 className="pt-10 text-[30px] font-semibold leading-10 text-avalon-text">{cabinetCopy(lang).nav.balanceHistory}</h1>
 
       <div className="mt-7">
         <HistoryFilters
+          locale={lang}
           basePath={`/${lang}/transactions`}
           current={current}
           groups={[
-            { name: "type", label: "Transaction type", options: TYPES },
+            { name: "type", label: h.transactionType, options: types },
             {
               name: "currency",
-              label: "Currency",
-              options: [{ value: "all", label: "All currencies" }, { value: currency, label: currency }],
+              label: h.currency,
+              options: [{ value: "all", label: h.allCurrencies }, { value: currency, label: currency }],
             },
-            { name: "status", label: "Status", options: STATUSES },
+            { name: "status", label: h.status, options: statuses },
           ]}
         />
       </div>
 
       <div className="mt-9 border-t border-avalon-surface-hover">
         {entries.length === 0 ? (
-          <p className="py-24 text-center text-[16px] font-light text-avalon-text">No data found</p>
+          <p className="py-24 text-center text-[16px] font-light text-avalon-text">{h.noData}</p>
         ) : (
           <table className="w-full text-left text-[13px]">
             <thead className="text-[12px] uppercase tracking-wide text-avalon-text">
