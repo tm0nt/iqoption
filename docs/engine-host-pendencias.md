@@ -31,12 +31,12 @@ se resolve o próximo:
 ### 1. A administração não mexe em saldo, e não estorna negócios
 
 O painel está em `/[lang]/admin`: visão geral com dinheiro, pessoas e o estado
-do feed; caixa com filtros; limites e taxas; usuários; afiliados; catálogo de
-instrumentos editável; livro de negócios; e as configurações como JSON. O que
-ele **não** faz:
+do feed; caixa com filtros; limites e taxas; usuários; verificação (KYC);
+afiliados; catálogo de instrumentos editável; livro de negócios; e as
+configurações como JSON. O que ele **não** faz:
 
-- **Saldo de conta.** A tela de usuários lista, busca, desativa e aprova ou
-  recusa a verificação — mas não edita saldo. Dinheiro entra e sai pelo caixa,
+- **Saldo de conta.** A tela de usuários lista, busca, desativa e reseta o 2FA
+  de quem perdeu o celular e os códigos — mas não edita saldo. Dinheiro entra e sai pelo caixa,
   onde fica registrado. Para dar ou tirar papel de administrador continua sendo
   `npm run admin:grant` — e isso é de propósito, não uma lacuna.
 - **Anular um negócio.** A tela de negócios existe e mostra tudo — abertas,
@@ -218,13 +218,28 @@ O que **não** está pronto nelas:
 
 - **Nenhum provedor de pagamento.** Depósitos e saques são resolvidos à mão no
   caixa do admin; veja o item 2.
-- **O documento de identidade.** A etapa de detalhes grava e move a conta para
-  `PENDING`; o envio do documento não existe. A aprovação é feita à mão, em
-  Usuários no admin, comparando os dados — o que basta para liberar o saque
-  quando a verificação é exigida, e não substitui um documento.
+- **Conferência automática de documento.** O envio existe — frente, verso
+  (menos passaporte) e selfie segurando o documento, com os documentos aceitos
+  por país editáveis em Verificação (KYC) no admin; CPF conferido pelos dígitos
+  no Brasil — mas quem decide é uma pessoa, na fila do admin. Não há OCR,
+  prova de vida nem consulta a base externa (Receita, bureaus). As fotos ficam
+  em `var/uploads/kyc/` no disco do servidor, fora de `public/`, servidas só ao
+  dono e a administradores; num deploy com mais de uma máquina ou disco
+  efêmero (Vercel) esse diretório precisa virar um bucket privado.
 - **Logos de bandeiras de cartão.** O original alinha Visa e Mastercard no
   rodapé do depósito. São marcas de terceiros e exibi-las afirmaria uma relação
   de pagamento que não existe; a linha diz o que é verdade no lugar.
+
+## Verificação em duas etapas
+
+TOTP (RFC 6238) com qualquer app autenticador, em `/profile/security`: QR code,
+chave manual, dez códigos de recuperação de uso único (guardados só como hash).
+O segredo fica cifrado com uma chave derivada de `AUTH_SECRET` — trocar
+`AUTH_SECRET` faz os códigos do app pararem de valer para todo mundo; entra-se
+com um código de recuperação ou com o 2FA resetado no admin.
+Cinco códigos errados bloqueiam a conta por 15 minutos; um código não vale duas
+vezes. O que falta: 2FA por SMS ou e-mail (não há envio de mensagens) e exigir
+o código também para sacar.
 
 ## Afiliados
 
