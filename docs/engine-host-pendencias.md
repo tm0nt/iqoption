@@ -1,16 +1,30 @@
 # Engine host — o que falta
 
-Estado em 5 de outubro de 2026. O traderoom roda em `/[lang]/traderoom`, servido
-pelo Next, atrás de login: contas, carteiras e negócios vivem no MySQL, o
-catálogo de instrumentos também, e os preços de cripto vêm da Binance. As oito
-páginas de conta — perfil, verificação, portfólio, saque, histórico de saldo,
-histórico de negócios, depósito e a foto — estão clonadas e ligadas. O painel de
-administração está em `/[lang]/admin`, aberto só a quem tem papel `ADMIN`. O que
-está abaixo é o que ainda não está pronto, em ordem do que mais dói.
+Estado em 5 de outubro de 2026. O traderoom roda em `/[lang]/traderoom`,
+servido pelo Next, atrás de login: contas, carteiras e negócios vivem no MySQL,
+o catálogo de instrumentos também, os preços de cripto vêm da Binance e EURUSD
+da Twelve Data. As oito páginas de conta estão clonadas e ligadas. O painel de
+administração está em `/[lang]/admin`, aberto só a quem tem papel `ADMIN`, em
+três idiomas. A marca — logo, nome, tema, cor — é um punhado de linhas no banco
+e alcança o engine.
 
+O que está abaixo é o que ainda **não** está pronto, em ordem do que mais dói.
 Para o protocolo em si — o que cada frame carrega e por quê — veja
-[`avalon-backend.md`](./avalon-backend.md). Este arquivo é só a lista de
+[`avalon-backend.md`](./avalon-backend.md); para as formas gravadas dos
+painéis, [`avalon-panels.md`](./avalon-panels.md). Este arquivo é só a lista de
 pendências.
+
+Duas coisas que valem mais que qualquer item desta lista, porque decidem como
+se resolve o próximo:
+
+- **Gravar vence decodificar.** Todas as formas que acertamos vieram de uma
+  gravação da plataforma ao vivo; todas que erramos vieram de palpite. Três
+  formas erradas para `get-news-feed` — que, gravado, descobriu-se que o
+  cliente nunca pede — e dois nomes errados de resposta de torneio.
+- **Repetição mede aceitação, não erro.** O engine não reclama de uma resposta
+  que não entende: ele reenvia o pedido com o mesmo `request_id`. Parar de
+  repetir é o sinal de que a forma está certa. A exceção são os painéis, que
+  giram igual quando não entendem e quando não recebem.
 
 ## Bloqueios reais
 
@@ -108,16 +122,33 @@ assíncrona por todo o roteador — `openOption` é chamada de dentro do tratame
 do frame e a resposta carrega o id. Enquanto for um processo só, isto é uma
 restrição anotada, não um defeito.
 
-### 5. Forex ainda é sintético
+### 5. Forex real existe, mas só num par
 
-Só `BINANCE` e `SIMULATED` existem como fontes. Os cinco pares de forex usam a
-curva determinística de `server/market/prices.mjs` — ela é convincente e não é
-real. Trocar uma linha para `source = 'BINANCE'` com um `sourceSymbol` válido já
-funciona hoje; o que falta é um provedor de forex de verdade.
+`TWELVEDATA` entrou como fonte ao lado de `BINANCE` e `SIMULATED`, e EURUSD usa
+preço de verdade. Os outros quatro pares seguem na curva determinística — não
+por falta de código, mas porque o plano gratuito da Twelve Data **transmite só
+EUR/USD**. GBP/USD, USD/JPY, AUD/USD e USD/CAD respondem no REST e são
+recusados no stream, mesmo pedidos sozinhos.
 
-Para acrescentar um: `server/market/binance.mjs` é o modelo. O contrato é
-pequeno — `warmUp`, `connect`, `priceAt`, `candleAt` — e o despacho por fonte
-está em `prices.mjs`.
+Apontá-los para a Twelve Data daria barras de minuto reais e velas de cinco
+segundos vindas da curva — o mesmo instrumento mostrando dois mercados
+diferentes conforme você troca de prazo. Por isso o módulo **recusa servir**
+qualquer símbolo que o stream rejeitou, e eles ficam inteiros na curva. Um
+plano que os transmita não precisa de código: é trocar a fonte na tela de
+Instrumentos e recarregar o catálogo.
+
+Três coisas sobre esse feed que custam tempo se forem redescobertas:
+
+- **Uma conexão por chave.** Uma segunda não é recusada, ela *assume* e derruba
+  a primeira. Rodar qualquer sonda contra a mesma chave enquanto o feed está de
+  pé rouba o stream em silêncio, e as velas de 5s caem para a curva. Lê-se
+  exatamente como feed quebrado.
+- **O `timestamp` do stream é o minuto da barra, não o segundo do tick.** A
+  série de um segundo é chaveada pelo segundo de chegada; o timestamp do vendor
+  serve as séries de minuto e hora, que é o que ele descreve.
+- **Os baldes de um segundo vivem em memória.** Um restart apaga a janela de
+  ~16 minutos, e velas de 5s anteriores a ele voltam à curva até o buffer
+  encher de novo. Persistir é possível e não foi feito.
 
 ### 6. O `/reload` não é automático
 
@@ -273,68 +304,46 @@ curl "https://trade.avalonbroker.com/api/lang/route-translations?groups[]=deskto
 
 ## Os painéis editoriais
 
-Existe `content_items` no banco e uma tela em `/[lang]/admin/content` que
-escreve nela: webinars, tutoriais, notícias, ajuda e promoções, cada item com
-título, resumo, corpo, imagem, link, apresentador, data, duração, prioridade e
-idioma — um item sem idioma aparece nos três.
+Todos respondem. `content_items` no banco, a tela `/[lang]/admin/content`
+escrevendo nela, e os painéis lendo: Webinars por HTTP, e Vídeo Tutoriais,
+Ajuda, Promoção, Análise de Mercado (o calendário econômico), Alertas, Tabela
+de Líderes e Torneios pelo socket. O log do feed não reporta nenhum
+`MISSING CALL`.
 
-O caminho até o engine está ligado e **verificado no fio**:
+### Notícias: esta marca não tem
 
-- `GET /api/engine/stubs/webinars.json?locale=xx` devolve os webinars do banco.
-- `get-news-feed` devolve as notícias do banco (confirmado no transcript:
-  `status 2000`, itens reais).
+Três formas foram escritas para `get-news-feed` e todas estavam erradas pelo
+mesmo motivo: **o cliente nunca faz essa chamada.** Em quarenta e um mil frames
+gravados da plataforma ao vivo ela não aparece uma vez. "Análise de Mercado"
+nesta marca é o calendário econômico; o painel de notícias não é populado.
 
-O que **não** funciona ainda: os dois painéis continuam mostrando o estado
-vazio. Não é falta de dados nem erro de transporte — o transcript mostra
-`status 2000` com itens reais, o engine não registra erro nem timeout, e não
-reenvia o pedido. É a forma do item.
+O handler foi apagado, e o `NEWS` saiu do enum de conteúdo. Fica registrado
+porque é a lição mais cara do projeto: responder uma chamada que ninguém faz é
+uma forma que ninguém pode conferir, e ela foi lida por três rodadas como forma
+que *nós* tínhamos errado.
 
-### O que já foi descartado
+### O calendário de balanços vem vazio
 
-Três tentativas, todas verificadas no engine:
+`get-earnings-calendar-events` responde `{events: []}`. O envelope não é
+palpite — o calendário econômico ao lado é irmão dele e tem resposta gravada —
+mas a lista é vazia porque é verdade: datas de balanço vêm de um feed de
+filings corporativos que não temos, e esta plataforma não negocia as ações a
+que elas pertenceriam.
 
-1. **Campos planos** (`title`, `content`, `image`, `url`, `date`) — o que o
-   primeiro palpite mandava. Nem `title` nem `content` existem na tabela de
-   strings do binário.
-2. **Contêiner `news` vs `articles`** — `articles`, `news_id` e `body` estão na
-   tabela; `news` não. Mandamos sob os dois nomes. Não resolveu.
-3. **Forma aninhada "smartfeed"** — a atual. É a mais fundamentada: a tabela
-   carrega `title.bold_text`, `description.text`, `description.html`,
-   `image.url`, `link.url`, `main_button.*`, `timer.*`, `video.embed_url`, que
-   é como este build nomeia chave aninhada. Os setters de `IQNewsArticleData`
-   dão o resto do conjunto (`activeIds`, `mainActiveId`, `forexCountries`,
-   `topics`, `https`, `url`), e `active_ids`, `image_url`, `source_url` e
-   `https` aparecem em snake case. Mesmo assim o painel não renderiza.
+### O caixa responde, mas o diálogo não é usado
 
-A resposta hoje também devolve `from`, `n`, `config` e `lang` do pedido — uma
-lista paginada precisa casar resposta com pergunta, e `lang` volta na forma
-exata que chegou (`en_US`, não `en`). Isso está certo independentemente do
-resto e fica.
+`get-cashbox-counting` e `get-withdrawal-payouts` ficaram muito tempo sem
+resposta, de propósito, porque as formas não podiam ser adivinhadas. Uma
+gravação resolveu as duas, e hoje a primeira devolve as seis chaves que a
+plataforma real devolve — só que preenchidas com **os nossos** métodos, limites
+e presets, da linha `cashier.methods`.
 
-### Onde olhar a seguir
-
-O construtor de `IQNewsArticleData` recebe uma tupla de **29 campos** (tipos
-decodificáveis do símbolo mangled: 8 strings, 3 vetores de string, 2 vetores de
-int, 4 bools, 4 ints, um `IQOptionType`, um `IQNewsButtonData`, um
-`IQNewsPriority`). Conhecemos ~12 nomes. Os outros 17 estão no binário; o pool
-de strings é fundido por sufixo, então vizinhança no `strings` não é semântica
-e procurar por ali não ajudou.
-
-Dois caminhos melhores que continuar adivinhando:
-
-- **Gravar a resposta real.** É o método que resolveu todo o resto deste
-  projeto. Exige uma sessão autenticada no feed deles com o painel de Análise
-  de Mercado aberto.
-- **Desmontar a função.** `F2::APNews::onDataReceived` e o construtor da tupla,
-  com `wasm-objdump`/`wasm2wat`, mostram a ordem de leitura das chaves.
-
-Vale registrar a armadilha: **o painel gira igual quando não entende e quando
-não recebe.** Não há sinal de erro para guiar, o que é exatamente o oposto das
-expirações e das carteiras, onde o engine nomeava o que faltava. Medir por
-repetição não funciona aqui porque ele não repete o pedido.
-
-Falta também descobrir o que Vídeo Tutoriais, Ajuda e Alertas pedem — ainda não
-foram instrumentados — e Torneios e Tabela de Líderes inteiros.
+Mesmo assim o diálogo do engine não chega a desenhar: toda porta para o fluxo
+de billing é substituída pela página de caixa da plataforma antes disso. É
+deliberado — o diálogo deles carrega um iframe de
+`billing.trade.avalonbroker.com`, que é o caixa **deles**, e a CSP do traderoom
+bloqueia saída cross-origin justamente por isso. Fazer o depósito acontecer
+dentro do engine exigiria construir nosso próprio painel no lugar do iframe.
 
 ## Entrar num torneio
 
@@ -395,6 +404,82 @@ mesma linha pelos dois caminhos.
 
 Regra para quem continuar: **no servidor de mercado, data lida do banco é
 `UNIX_TIMESTAMP`.** Nunca um `DATETIME` convertido em `Date`.
+
+## A marca
+
+Logo, nome, tema do gráfico, cor e as três frases que um link compartilhado
+mostra são linhas em `platform_settings`, editadas em `/[lang]/admin/brand`.
+Trocar a marca é uma edição, não um deploy — e alcança o engine, não só as
+páginas.
+
+O engine foi a parte difícil, porque ele desenha a própria marca de dentro de
+uma folha de sprites, e diz quais sprites em folhas de estilo que moram dentro
+de `glengineaa60ee59.data`:
+
+```
+.plotBackgroundStyle { bg: 'map'; shader: coloradd; color: var(black); }
+```
+
+Essa linha é o atalho para qualquer arte do engine que ainda precise mudar.
+Procurar por nomes de sprite não funciona: a marca d'água atrás do gráfico
+chama-se `map`, e por isso passou por três buscas sem aparecer.
+
+`scripts/brand-engine-atlas.mjs` troca dez sprites em dois atlas e escreve uma
+cópia marcada em `public/storage/brand-atlas`, que uma rota serve no lugar da
+original. O espelho não é editado de propósito: ele é o build de outra pessoa e
+o próximo refetch desfaria a marca em silêncio.
+
+### O que falta na marca
+
+- **A cor só alcança o admin.** As telas do gabinete usam o token fixo do
+  Tailwind `--color-avalon-primary: #09af8e`, em 140 lugares. Hoje isso não
+  aparece porque o verde escolhido está a dois pontos dele; trocar a cor para
+  valer deixa metade da plataforma para trás. O conserto é mecânico: trocar as
+  ocorrências por `var(--accent)` e definir a variável no shell do gabinete,
+  como já é feito no admin.
+- **Reespelhar o engine apaga a marca do atlas.** `download-engine.mjs`
+  rebaixa as folhas originais; a cópia marcada continua lá, mas foi construída
+  sobre as antigas. Rodar `brand-engine-atlas.mjs` depois resolve, e nada
+  lembra de fazê-lo.
+
+## Moedas
+
+O catálogo é o real: 93 moedas com os ids da plataforma (EUR é 1, USD é 5, BRL
+é 6), em `server/data/currencies.mjs`. Três bandeiras respondem perguntas
+diferentes — `is_visible` (90), `is_tradable` (71), `is_inout` (23) — e quais
+*esta* plataforma oferece é uma quarta, na linha `cashier.currencies`. O
+cadastro abre a conta na moeda pedida quando ela está na lista, e no padrão
+quando não está.
+
+O que falta:
+
+- **As cotações são um instantâneo.** `rate` e `rate_usd` vieram da gravação e
+  nada as mantém. Hoje são inertes porque nada aqui converte entre moedas — um
+  saldo é denominado numa e fica nela — mas qualquer conversão futura precisa
+  de um feed antes de confiar nesses números.
+- **Não há tela para escolher as moedas.** É JSON na tela de Ajustes. Uma tela
+  com as 23 que aceitam dinheiro marcadas seria melhor.
+- **O formulário de cadastro não pergunta.** A API aceita `currency`; a tela
+  não oferece. Quem se cadastra pela interface cai sempre no padrão.
+
+## Arte espelhada
+
+Ícones de instrumento e miniaturas de indicador eram um pixel transparente. Os
+caminhos são hashes de conteúdo e não dão para derivar, então
+`scripts/download-artwork.mjs` os lê de uma gravação e espelha — 810 imagens,
+1,7 MB, em `public/storage/`, fora do versionamento como o resto.
+
+O rewrite do pixel em `next.config.ts` é `afterFiles`, que o Next verifica
+depois de `public/`: arquivo espelhado ganha, e só os buracos caem no pixel.
+Nada na configuração precisou mudar.
+
+Os ícones de pagamento vieram de outro lugar ainda — o iframe de
+`billing.trade.avalonbroker.com` embutido na página de depósito, cross-origin,
+invisível de fora. Dez métodos, dez ícones.
+
+Falta: **a lista de imagens vem de uma gravação.** Um instrumento novo que a
+plataforma passe a oferecer não terá arte até alguém gravar de novo e rodar o
+script.
 
 ## Sobras do caminho
 
