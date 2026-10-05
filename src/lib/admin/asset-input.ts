@@ -10,15 +10,17 @@
  *   - `precision` beyond what the source quotes quantises the chart into steps.
  *   - `expirations` must be whole positive seconds; the deal panel builds its
  *     expiry menu straight from them.
- *   - A BINANCE instrument without a `sourceSymbol` has no feed and silently
- *     falls back to a synthetic curve, which looks like real data and is not.
+ *   - An instrument with a feed but no `sourceSymbol` has no feed at all and
+ *     silently falls back to a synthetic curve, which looks like real data and
+ *     is not. The spelling is the source's own: `BTCUSDT` for Binance,
+ *     `EUR/USD` for Twelve Data.
  *
  * Unknown fields are dropped rather than passed through, so a typo cannot
  * quietly write a column nobody meant to change.
  */
 
 const KINDS = new Set(["forex", "crypto", "index", "stock", "commodity"]);
-const SOURCES = new Set(["BINANCE", "SIMULATED"]);
+const SOURCES = new Set(["BINANCE", "TWELVEDATA", "SIMULATED"]);
 
 export type AssetInput = Record<string, unknown>;
 

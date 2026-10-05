@@ -13,6 +13,7 @@
  */
 
 import * as binance from "./binance.mjs";
+import * as twelvedata from "./twelvedata.mjs";
 
 const OCTAVES = 6;
 /** Each octave is this much faster than the one before. */
@@ -59,12 +60,26 @@ function fbm(seed, x) {
  * @param {import("./actives.mjs").Active} active
  * @param {number} timeSeconds unix seconds, fractional is fine
  */
+/**
+ * The module that speaks for an instrument's source, or null for the curve.
+ *
+ * One table rather than a branch in each of the two readers below: they are
+ * called once per candle, and a source that is handled in one and forgotten in
+ * the other is a chart whose bars and whose price disagree.
+ */
+const FEEDS = { BINANCE: binance, TWELVEDATA: twelvedata };
+
+function feedFor(active) {
+  return FEEDS[active.source] ?? null;
+}
+
 export function priceAt(active, timeSeconds) {
-  if (active.source === "BINANCE") {
-    const real = binance.priceAt(active, timeSeconds);
-    // Null means the feed has nothing covering that instant — at boot, or after
-    // a drop. Falling through to the curve keeps the platform answering rather
-    // than serving a zero the chart would draw as a cliff.
+  // Null from a feed means it has nothing covering that instant — at boot, or
+  // after a drop. Falling through to the curve keeps the platform answering
+  // rather than serving a zero the chart would draw as a cliff.
+  const feed = feedFor(active);
+  if (feed) {
+    const real = feed.priceAt(active, timeSeconds);
     if (real !== null) return real;
   }
   return simulatedPriceAt(active, timeSeconds);
@@ -107,8 +122,9 @@ export function round(value, precision) {
  * @param {number} [until] clamp the right edge here, for the bucket still open
  */
 export function candleAt(active, from, size, until) {
-  if (active.source === "BINANCE") {
-    const real = binance.candleAt(active, from, size);
+  const feed = feedFor(active);
+  if (feed) {
+    const real = feed.candleAt(active, from, size);
     if (real) return { id: Math.floor(from / size), from, to: from + size, ...real };
   }
   return simulatedCandleAt(active, from, size, until);

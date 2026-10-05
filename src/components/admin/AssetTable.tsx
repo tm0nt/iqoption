@@ -10,7 +10,7 @@ export type AdminAsset = {
   name: string;
   kind: string;
   groupId: number;
-  source: "BINANCE" | "SIMULATED";
+  source: "BINANCE" | "TWELVEDATA" | "SIMULATED";
   sourceSymbol: string | null;
   precision: number;
   profit: number;
@@ -101,8 +101,14 @@ export function AssetTable({ assets, groups, locale }: { assets: AdminAsset[]; g
       profit: Number(draft.profit),
       priority: Number(draft.priority),
     };
-    // An empty symbol is "none", which only makes sense without a feed.
-    if (draft.source === "BINANCE") body.sourceSymbol = (draft.sourceSymbol ?? "").trim().toUpperCase();
+    /*
+     * An empty symbol is "none", which only makes sense without a feed.
+     *
+     * Upper-cased because both sources spell their symbols that way, and
+     * trimmed because a pasted symbol usually brings a space with it. The
+     * slash in `EUR/USD` is left alone — it is part of the name.
+     */
+    if (draft.source !== "SIMULATED") body.sourceSymbol = (draft.sourceSymbol ?? "").trim().toUpperCase();
 
     if (await send(id, body)) setEditing(null);
   }
@@ -173,21 +179,23 @@ export function AssetTable({ assets, groups, locale }: { assets: AdminAsset[]; g
                           onChange={(v) => setDraft({ ...draft, source: v })}
                           options={[
                             { value: "BINANCE", label: t.binance },
+                            { value: "TWELVEDATA", label: t.twelvedata },
                             { value: "SIMULATED", label: t.synthetic },
                           ]}
                         />
-                        {draft.source === "BINANCE" && (
+                        {draft.source !== "SIMULATED" && (
                           <Input
                             value={draft.sourceSymbol ?? ""}
                             onChange={(v) => setDraft({ ...draft, sourceSymbol: v })}
-                            placeholder="BTCUSDT"
+                            placeholder={draft.source === "BINANCE" ? "BTCUSDT" : "EUR/USD"}
                             className="w-28"
                           />
                         )}
                       </div>
-                    ) : asset.source === "BINANCE" ? (
+                    ) : asset.source !== "SIMULATED" ? (
                       <span>
-                        {t.binance} <span className="font-mono text-[12px] text-[#a0a1a6]">{asset.sourceSymbol}</span>
+                        {asset.source === "BINANCE" ? t.binance : t.twelvedata}{" "}
+                        <span className="font-mono text-[12px] text-[#a0a1a6]">{asset.sourceSymbol}</span>
                       </span>
                     ) : (
                       <span className="text-[#a0a1a6]">{t.synthetic}</span>

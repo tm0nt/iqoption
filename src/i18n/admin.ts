@@ -96,6 +96,7 @@ export type AdminCopy = {
     lead: string;
     deleteNote: string;
     binance: string;
+    twelvedata: string;
     synthetic: string;
     id: string;
     ticker: string;
@@ -322,6 +323,7 @@ const en: AdminCopy = {
     lead: "What the platform offers, and where each one's prices come from.",
     deleteNote: "Disabling takes an instrument off the platform without losing it, and is the one to reach for. The id is the `active_id` the engine knows.",
     binance: "Binance",
+    twelvedata: "Twelve Data",
     synthetic: "Synthetic",
     id: "Id",
     ticker: "Ticker",
@@ -555,6 +557,7 @@ const pt: AdminCopy = {
     lead: "O que a plataforma oferece, e de onde vem o preço de cada um.",
     deleteNote: "Desativar tira o instrumento da plataforma sem perdê-lo, e é o que você quer na maioria das vezes. O id é o `active_id` que o engine conhece.",
     binance: "Binance",
+    twelvedata: "Twelve Data",
     synthetic: "Sintético",
     id: "Id",
     ticker: "Símbolo",
@@ -788,6 +791,7 @@ const es: AdminCopy = {
     lead: "Lo que la plataforma ofrece, y de dónde viene el precio de cada uno.",
     deleteNote: "Desactivar quita el instrumento de la plataforma sin perderlo, y es lo que suele querer. El id es el `active_id` que conoce el motor.",
     binance: "Binance",
+    twelvedata: "Twelve Data",
     synthetic: "Sintético",
     id: "Id",
     ticker: "Símbolo",

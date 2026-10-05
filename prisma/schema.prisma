@@ -37,8 +37,12 @@ model AssetGroup {
 enum PriceSource {
   /// Binance klines and live trades, keyed by `sourceSymbol`.
   BINANCE
-  /// The deterministic curve in server/market/prices.mjs. The fallback for a
-  /// family with no feed yet — forex, until one is wired.
+  /// Twelve Data, for forex. `sourceSymbol` is their spelling: `EUR/USD`.
+  /// Its REST stops at one minute, so the one-second series is recorded from
+  /// their tick stream by this server — see server/market/twelvedata.mjs.
+  TWELVEDATA
+  /// The deterministic curve in server/market/prices.mjs. The fallback for an
+  /// instrument with no feed, and for any bucket a feed cannot cover.
   SIMULATED
 }
 

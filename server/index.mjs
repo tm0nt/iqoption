@@ -26,10 +26,30 @@ import { Connection } from "./connection.mjs";
 import { MarketFeed } from "./market/feed.mjs";
 import { ACTIVES, activeById, loadCatalog } from "./market/actives.mjs";
 import * as binance from "./market/binance.mjs";
+import * as twelvedata from "./market/twelvedata.mjs";
 import { loadNextPositionId } from "./market/position-store.mjs";
 import { startSettlement, stopSettlement } from "./market/settlement.mjs";
 import { openSession } from "./accounts.mjs";
 import { priceAt, round } from "./market/prices.mjs";
+
+/**
+ * Warms every feed and reports them as one.
+ *
+ * Both are asked, always: an instrument is pointed at a source from the admin
+ * screen, so which sources are in use is a question about the database rather
+ * than about this file, and a feed that is only warmed on the boot path and
+ * not on `/reload` is a feed that goes stale the first time the catalogue is
+ * edited.
+ */
+async function warmFeeds(log) {
+  const results = await Promise.all([binance.warmUp(ACTIVES, log), twelvedata.warmUp(ACTIVES, log)]);
+  const ready = results.flatMap((result) => result.ready);
+  const failed = results.flatMap((result) => result.failed);
+  for (const symbol of twelvedata.unavailable()) {
+    failed.push(`${symbol} (not on this Twelve Data plan)`);
+  }
+  return { ready, failed };
+}
 
 const PORT = Number(process.env.AVALON_SERVER_PORT ?? 3100);
 const WS_PATH = "/echo/websocket";
@@ -72,9 +92,11 @@ const http = createServer((request, response) => {
   if (url.pathname === "/reload" && request.method === "POST") {
     loadCatalog()
       .then(async ({ assets, groups }) => {
-        const { ready, failed } = await binance.warmUp(ACTIVES, log);
+        const { ready, failed } = await warmFeeds(log);
         binance.disconnect();
+        twelvedata.disconnect();
         binance.connect(ACTIVES, WebSocket, log);
+        twelvedata.connect(ACTIVES, WebSocket, log, console.log);
 
   /*
    * One settlement loop for the process, not one per connection. A deal reaches
@@ -173,9 +195,9 @@ async function start() {
   const nextDeal = await loadNextPositionId();
   console.log(`deals: next id ${nextDeal}`);
 
-  const { ready, failed } = await binance.warmUp(ACTIVES, log);
-  if (ready.length) console.log(`binance: warmed ${ready.join(", ")}`);
-  for (const miss of failed) console.log(`binance: NO FEED for ${miss} — falling back to the curve`);
+  const { ready, failed } = await warmFeeds(log);
+  if (ready.length) console.log(`feeds: warmed ${ready.join(", ")}`);
+  for (const miss of failed) console.log(`feeds: NO FEED for ${miss} — falling back to the curve`);
 
   /*
    * An instrument with a feed has no `sim_base`, so the fallback curve would
@@ -183,8 +205,9 @@ async function start() {
    * first real price keeps that fallback in the right neighbourhood.
    */
   for (const active of ACTIVES) {
-    if (active.source !== "BINANCE" || active.base) continue;
-    const price = binance.priceAt(active, Date.now() / 1000);
+    if (active.source === "SIMULATED" || active.base) continue;
+    const feed = active.source === "TWELVEDATA" ? twelvedata : binance;
+    const price = feed.priceAt(active, Date.now() / 1000);
     if (price) {
       active.base = price;
       active.volatility = active.volatility || 0.02;
@@ -192,6 +215,7 @@ async function start() {
   }
 
   binance.connect(ACTIVES, WebSocket, log);
+  twelvedata.connect(ACTIVES, WebSocket, log, console.log);
 
   /*
    * One settlement loop for the process, not one per connection. A deal reaches
@@ -217,6 +241,7 @@ for (const signal of ["SIGINT", "SIGTERM"]) {
     feed.stop();
     stopSettlement();
     binance.disconnect();
+    twelvedata.disconnect();
     wss.close();
     http.close(() => process.exit(0));
   });
