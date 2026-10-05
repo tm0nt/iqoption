@@ -16,6 +16,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import { registerSchema } from "@/lib/auth/validation";
 import { setting } from "@/lib/engine/settings";
+import { currencyForNewAccount } from "@/lib/cabinet/currencies";
 import { CLICK_COOKIE, attachReferral } from "@/lib/affiliate/tracking";
 import { firePostback } from "@/lib/affiliate/postback";
 
@@ -52,6 +53,7 @@ export async function POST(request: Request) {
   }
 
   const { email, password, name, phone, phoneCountry } = parsed.data;
+  const currency = await currencyForNewAccount(parsed.data.currency);
   const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
   const demo = await setting("trading.demoBalance");
 
@@ -65,8 +67,13 @@ export async function POST(request: Request) {
         phoneCountry,
         balances: {
           create: [
-            { type: REAL, amount: new Prisma.Decimal(0), currency: demo.currency },
-            { type: PRACTICE, amount: new Prisma.Decimal(demo.amount), currency: demo.currency },
+            /*
+             * Both wallets in the same currency: the practice balance is a
+             * rehearsal of the real one, and a person practising in dollars
+             * while trading in reais is rehearsing the wrong thing.
+             */
+            { type: REAL, amount: new Prisma.Decimal(0), currency },
+            { type: PRACTICE, amount: new Prisma.Decimal(demo.amount), currency },
           ],
         },
       },

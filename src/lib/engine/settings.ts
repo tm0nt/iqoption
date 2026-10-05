@@ -59,6 +59,18 @@ export type Brand = {
 export type EngineSession = { userId: number };
 export type DemoBalance = { amount: number; currency: string };
 
+/**
+ * Which currencies a person may hold money in.
+ *
+ * The engine carries a catalogue of ninety-three and marks twenty-three as
+ * ones money can move in. Which of those *this* platform offers is a separate
+ * decision and this is it — the live brand it was recorded from offers two.
+ *
+ * The first is the default: a new account opens in it, and anything asked for
+ * a currency that does not exist falls back to it.
+ */
+export type Currencies = { offered: string[] };
+
 const DEFAULTS = {
   "engine.resource": { host: "/engine", version: 1788361536 } satisfies EngineResource,
   "engine.feed": { wsUrl: "ws://localhost:3100/echo/websocket" } satisfies EngineFeed,
@@ -78,6 +90,7 @@ const DEFAULTS = {
     siteUrl: "",
   } satisfies Brand,
   "trading.demoBalance": { amount: 10000, currency: "USD" } satisfies DemoBalance,
+  "cashier.currencies": { offered: ["USD", "BRL", "EUR"] } satisfies Currencies,
 };
 
 type SettingKey = keyof typeof DEFAULTS;

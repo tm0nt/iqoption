@@ -9,6 +9,7 @@
  */
 
 import { ACTIVES, ACTIVE_GROUPS, SETTINGS, activeById, groupIdFor } from "../market/actives.mjs";
+import { CURRENCIES, offeredCurrencies } from "../data/currencies.mjs";
 import {
   PRACTICE,
   balanceChangedFrame,
@@ -678,7 +679,7 @@ export const CALLS = {
   "get-currency-list": () => ({
     name: "currency-list",
     payload: {
-      currencies: CURRENCIES.map((currency) => ({
+      currencies: offeredCurrencies(SETTINGS).map((currency) => ({
         id: currency.id,
         name: currency.name,
         symbol: currency.symbol,
@@ -994,14 +995,16 @@ export const CALLS = {
     // way to say that, so it gets a number large enough to never bind.
     const max = Number(cashier.maxDeposit) || 1_000_000;
 
+    const offered = offeredCurrencies(SETTINGS);
+
     const limits = {};
-    for (const currency of CURRENCIES) {
+    for (const currency of offered) {
       limits[currency.name] = { min, max, minor_units: currency.minor_units };
     }
 
     const presets = {};
     const amounts = Array.isArray(cashier.depositPresets) ? [...cashier.depositPresets] : [];
-    for (const currency of CURRENCIES) {
+    for (const currency of offered) {
       presets[currency.name] = amounts
         .slice()
         .sort((a, b) => b - a)
@@ -1035,12 +1038,12 @@ export const CALLS = {
               max: { value: 60, time_scale: "minutes" },
             },
             limits,
-            default_amount: Object.fromEntries(CURRENCIES.map((c) => [c.name, amounts.at(-1) ?? min])),
+            default_amount: Object.fromEntries(offered.map((c) => [c.name, amounts.at(-1) ?? min])),
             supported_currency_type: method.kind === "crypto" ? ["fiat", "crypto"] : ["fiat"],
           })),
         one_clicks: [],
         presets,
-        available_currencies: CURRENCIES.map((currency) => ({
+        available_currencies: offered.map((currency) => ({
           id: currency.id,
           name: currency.name,
           symbol: currency.symbol,
@@ -1526,8 +1529,17 @@ export const CALLS = {
     };
   },
 
+  /**
+   * One currency, by name.
+   *
+   * The fallback is the platform's first offered currency, not the
+   * catalogue's first. The catalogue is the client's own numbering and begins
+   * at EUR, so falling back to `CURRENCIES[0]` would answer a question about
+   * an unknown currency with euros on a dollar platform.
+   */
   "get-currency": (body) => {
-    const currency = CURRENCIES.find((item) => item.name === body?.name) ?? CURRENCIES[0];
+    const offered = offeredCurrencies(SETTINGS);
+    const currency = CURRENCIES.find((item) => item.name === body?.name) ?? offered[0] ?? CURRENCIES[0];
     return { name: "currency", payload: currency };
   },
 
@@ -1830,11 +1842,6 @@ function binaryActive(active, now) {
 }
 
 /** Shared by `get-currencies-list` and `get-currency`. */
-const CURRENCIES = [
-  { id: 1, name: "USD", symbol: "$", mask: "$%s", is_crypto: false, is_default: true, minor_units: 2, min_investment: 1 },
-  { id: 2, name: "EUR", symbol: "€", mask: "€%s", is_crypto: false, is_default: false, minor_units: 2, min_investment: 1 },
-  { id: 3, name: "BRL", symbol: "R$", mask: "R$ %s", is_crypto: false, is_default: false, minor_units: 2, min_investment: 1 },
-];
 
 /**
  * Subscriptions the engine opens and we accept but never publish on.

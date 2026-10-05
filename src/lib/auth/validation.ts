@@ -218,6 +218,13 @@ export const registerSchema = z
   .object({
     email: emailSchema,
     password: passwordSchema,
+    /*
+     * Which currency the account's money is denominated in. Optional, because
+     * a form that does not ask should still work; what is offered is an
+     * administrator's decision, so it is checked against the platform rather
+     * than against a list written here.
+     */
+    currency: z.string().trim().toUpperCase().max(8).optional(),
     name: z.string().trim().min(1, "Enter your name.").max(120).optional(),
     phone: z.string(),
     phoneCountry: z.string().length(2).optional(),
