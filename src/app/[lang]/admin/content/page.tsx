@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
 import { ContentEditor, type AdminContent } from "@/components/admin/ContentEditor";
 import { adminCopy } from "@/i18n/admin";
+import { PageHeader } from "@/components/admin/ui";
 
 export async function generateMetadata(props: PageProps<"/[lang]/admin/content">): Promise<Metadata> {
   const { lang } = await props.params;
@@ -30,10 +31,7 @@ export default async function AdminContentPage(props: PageProps<"/[lang]/admin/c
 
   return (
     <div className="space-y-6">
-      <section>
-        <h1 className="text-[20px] font-semibold">{t.content.heading}</h1>
-        <p className="mt-1 text-[13px] text-[#a0a1a6]">{t.content.lead}</p>
-      </section>
+      <PageHeader title={t.content.heading} lead={t.content.lead} />
 
       <ContentEditor items={rows} locale={lang} />
     </div>

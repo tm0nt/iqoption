@@ -1,6 +1,6 @@
 # Engine host — o que falta
 
-Estado em 4 de outubro de 2026. O traderoom roda em `/[lang]/traderoom`, servido
+Estado em 5 de outubro de 2026. O traderoom roda em `/[lang]/traderoom`, servido
 pelo Next, atrás de login: contas, carteiras e negócios vivem no MySQL, o
 catálogo de instrumentos também, e os preços de cripto vêm da Binance. As oito
 páginas de conta — perfil, verificação, portfólio, saque, histórico de saldo,
@@ -14,15 +14,17 @@ pendências.
 
 ## Bloqueios reais
 
-### 1. A administração não cobre contas, e não estorna
+### 1. A administração não mexe em saldo, e não estorna negócios
 
-O painel está em `/[lang]/admin`: visão geral com o estado do feed, catálogo de
-instrumentos editável, livro de negócios e as configurações como JSON. O que ele
-**não** faz:
+O painel está em `/[lang]/admin`: visão geral com dinheiro, pessoas e o estado
+do feed; caixa com filtros; limites e taxas; usuários; afiliados; catálogo de
+instrumentos editável; livro de negócios; e as configurações como JSON. O que
+ele **não** faz:
 
-- **Contas.** Não lista usuários, não desativa ninguém, não mexe em saldo. Para
-  dar ou tirar papel de administrador continua sendo `npm run admin:grant` — e
-  isso é de propósito, não uma lacuna.
+- **Saldo de conta.** A tela de usuários lista, busca, desativa e aprova ou
+  recusa a verificação — mas não edita saldo. Dinheiro entra e sai pelo caixa,
+  onde fica registrado. Para dar ou tirar papel de administrador continua sendo
+  `npm run admin:grant` — e isso é de propósito, não uma lacuna.
 - **Anular um negócio.** A tela de negócios existe e mostra tudo — abertas,
   liquidadas, por conta, com o resultado da casa — mas é somente leitura. Não há
   como estornar um negócio errado. Isso é deliberado: uma tela que muda o
@@ -61,6 +63,20 @@ Três garantias, todas verificadas:
   pedido recusado pela trava continua `PENDING`, não fica marcado como resolvido.
 - **Idempotente.** Só linha `PENDING` é tocada; o segundo clique responde
   "that request is not pending" em vez de pagar duas vezes.
+
+Os limites e as taxas são configuração, editada em **Limites e taxas**
+(`/[lang]/admin/finance`): depósito mínimo e máximo, saque mínimo e máximo,
+quantos depósitos pendentes uma pessoa pode ter, saques grátis por mês e a taxa
+(percentual mais fixa) depois deles, e se o saque exige verificação aprovada. A
+taxa fica **dentro** do valor: o saldo sai pelo valor pedido e a pessoa recebe
+o valor menos a taxa, então um estorno devolve exatamente o que saiu. As rotas
+checam tudo isso; a página só antecipa.
+
+Um pedido ainda pendente pode ser cancelado por quem o fez — o saque cancelado
+volta ao saldo na mesma transação. Um código promocional `deposit_bonus` (com
+`params` `{"percent": 50, "min_deposit": 100, "max_bonus": 500}`) é validado no
+pedido e o bônus é creditado junto com o depósito, na aprovação, uma vez por
+pessoa e código.
 
 O que **continua faltando**: provedor de pagamento. Aprovar é a afirmação de que
 o dinheiro chegou — nada aqui verifica que chegou. Para operar de verdade falta
@@ -169,19 +185,55 @@ aqui, não embutidas.
 
 O que **não** está pronto nelas:
 
-- **Nada paga ninguém.** Um depósito grava uma linha pendente e o saldo não se
-  move; um saque debita no pedido e fica pendente para sempre, porque não existe
-  quem aprove. Falta a tela de operação do caixa e o provedor de pagamento.
+- **Nenhum provedor de pagamento.** Depósitos e saques são resolvidos à mão no
+  caixa do admin; veja o item 2.
 - **O documento de identidade.** A etapa de detalhes grava e move a conta para
-  `PENDING`; o envio do documento não existe, então ninguém chega a `APPROVED`.
-- **As sub-páginas do perfil.** O menu lateral lista seis — notificações,
-  configurações de conta, redes sociais, meios de pagamento, segurança — e só
-  "Personal Data" existe. As outras cinco dão 404.
-- **Promoções.** O campo de código promocional existe e responde que não há
-  promoção alguma, porque não há.
+  `PENDING`; o envio do documento não existe. A aprovação é feita à mão, em
+  Usuários no admin, comparando os dados — o que basta para liberar o saque
+  quando a verificação é exigida, e não substitui um documento.
 - **Logos de bandeiras de cartão.** O original alinha Visa e Mastercard no
   rodapé do depósito. São marcas de terceiros e exibi-las afirmaria uma relação
   de pagamento que não existe; a linha diz o que é verdade no lugar.
+
+## Afiliados
+
+O programa vive em `/[lang]/affiliate` (para quem divulga) e em
+`/[lang]/admin/affiliates` (para quem opera). As peças, em
+`src/lib/affiliate/`:
+
+- **Rastreamento.** Um link de afiliado é qualquer página com `?ref=CODIGO`,
+  opcionalmente `&sub=` e `utm_*`. O middleware manda a visita para
+  `/api/affiliate/click`, que grava o clique (sub-id, utm, página, referer, IP,
+  país, navegador), entrega um cookie **assinado** com o clique e devolve a
+  pessoa à página sem os parâmetros. O cadastro lê o cookie e grava a indicação
+  (`referrals`). Vale o último clique; um cookie forjado é ignorado.
+- **FTD.** O primeiro depósito aprovado de um indicado é gravado na indicação,
+  na mesma transação da aprovação.
+- **Comissões.** Um razão (`affiliate_commissions`), não um saldo: CPA uma vez
+  por indicado que qualifica (depósitos aprovados e, se pedido, volume real) e
+  revenue share por negócio liquidado na carteira real, com sinal — o indicado
+  que ganha tira a parte do afiliado. O acúmulo lê o que aconteceu e escreve o
+  que falta, a cada minuto (`src/instrumentation.ts`) e antes de cada tela que
+  mostra números; o índice único `(kind, source_id)` impede pagar duas vezes.
+  Mudar de plano não paga retroativamente: o negócio já visto ganha linha de
+  valor zero.
+- **Saldo e saques.** O saldo é calculado do razão (passado o período de
+  retenção) menos saques aprovados e pendentes. O pedido de saque trava a linha
+  do afiliado enquanto confere e grava, então dois pedidos simultâneos não
+  gastam o mesmo saldo. O admin aprova ou recusa em **Saques de afiliados**.
+- **Postback.** O afiliado pode cadastrar uma URL com macros; ela é chamada no
+  cadastro, no FTD e no CPA. Só http/https, e todo endereço para onde o nome
+  resolve precisa ser público — checado dentro da própria conexão, para que uma
+  resposta de DNS diferente entre a checagem e a chamada não abra a rede
+  interna. Cada chamada fica registrada.
+
+Os termos (plano padrão, CPA e qualificação, revenue share, retenção, saque
+mínimo, validade do cookie) são editados em **Afiliados → Programa**; cada
+afiliado pode ter termos próprios.
+
+O que **falta**: pagamento automático (aprovar um saque diz que foi pago, não
+paga), e qualquer detecção de fraude além do que a tela mostra — IP do clique e
+do cadastro estão lá para um humano comparar.
 
 ## Idiomas
 

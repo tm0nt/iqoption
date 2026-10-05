@@ -4,6 +4,7 @@ import { isLocale } from "@/i18n/avalon";
 import { adminCopy } from "@/i18n/admin";
 import { setting } from "@/lib/engine/settings";
 import { BrandEditor } from "@/components/admin/BrandEditor";
+import { PageHeader } from "@/components/admin/ui";
 
 export const dynamic = "force-dynamic";
 
@@ -21,10 +22,7 @@ export default async function AdminBrandPage(props: PageProps<"/[lang]/admin/bra
 
   return (
     <div className="space-y-7">
-      <section>
-        <h1 className="text-[22px] font-semibold">{copy.heading}</h1>
-        <p className="mt-1.5 max-w-[720px] text-[13px] leading-[21px] text-[#a0a1a6]">{copy.lead}</p>
-      </section>
+      <PageHeader title={copy.heading} lead={copy.lead} />
 
       <BrandEditor brand={brand} locale={lang} />
     </div>

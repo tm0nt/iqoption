@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { PositionTable, type AdminPosition } from "@/components/admin/PositionTable";
 import { AutoRefresh } from "@/components/admin/AutoRefresh";
 import { adminCopy } from "@/i18n/admin";
+import { PageHeader } from "@/components/admin/ui";
 
 export async function generateMetadata(props: PageProps<"/[lang]/admin/positions">): Promise<Metadata> {
   const { lang } = await props.params;
@@ -129,21 +130,23 @@ export default async function AdminPositions(props: PageProps<"/[lang]/admin/pos
       {/* Running deals change on their own; settled ones never do. */}
       {filter !== "settled" && open._count > 0 && <AutoRefresh seconds={10} />}
 
-      <section>
-        <h1 className="text-[20px] font-semibold">{t.deals.heading}</h1>
-        <p className="mt-1 text-[13px] text-[#a0a1a6]">
-          {t.deals.lead}
-          {account && (
-            <>
-              {" "}
-              {t.deals.filteredTo(account)}{" "}
-              <Link href={link({ account: undefined, page: 1 })} className="text-[var(--accent)] hover:underline">
-                {t.deals.showAll}
-              </Link>
-            </>
-          )}
-        </p>
-      </section>
+      <PageHeader
+        title={t.deals.heading}
+        lead={
+          <>
+            {t.deals.lead}
+            {account && (
+              <>
+                {" "}
+                {t.deals.filteredTo(account)}{" "}
+                <Link href={link({ account: undefined, page: 1 })} className="text-[var(--accent)] hover:underline">
+                  {t.deals.showAll}
+                </Link>
+              </>
+            )}
+          </>
+        }
+      />
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label={t.deals.running} value={String(open._count)} />
