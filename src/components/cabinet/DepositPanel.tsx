@@ -4,7 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormError } from "@/components/sites/trade-avalonbroker-com-6f41c8f2/shared/FormError";
-import { methodInitials, type CashierMethod, DEFAULT_DAYS } from "@/lib/cabinet/cashier-types";
+import { type CashierMethod, DEFAULT_DAYS } from "@/lib/cabinet/cashier-types";
+import { MethodMark } from "@/components/cabinet/MethodMark";
 import { formatMoney, localeTag } from "@/lib/cabinet/format";
 import { cabinetCopy } from "@/i18n/cabinet";
 import { cabinetExtra } from "@/i18n/cabinet-extra";
@@ -139,9 +140,7 @@ export function DepositPanel({
                     : "bg-avalon-surface hover:bg-avalon-surface-hover"
                 }`}
               >
-                <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-avalon-surface-hover text-[9px] font-semibold text-avalon-text">
-                  {methodInitials(candidate)}
-                </span>
+                <MethodMark method={candidate} size={28} />
                 <span className="min-w-0">
                   <span className="block truncate text-[13px] text-avalon-text-strong">{candidate.name}</span>
                   <span className="block text-[11px] text-avalon-text">
@@ -181,9 +180,7 @@ export function DepositPanel({
         ) : (
           <>
             <div className="flex items-center gap-3">
-              <span className="flex size-8 items-center justify-center rounded-full bg-avalon-surface text-[10px] font-semibold text-avalon-text">
-                {methodInitials(method)}
-              </span>
+              <MethodMark method={method} size={32} />
               <h2 className="text-[16px] font-semibold text-avalon-text-strong">{method.name}</h2>
             </div>
 

@@ -4,7 +4,8 @@ import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormError } from "@/components/sites/trade-avalonbroker-com-6f41c8f2/shared/FormError";
-import { methodInitials, type CashierMethod, DEFAULT_DAYS, withdrawalFee, CASHIER_DEFAULTS } from "@/lib/cabinet/cashier-types";
+import { type CashierMethod, DEFAULT_DAYS, withdrawalFee, CASHIER_DEFAULTS } from "@/lib/cabinet/cashier-types";
+import { MethodMark } from "@/components/cabinet/MethodMark";
 import { parseAmount } from "@/lib/cabinet/money";
 import { formatMoney } from "@/lib/cabinet/format";
 import { cabinetCopy } from "@/i18n/cabinet";
@@ -212,9 +213,7 @@ export function WithdrawalPanel({
                   active ? "bg-white ring-1 ring-avalon-primary md:ring-0" : "bg-avalon-surface hover:bg-avalon-surface-hover"
                 }`}
               >
-                <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-avalon-surface-hover text-[9px] font-semibold text-avalon-text">
-                  {methodInitials(candidate)}
-                </span>
+                <MethodMark method={candidate} size={28} />
                 <span className="min-w-0">
                   <span className="block truncate text-[13px] text-avalon-text-strong">{candidate.name}</span>
                   <span className="block text-[11px] text-avalon-text">
@@ -231,8 +230,8 @@ export function WithdrawalPanel({
         <div className="w-full max-w-[400px] text-center">
           {method && (
             <>
-              <span className="mx-auto flex size-[60px] items-center justify-center rounded-full bg-avalon-surface text-[13px] font-semibold text-avalon-text">
-                {methodInitials(method)}
+              <span className="mx-auto block">
+                <MethodMark method={method} size={60} />
               </span>
               <h2 className="mt-5 text-[20px] font-semibold text-avalon-text-strong">{method.name}</h2>
             </>

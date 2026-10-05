@@ -69,6 +69,41 @@ export const CASHIER_DEFAULTS: CashierSettings = {
 };
 
 /** Icons are drawn from the rail's own name, so a new rail needs no new code. */
+/**
+ * The platform's own artwork for a payment method, or null for none.
+ *
+ * Matched on the method's name rather than configured per row, so a cashier
+ * that was set up before any of this existed shows its icons without being
+ * edited. An unmatched method keeps the lettered badge, which is why this
+ * returns null instead of a placeholder: a wrong logo is worse than initials.
+ *
+ * The files are mirrored by `scripts/download-artwork.mjs` and cut from the
+ * engine's sprite atlas; where the platform has no logo of its own — Tether,
+ * USDC, Cardano, BNB, whose artwork only exists with an OTC badge burnt into
+ * it — the generic crypto mark stands in rather than a coin logo from
+ * somewhere else.
+ */
+const METHOD_ICONS: [RegExp, string][] = [
+  [/bitcoin|\bbtc\b/i, "/storage/cashier/methods/bitcoin.png"],
+  [/ethereum|\beth\b/i, "/storage/cashier/methods/eth.png"],
+  [/litecoin|\bltc\b/i, "/storage/cashier/methods/ltc.png"],
+  [/ripple|\bxrp\b/i, "/storage/cashier/methods/xrp.png"],
+  [/visa/i, "/storage/cashier/methods/visa.svg"],
+  [/maestro/i, "/storage/cashier/methods/maestro.svg"],
+  [/mastercard|master card/i, "/storage/cashier/methods/mastercard.svg"],
+  [/\bpix\b|bank|transfer|boleto/i, "/storage/cashier/methods/wallet.svg"],
+  // Anything else crypto-shaped: the generic mark.
+  [/coin|crypto|usdt|usdc|tether|cardano|\bada\b|\bbnb\b|binance|solana|\bsol\b|doge/i, "/storage/cashier/methods/other_cryptos.svg"],
+];
+
+export function methodIcon(method: CashierMethod): string | null {
+  for (const [pattern, file] of METHOD_ICONS) {
+    if (pattern.test(method.name) || pattern.test(method.id)) return file;
+  }
+  // A method with no match but marked crypto still gets the generic mark.
+  return method.kind === "crypto" ? "/storage/cashier/methods/other_cryptos.svg" : null;
+}
+
 export function methodInitials(method: CashierMethod) {
   const match = /\(([^)]+)\)/.exec(method.name);
   return (match?.[1] ?? method.name).slice(0, 4).toUpperCase();
