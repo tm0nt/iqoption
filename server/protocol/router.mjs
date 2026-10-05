@@ -8,7 +8,7 @@
  * as a 4040 rather than silence, so a client sees what is missing.
  */
 
-import { ACTIVES, ACTIVE_GROUPS, activeById, groupIdFor } from "../market/actives.mjs";
+import { ACTIVES, ACTIVE_GROUPS, SETTINGS, activeById, groupIdFor } from "../market/actives.mjs";
 import {
   PRACTICE,
   balanceChangedFrame,
@@ -968,35 +968,121 @@ export const CALLS = {
     payload: { events: [] },
   }),
 
-  /*
-   * `get-cashbox-counting` and `get-withdrawal-payouts` are deliberately not
-   * answered here.
+  /**
+   * The cashier, as the engine asks for it.
    *
-   * Both are retried — twenty and twenty-six times in the log — so the engine
-   * does want them, and both carry enough in the request to guess at:
-   * `{form_version: 6, crypto_balances: true, soft_restrictions: true}` and a
-   * null body at v3.0. Guessing is the thing not to do. Three wrong shapes
-   * were written for `get-news-feed` before a recording showed the call is
-   * never made at all, and two wrong names for the tournament reply before the
-   * engine's own log named it.
+   * Both of these went unanswered for a long time and the note that stood here
+   * said why: the shapes could not be guessed, and guessing is what cost this
+   * project three wrong `get-news-feed` bodies and two wrong tournament reply
+   * names. They are answered now because a recording of the live platform
+   * finally supplied them.
    *
-   * Leaving them unanswered is a known-safe state: the traderoom opens and
-   * runs with no answer to either, which is observable right now. A reply with
-   * the wrong shape is not known-safe — `get-cashbox-counting` is part of the
-   * boot sequence, and a throw inside the engine's own code there can stop the
-   * traderoom from opening.
+   * What goes *into* the shape is ours. The methods, their limits and the
+   * deposit presets come from the `cashier.methods` row an administrator edits
+   * on the Cashier screen, so this reports the platform's own cashier rather
+   * than a copy of somebody else's. Only the envelope is theirs.
    *
-   * They are also not what anyone looks at. Every door into the billing flow
-   * is replaced with the platform's own cashier page before the dialog can
-   * settle — `dialogSelectAccount` from the header button, `dialogDeposit`
-   * from the left bar's tab — so the page navigates away and the retries stop
-   * with it. That was not true until the tab was covered too: the retries in
-   * the log and the spinner somebody watched were the same thing seen from
-   * two ends. See REPLACED_VIEWS in src/lib/engine/host.ts.
-   *
-   * What they need is a recording of the live platform's cashier, which needs
-   * somebody to open it there. `scripts/record-live.mjs` is the harness.
+   * `limits` is keyed by currency and `minor_units` is how many decimal places
+   * that currency has, not a multiplier to apply — the recorded USD presets
+   * are whole dollars.
    */
+  "get-cashbox-counting": (body, { account }) => {
+    const cashier = SETTINGS["cashier.methods"] ?? {};
+    const methods = Array.isArray(cashier.methods) ? cashier.methods : [];
+    const min = Number(cashier.minDeposit) || 10;
+    // A maximum of 0 means "no limit" on the Cashier screen; the wire has no
+    // way to say that, so it gets a number large enough to never bind.
+    const max = Number(cashier.maxDeposit) || 1_000_000;
+
+    const limits = {};
+    for (const currency of CURRENCIES) {
+      limits[currency.name] = { min, max, minor_units: currency.minor_units };
+    }
+
+    const presets = {};
+    const amounts = Array.isArray(cashier.depositPresets) ? [...cashier.depositPresets] : [];
+    for (const currency of CURRENCIES) {
+      presets[currency.name] = amounts
+        .slice()
+        .sort((a, b) => b - a)
+        .map((amount) => ({ amount, badge: null }));
+    }
+
+    const [firstName = "", ...rest] = String(account.name ?? "").split(" ");
+
+    return {
+      name: "cashbox-counting",
+      payload: {
+        methods: methods
+          .filter((method) => method.deposit)
+          .map((method, index) => ({
+            // The wire wants a number. The rows are keyed by a string an
+            // administrator chose, so the position stands in for an id that
+            // nothing here needs to be stable.
+            id: index + 1,
+            name: method.name,
+            tag: method.kind === "crypto" ? "crypto" : "recommended",
+            is_multi_tab: false,
+            is_redirect: true,
+            commission_percent: 0,
+            pay_system: method.id,
+            icon_name: method.id,
+            is_temporary_disabled: false,
+            description: "",
+            redirect_via_mobile_browser: false,
+            processing_time: {
+              min: { value: 5, time_scale: "minutes" },
+              max: { value: 60, time_scale: "minutes" },
+            },
+            limits,
+            default_amount: Object.fromEntries(CURRENCIES.map((c) => [c.name, amounts.at(-1) ?? min])),
+            supported_currency_type: method.kind === "crypto" ? ["fiat", "crypto"] : ["fiat"],
+          })),
+        one_clicks: [],
+        presets,
+        available_currencies: CURRENCIES.map((currency) => ({
+          id: currency.id,
+          name: currency.name,
+          symbol: currency.symbol,
+          mask: currency.mask,
+          type: currency.is_crypto ? "crypto" : "fiat",
+          minor_units: currency.minor_units,
+        })),
+        client_category_id: 1,
+        /*
+         * Built from the account rather than stored: this is the person's own
+         * name and address, and a fixture carrying somebody's details is a
+         * fixture that leaks them.
+         */
+        user_billing_info: {
+          exists: false,
+          user_id: account.userId,
+          first_name: firstName,
+          last_name: rest.join(" "),
+          address: "",
+          zip: "",
+          country: "BR",
+          city: "",
+        },
+      },
+    };
+  },
+
+  /**
+   * Withdrawals waiting on a payment provider, of which there are none.
+   *
+   * `{invoices: []}` is what the live platform answered for an account with
+   * nothing in flight, and it is the truthful answer here for a different
+   * reason: no payment provider is connected, so a withdrawal is settled by an
+   * administrator on the Cashier screen rather than by an invoice the engine
+   * could track. Those live in `transactions`, which this panel has no shape
+   * for and no reason to learn — the withdrawal view is replaced with the
+   * platform's own page before it draws.
+   */
+  "get-withdrawal-payouts": () => ({
+    name: "withdrawal-payouts",
+    payload: { invoices: [] },
+  }),
 
   /**
    * Opening a binary option.
