@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { adminCopy } from "@/i18n/admin";
 
 type Status =
   | { state: "checking" }
@@ -14,7 +15,8 @@ type Status =
  * restarted under the panel, and a status that was true when the page loaded is
  * worse than no status at all.
  */
-export function FeedStatus() {
+export function FeedStatus({ locale }: { locale: string }) {
+  const t = adminCopy(locale).overview;
   const [status, setStatus] = useState<Status>({ state: "checking" });
 
   useEffect(() => {
@@ -46,7 +48,7 @@ export function FeedStatus() {
   }, []);
 
   if (status.state === "checking") {
-    return <p className="text-[13px] text-[#a0a1a6]">Checking…</p>;
+    return <p className="text-[13px] text-[#a0a1a6]">{t.checking}</p>;
   }
 
   if (status.state === "down") {
@@ -54,12 +56,14 @@ export function FeedStatus() {
       <div className="flex items-start gap-2.5">
         <span className="mt-1.5 size-2 shrink-0 rounded-full bg-avalon-danger" />
         <div className="text-[13px]">
-          <p className="font-medium text-avalon-danger">Not answering</p>
+          <p className="font-medium text-avalon-danger">{t.notAnswering}</p>
           <p className="mt-0.5 text-[#a0a1a6]">
             {status.error}
-            {status.target && <> — tried {status.target}</>}
+            {status.target && <> — {status.target}</>}
           </p>
-          <p className="mt-1 text-[#6f7076]">Start it with <code className="font-mono">npm run server</code>.</p>
+          <p className="mt-1 text-[#6f7076]">
+            {t.startItWith} <code className="font-mono">npm run server</code>.
+          </p>
         </div>
       </div>
     );
@@ -67,9 +71,9 @@ export function FeedStatus() {
 
   return (
     <div className="flex items-start gap-2.5">
-      <span className="mt-1.5 size-2 shrink-0 rounded-full bg-avalon-primary" />
+      <span className="mt-1.5 size-2 shrink-0 rounded-full bg-[var(--accent)]" />
       <div className="text-[13px]">
-        <p className="font-medium">Serving {status.instruments} instruments</p>
+        <p className="font-medium">{t.serving(status.instruments)}</p>
         <p className="mt-0.5 font-mono text-[12px] text-[#6f7076]">{status.target}</p>
       </div>
     </div>

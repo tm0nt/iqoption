@@ -4,8 +4,13 @@ import { prisma } from "@/lib/db";
 import { engineConfig } from "@/lib/engine/settings";
 import { ReloadFeedButton } from "@/components/admin/ReloadFeedButton";
 import { FeedStatus } from "@/components/admin/FeedStatus";
+import { adminCopy } from "@/i18n/admin";
 
-export const metadata: Metadata = { title: "Admin · Avalon" };
+export async function generateMetadata(props: PageProps<"/[lang]/admin">): Promise<Metadata> {
+  const { lang } = await props.params;
+  const copy = adminCopy(lang);
+  return { title: `${copy.overview.heading} · ${copy.shell.title}` };
+}
 export const dynamic = "force-dynamic";
 
 /** A number with a word under it. */
@@ -21,6 +26,7 @@ function Stat({ label, value, hint }: { label: string; value: string | number; h
 
 export default async function AdminOverview(props: PageProps<"/[lang]/admin">) {
   const { lang } = await props.params;
+  const t = adminCopy(lang).overview;
 
   const [instruments, live, users, openDeals, settledDeals, config] = await Promise.all([
     prisma.asset.count({ where: { enabled: true } }),
@@ -34,49 +40,39 @@ export default async function AdminOverview(props: PageProps<"/[lang]/admin">) {
   return (
     <div className="space-y-8">
       <section>
-        <h1 className="text-[20px] font-semibold">Overview</h1>
-        <p className="mt-1 text-[13px] text-[#a0a1a6]">
-          What the platform is currently serving.
-        </p>
+        <h1 className="text-[20px] font-semibold">{t.heading}</h1>
+        <p className="mt-1 text-[13px] text-[#a0a1a6]">{t.lead}</p>
       </section>
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Stat
-          label="Instruments enabled"
+          label={t.instrumentsEnabled}
           value={instruments}
-          hint={`${live} with a live feed, ${instruments - live} on the synthetic curve`}
+          hint={t.instrumentsNote(live, instruments - live)}
         />
-        <Stat label="Accounts" value={users} />
-        <Stat
-          label="Deals"
-          value={`${openDeals} / ${settledDeals}`}
-          hint="running / settled"
-        />
+        <Stat label={t.accounts} value={users} />
+        <Stat label={t.deals} value={`${openDeals} / ${settledDeals}`} hint={t.dealsNote} />
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-[15px] font-semibold">Market feed</h2>
+        <h2 className="text-[15px] font-semibold">{t.marketFeed}</h2>
         <div className="rounded-lg border border-white/10 bg-[#15161a] p-5">
-          <FeedStatus />
-          <p className="mt-4 text-[13px] leading-relaxed text-[#a0a1a6]">
-            The feed reads the instrument catalogue when it starts. It shares this
-            database but not this process, so an instrument changed here is invisible
-            there until it is asked to look again.
-          </p>
+          <FeedStatus locale={lang} />
+          <p className="mt-4 text-[13px] leading-relaxed text-[#a0a1a6]">{t.feedNote}</p>
           <div className="mt-4">
-            <ReloadFeedButton />
+            <ReloadFeedButton locale={lang} />
           </div>
         </div>
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-[15px] font-semibold">Engine</h2>
+        <h2 className="text-[15px] font-semibold">{t.engine}</h2>
         <dl className="grid gap-px overflow-hidden rounded-lg border border-white/10 bg-white/10 text-[13px] sm:grid-cols-2">
           {[
-            ["Feed", config.feed.wsUrl],
-            ["Engine build", `${config.resource.host} @ ${config.resource.version}`],
-            ["Brand", config.brand.name],
-            ["Country reported", `${config.brand.countryFlag} (${config.brand.countryId})`],
+            [t.feed, config.feed.wsUrl],
+            [t.engineBuild, `${config.resource.host} @ ${config.resource.version}`],
+            [t.brand, config.brand.name],
+            [t.countryReported, `${config.brand.countryFlag} (${config.brand.countryId})`],
           ].map(([label, value]) => (
             <div key={label} className="bg-[#15161a] px-5 py-3">
               <dt className="text-[#a0a1a6]">{label}</dt>
@@ -85,9 +81,9 @@ export default async function AdminOverview(props: PageProps<"/[lang]/admin">) {
           ))}
         </dl>
         <p className="text-[13px] text-[#a0a1a6]">
-          These live in{" "}
-          <Link href={`/${lang}/admin/settings`} className="text-avalon-primary hover:underline">
-            settings
+          {t.theseLiveIn}{" "}
+          <Link href={`/${lang}/admin/settings`} className="text-[var(--accent)] hover:underline">
+            {t.settingsLink}
           </Link>
           .
         </p>

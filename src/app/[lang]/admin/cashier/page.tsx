@@ -1,11 +1,18 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
 import { CashierQueue, type AdminTransaction } from "@/components/admin/CashierQueue";
+import { adminCopy } from "@/i18n/admin";
 
-export const metadata: Metadata = { title: "Cashier · Admin" };
+export async function generateMetadata(props: PageProps<"/[lang]/admin/cashier">): Promise<Metadata> {
+  const { lang } = await props.params;
+  const copy = adminCopy(lang);
+  return { title: `${copy.cashier.heading} · ${copy.shell.title}` };
+}
 export const dynamic = "force-dynamic";
 
-export default async function AdminCashierPage() {
+export default async function AdminCashierPage(props: PageProps<"/[lang]/admin/cashier">) {
+  const { lang } = await props.params;
+  const t = adminCopy(lang);
   const rows = await prisma.transaction.findMany({
     orderBy: [{ status: "asc" }, { createdAt: "desc" }],
     include: { user: { select: { email: true } } },
@@ -30,15 +37,11 @@ export default async function AdminCashierPage() {
   return (
     <div className="space-y-6">
       <section>
-        <h1 className="text-[20px] font-semibold">Cashier</h1>
-        <p className="mt-1 text-[13px] text-[#a0a1a6]">
-          Deposits and withdrawals waiting on a decision. No payment provider is connected,
-          so approving a deposit is the statement that the money arrived — nothing here
-          checks that it did.
-        </p>
+        <h1 className="text-[20px] font-semibold">{t.cashier.heading}</h1>
+        <p className="mt-1 text-[13px] text-[#a0a1a6]">{t.cashier.lead}</p>
       </section>
 
-      <CashierQueue transactions={transactions} />
+      <CashierQueue transactions={transactions} locale={lang} />
     </div>
   );
 }

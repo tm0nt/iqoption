@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { adminCopy } from "@/i18n/admin";
 
 type Result = { assets: number; groups: number; feedsReady?: string[]; feedsFailed?: string[] };
 
 /** Tells the market server to re-read the catalogue. */
-export function ReloadFeedButton() {
+export function ReloadFeedButton({ locale }: { locale: string }) {
+  const t = adminCopy(locale).overview;
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -18,12 +20,12 @@ export function ReloadFeedButton() {
       const response = await fetch("/api/admin/reload", { method: "POST" });
       const body = await response.json();
       if (!response.ok) {
-        setError(body.error ?? "The feed refused the reload.");
+        setError(body.error ?? t.reloadRefused);
         return;
       }
       setResult(body);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Could not reach the feed.");
+      setError(reason instanceof Error ? reason.message : t.feedUnreachable);
     } finally {
       setBusy(false);
     }
@@ -35,23 +37,21 @@ export function ReloadFeedButton() {
         type="button"
         onClick={reload}
         disabled={busy}
-        className="rounded bg-avalon-primary px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-avalon-primary-hover disabled:opacity-50"
+        className="rounded bg-[var(--accent)] px-4 py-2 text-[13px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
       >
-        {busy ? "Reloading…" : "Reload the catalogue"}
+        {busy ? t.reloading : t.reload}
       </button>
 
       {error && <p className="text-[13px] text-avalon-danger">{error}</p>}
 
       {result && (
         <div className="text-[13px] text-[#a0a1a6]">
-          <p>
-            {result.assets} instruments in {result.groups} groups.
-          </p>
+          <p>{t.catalogue(result.assets, result.groups)}</p>
           {result.feedsReady && result.feedsReady.length > 0 && (
-            <p className="mt-0.5">Live feeds: {result.feedsReady.join(", ")}.</p>
+            <p className="mt-0.5">{t.liveFeeds}: {result.feedsReady.join(", ")}.</p>
           )}
           {result.feedsFailed && result.feedsFailed.length > 0 && (
-            <p className="mt-0.5 text-avalon-danger">No feed: {result.feedsFailed.join(", ")}.</p>
+            <p className="mt-0.5 text-avalon-danger">{t.noFeed}: {result.feedsFailed.join(", ")}.</p>
           )}
         </div>
       )}

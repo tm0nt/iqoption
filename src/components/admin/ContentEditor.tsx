@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { adminCopy } from "@/i18n/admin";
 
 export type AdminContent = {
   id: number;
@@ -26,15 +27,14 @@ export type AdminContent = {
  * traderoom's own left bar — so an editor picks a place they have seen rather
  * than a word from the schema.
  */
-const KINDS = [
-  { value: "WEBINAR", label: "Webinars" },
-  { value: "TUTORIAL", label: "Video Tutorials" },
-  { value: "HELP", label: "Help" },
-  { value: "PROMO", label: "Promo" },
-];
+const KINDS = ["WEBINAR", "TUTORIAL", "HELP", "PROMO"] as const;
 
-const LOCALES = [
-  { value: "", label: "All languages" },
+/*
+ * The languages themselves are not translated: a Portuguese speaker looking for
+ * the Portuguese row looks for "Português", not for whatever their interface
+ * calls it.
+ */
+const LANGUAGES = [
   { value: "en", label: "English" },
   { value: "pt", label: "Português" },
   { value: "es", label: "Español" },
@@ -90,7 +90,7 @@ function draftOf(item: AdminContent): Draft {
   };
 }
 
-const field = "w-full rounded border border-white/10 bg-[#0f1013] px-2 py-1.5 text-[13px] text-white outline-none focus:border-avalon-primary";
+const field = "w-full rounded border border-white/10 bg-[#0f1013] px-2 py-1.5 text-[13px] text-white outline-none focus:border-[var(--accent)]";
 const label = "mb-1 block text-[11px] uppercase tracking-wide text-[#73747a]";
 
 /**
@@ -104,7 +104,9 @@ const label = "mb-1 block text-[11px] uppercase tracking-wide text-[#73747a]";
  * The traderoom caches these for a minute, which the banner says, so nobody
  * wonders why a correction has not appeared yet.
  */
-export function ContentEditor({ items }: { items: AdminContent[] }) {
+export function ContentEditor({ items, locale }: { items: AdminContent[]; locale: string }) {
+  const t = adminCopy(locale).content;
+  const c = adminCopy(locale).common;
   const router = useRouter();
   const [editing, setEditing] = useState<number | "new" | null>(null);
   const [draft, setDraft] = useState<Draft>(BLANK);
@@ -147,7 +149,7 @@ export function ContentEditor({ items }: { items: AdminContent[] }) {
     setBusy(false);
     if (!response?.ok) {
       const said = await response?.json().catch(() => null);
-      setError(said?.error ?? "could not save");
+      setError(said?.error ?? t.saveFailed);
       return;
     }
     setEditing(null);
@@ -159,7 +161,7 @@ export function ContentEditor({ items }: { items: AdminContent[] }) {
     const response = await fetch(`/api/admin/content/${id}`, { method: "DELETE" }).catch(() => null);
     setBusy(false);
     if (!response?.ok) {
-      setError("could not delete");
+      setError(t.deleteFailed);
       return;
     }
     if (editing === id) setEditing(null);
@@ -172,23 +174,21 @@ export function ContentEditor({ items }: { items: AdminContent[] }) {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
         <select value={filter} onChange={(event) => setFilter(event.target.value)} className={`${field} w-auto`}>
-          <option value="">Every panel</option>
+          <option value="">{t.everyPanel}</option>
           {KINDS.map((kind) => (
-            <option key={kind.value} value={kind.value}>{kind.label}</option>
+            <option key={kind} value={kind}>{t.panels[kind]}</option>
           ))}
         </select>
 
         <button
           type="button"
           onClick={create}
-          className="rounded bg-avalon-primary px-3 py-1.5 text-[13px] font-medium text-white hover:bg-avalon-primary-hover"
+          className="rounded bg-[var(--accent)] px-3 py-1.5 text-[13px] font-medium text-white transition-opacity hover:opacity-90"
         >
-          Write a new item
+          {t.newItem}
         </button>
 
-        <span className="ml-auto text-[12px] text-[#73747a]">
-          The traderoom re-reads these about once a minute.
-        </span>
+        <span className="ml-auto text-[12px] text-[#73747a]">{t.reReads}</span>
       </div>
 
       {error && (
@@ -203,87 +203,86 @@ export function ContentEditor({ items }: { items: AdminContent[] }) {
           className="grid gap-4 rounded border border-white/10 bg-[#15161a] p-4 sm:grid-cols-2"
         >
           <div>
-            <span className={label}>Panel</span>
+            <span className={label}>{t.panel}</span>
             <select value={draft.kind} onChange={(e) => setDraft({ ...draft, kind: e.target.value })} className={field}>
-              {KINDS.map((kind) => <option key={kind.value} value={kind.value}>{kind.label}</option>)}
+              {KINDS.map((kind) => <option key={kind} value={kind}>{t.panels[kind]}</option>)}
             </select>
           </div>
 
           <div>
-            <span className={label}>Language</span>
+            <span className={label}>{t.language}</span>
             <select value={draft.locale} onChange={(e) => setDraft({ ...draft, locale: e.target.value })} className={field}>
-              {LOCALES.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
+              <option value="">{t.allLanguages}</option>
+              {LANGUAGES.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
             </select>
           </div>
 
           <div className="sm:col-span-2">
-            <span className={label}>
-              Group — Help draws its categories from this, and so does the video library
-            </span>
+            <span className={label}>{t.groupHint}</span>
             <input value={draft.category} onChange={(e) => setDraft({ ...draft, category: e.target.value })} className={field} />
           </div>
 
           <div className="sm:col-span-2">
-            <span className={label}>Title</span>
+            <span className={label}>{t.title}</span>
             <input value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} className={field} />
           </div>
 
           <div className="sm:col-span-2">
-            <span className={label}>Summary — the line under the title in a list</span>
+            <span className={label}>{t.summary}</span>
             <input value={draft.summary} onChange={(e) => setDraft({ ...draft, summary: e.target.value })} className={field} />
           </div>
 
           <div className="sm:col-span-2">
-            <span className={label}>Body — shown when the item is opened</span>
+            <span className={label}>{t.body}</span>
             <textarea rows={5} value={draft.body} onChange={(e) => setDraft({ ...draft, body: e.target.value })} className={field} />
           </div>
 
           <div>
-            <span className={label}>Picture URL</span>
+            <span className={label}>{t.picture}</span>
             <input value={draft.imageUrl} onChange={(e) => setDraft({ ...draft, imageUrl: e.target.value })} className={field} />
           </div>
 
           <div>
-            <span className={label}>Link — where it opens</span>
+            <span className={label}>{t.link}</span>
             <input value={draft.linkUrl} onChange={(e) => setDraft({ ...draft, linkUrl: e.target.value })} className={field} />
           </div>
 
           <div>
-            <span className={label}>Presenter or source</span>
+            <span className={label}>{t.author}</span>
             <input value={draft.author} onChange={(e) => setDraft({ ...draft, author: e.target.value })} className={field} />
           </div>
 
           <div>
-            <span className={label}>Minutes — webinars and tutorials</span>
+            <span className={label}>{t.minutes}</span>
             <input type="number" min={0} value={draft.durationMins} onChange={(e) => setDraft({ ...draft, durationMins: e.target.value })} className={field} />
           </div>
 
           <div>
-            <span className={label}>Starts — a webinar&apos;s time, a news item&apos;s date</span>
+            <span className={label}>{t.starts}</span>
             <input type="datetime-local" value={draft.startsAt} onChange={(e) => setDraft({ ...draft, startsAt: e.target.value })} className={field} />
           </div>
 
           <div>
-            <span className={label}>Stops being shown — leave empty to never expire</span>
+            <span className={label}>{t.stops}</span>
             <input type="datetime-local" value={draft.endsAt} onChange={(e) => setDraft({ ...draft, endsAt: e.target.value })} className={field} />
           </div>
 
           <div>
-            <span className={label}>Priority — higher sits nearer the top</span>
+            <span className={label}>{t.priority}</span>
             <input type="number" value={draft.priority} onChange={(e) => setDraft({ ...draft, priority: e.target.value })} className={field} />
           </div>
 
           <label className="flex items-end gap-2 text-[13px] text-[#a0a1a6]">
             <input type="checkbox" checked={draft.enabled} onChange={(e) => setDraft({ ...draft, enabled: e.target.checked })} />
-            Shown in the traderoom
+            {t.shownHint}
           </label>
 
           <div className="flex gap-2 sm:col-span-2">
-            <button type="submit" disabled={busy} className="rounded bg-avalon-primary px-4 py-1.5 text-[13px] font-medium text-white disabled:opacity-50">
-              {busy ? "Saving…" : "Save"}
+            <button type="submit" disabled={busy} className="rounded bg-[var(--accent)] px-4 py-1.5 text-[13px] font-medium text-white disabled:opacity-50">
+              {busy ? t.saving : c.save}
             </button>
             <button type="button" onClick={() => setEditing(null)} className="rounded border border-white/10 px-4 py-1.5 text-[13px] text-[#a0a1a6]">
-              Cancel
+              {c.cancel}
             </button>
           </div>
         </form>
@@ -292,32 +291,32 @@ export function ContentEditor({ items }: { items: AdminContent[] }) {
       <table className="w-full border-collapse text-[13px]">
         <thead>
           <tr className="border-b border-white/10 text-left text-[11px] uppercase tracking-wide text-[#73747a]">
-            <th className="py-2 pr-3">Panel</th>
-            <th className="py-2 pr-3">Group</th>
-            <th className="py-2 pr-3">Title</th>
-            <th className="py-2 pr-3">Language</th>
-            <th className="py-2 pr-3">Starts</th>
-            <th className="py-2 pr-3">Priority</th>
-            <th className="py-2 pr-3">Shown</th>
+            <th className="py-2 pr-3">{t.panel}</th>
+            <th className="py-2 pr-3">{t.group}</th>
+            <th className="py-2 pr-3">{t.title}</th>
+            <th className="py-2 pr-3">{t.language}</th>
+            <th className="py-2 pr-3">{t.startsShort}</th>
+            <th className="py-2 pr-3">{t.priorityShort}</th>
+            <th className="py-2 pr-3">{t.shown}</th>
             <th className="py-2" />
           </tr>
         </thead>
         <tbody>
           {shown.map((item) => (
             <tr key={item.id} className="border-b border-white/5">
-              <td className="py-2 pr-3 text-[#a0a1a6]">{KINDS.find((k) => k.value === item.kind)?.label ?? item.kind}</td>
+              <td className="py-2 pr-3 text-[#a0a1a6]">{t.panels[item.kind] ?? item.kind}</td>
               <td className="py-2 pr-3 text-[#a0a1a6]">{item.category ?? "—"}</td>
               <td className="py-2 pr-3">{item.title}</td>
-              <td className="py-2 pr-3 text-[#a0a1a6]">{item.locale ?? "all"}</td>
+              <td className="py-2 pr-3 text-[#a0a1a6]">{item.locale ?? t.allShort}</td>
               <td className="py-2 pr-3 text-[#a0a1a6]">
                 {item.startsAt ? new Date(item.startsAt).toLocaleString() : "—"}
               </td>
               <td className="py-2 pr-3 text-[#a0a1a6]">{item.priority}</td>
-              <td className="py-2 pr-3">{item.enabled ? "yes" : "no"}</td>
+              <td className="py-2 pr-3">{item.enabled ? t.yes : t.no}</td>
               <td className="py-2 text-right">
-                <button type="button" onClick={() => edit(item)} className="text-avalon-primary hover:underline">Edit</button>
+                <button type="button" onClick={() => edit(item)} className="text-[var(--accent)] hover:underline">{c.edit}</button>
                 <button type="button" onClick={() => void remove(item.id)} disabled={busy} className="ml-3 text-avalon-danger hover:underline disabled:opacity-50">
-                  Delete
+                  {c.delete}
                 </button>
               </td>
             </tr>
@@ -325,9 +324,7 @@ export function ContentEditor({ items }: { items: AdminContent[] }) {
 
           {shown.length === 0 && (
             <tr>
-              <td colSpan={8} className="py-6 text-center text-[#73747a]">
-                Nothing written yet. The traderoom shows its empty state for this panel.
-              </td>
+              <td colSpan={8} className="py-6 text-center text-[#73747a]">{t.empty}</td>
             </tr>
           )}
         </tbody>

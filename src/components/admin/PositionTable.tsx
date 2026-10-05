@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { adminCopy, type AdminCopy } from "@/i18n/admin";
 
 export type AdminPosition = {
   id: number;
@@ -44,22 +45,25 @@ function duration(seconds: number) {
   return `${Math.round(seconds / 60)}m`;
 }
 
-function Outcome({ position }: { position: AdminPosition }) {
+function Outcome({ position, t }: { position: AdminPosition; t: AdminCopy["deals"] }) {
   if (!position.closedAt) {
-    return <span className="rounded bg-white/10 px-2 py-0.5 text-[12px] text-[#c9cace]">running</span>;
+    return <span className="rounded bg-white/10 px-2 py-0.5 text-[12px] text-[#c9cace]">{t.inProgress}</span>;
   }
 
   const net = (position.profitAmount ?? 0) - position.invest;
   const tone =
     position.closeReason === "win"
-      ? "bg-avalon-primary/15 text-avalon-primary"
+      ? "bg-[var(--accent)]/15 text-[var(--accent)]"
       : position.closeReason === "equal"
         ? "bg-white/10 text-[#c9cace]"
         : "bg-avalon-danger/15 text-avalon-danger";
 
+  // `win` / `loose` / `equal` is what the wire calls them; the panel says it in words.
+  const word = position.closeReason === "equal" ? t.refunded : position.closeReason === "win" ? t.win : t.loss;
+
   return (
     <span className={`rounded px-2 py-0.5 text-[12px] ${tone}`}>
-      {position.closeReason === "equal" ? "refunded" : position.closeReason}
+      {word}
       {position.closeReason !== "equal" && (
         <span className="ml-1.5 font-mono">
           {net >= 0 ? "+" : ""}
@@ -80,10 +84,11 @@ function Outcome({ position }: { position: AdminPosition }) {
  * rather than a rewrite of history.
  */
 export function PositionTable({ positions, lang }: { positions: AdminPosition[]; lang: string }) {
+  const t = adminCopy(lang).deals;
   if (positions.length === 0) {
     return (
       <p className="rounded-lg border border-white/10 bg-[#15161a] px-5 py-8 text-center text-[13px] text-[#a0a1a6]">
-        No deals match this filter.
+        {t.none}
       </p>
     );
   }
@@ -93,7 +98,7 @@ export function PositionTable({ positions, lang }: { positions: AdminPosition[];
       <table className="w-full min-w-[980px] text-left text-[13px]">
         <thead className="bg-[#1b1c21] text-[12px] uppercase tracking-wide text-[#a0a1a6]">
           <tr>
-            {["Deal", "Account", "Instrument", "Side", "Stake", "Opened", "Expiry", "Quotes", "Outcome"].map((head) => (
+            {[t.deal, t.account, t.instrument, t.side, t.stake, t.opened, t.expiry, t.quotes, t.outcome].map((head) => (
               <th key={head} className="px-4 py-3 font-medium">
                 {head}
               </th>
@@ -109,7 +114,7 @@ export function PositionTable({ positions, lang }: { positions: AdminPosition[];
               <td className="px-4 py-2.5">
                 <Link
                   href={`/${lang}/admin/positions?account=${position.userId}`}
-                  className="hover:text-avalon-primary hover:underline"
+                  className="hover:text-[var(--accent)] hover:underline"
                 >
                   {position.userEmail ?? position.userId}
                 </Link>
@@ -121,8 +126,8 @@ export function PositionTable({ positions, lang }: { positions: AdminPosition[];
               </td>
 
               <td className="px-4 py-2.5 whitespace-nowrap">
-                <span className={position.direction === "call" ? "text-avalon-primary" : "text-avalon-danger"}>
-                  {position.direction === "call" ? "▲ call" : "▼ put"}
+                <span className={position.direction === "call" ? "text-[var(--accent)]" : "text-avalon-danger"}>
+                  {position.direction === "call" ? `▲ ${t.call}` : `▼ ${t.put}`}
                 </span>
               </td>
 
@@ -144,7 +149,7 @@ export function PositionTable({ positions, lang }: { positions: AdminPosition[];
               </td>
 
               <td className="px-4 py-2.5 whitespace-nowrap">
-                <Outcome position={position} />
+                <Outcome position={position} t={t} />
               </td>
             </tr>
           ))}

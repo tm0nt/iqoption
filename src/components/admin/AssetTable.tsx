@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { adminCopy } from "@/i18n/admin";
 
 export type AdminAsset = {
   id: number;
@@ -40,7 +41,9 @@ type Draft = Partial<Record<Editable, string>>;
  * the banner says so rather than letting someone wonder why the traderoom has
  * not changed.
  */
-export function AssetTable({ assets, groups }: { assets: AdminAsset[]; groups: AdminGroup[] }) {
+export function AssetTable({ assets, groups, locale }: { assets: AdminAsset[]; groups: AdminGroup[]; locale: string }) {
+  const t = adminCopy(locale).assets;
+  const c = adminCopy(locale).common;
   const router = useRouter();
   const [editing, setEditing] = useState<number | null>(null);
   const [draft, setDraft] = useState<Draft>({});
@@ -74,14 +77,14 @@ export function AssetTable({ assets, groups }: { assets: AdminAsset[]; groups: A
       });
       const answer = await response.json();
       if (!response.ok) {
-        setError(answer.error ?? "The change was refused.");
+        setError(answer.error ?? c.refused);
         return false;
       }
       setDirty(true);
       router.refresh();
       return true;
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Could not reach the server.");
+      setError(reason instanceof Error ? reason.message : c.unreachable);
       return false;
     } finally {
       setBusy(false);
@@ -108,11 +111,11 @@ export function AssetTable({ assets, groups }: { assets: AdminAsset[]; groups: A
     <div className="space-y-4">
       {dirty && (
         <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-[13px] text-amber-200">
-          Saved. The running feed still has the old catalogue — reload it from the{" "}
+          {t.savedReloadBefore}{" "}
           <a href="../admin" className="underline">
-            overview
+            {t.overviewLink}
           </a>{" "}
-          for this to reach the traderoom.
+          {t.savedReloadAfter}
         </div>
       )}
 
@@ -126,8 +129,8 @@ export function AssetTable({ assets, groups }: { assets: AdminAsset[]; groups: A
         <table className="w-full min-w-[900px] text-left text-[13px]">
           <thead className="bg-[#1b1c21] text-[12px] uppercase tracking-wide text-[#a0a1a6]">
             <tr>
-              {["Id", "Ticker", "Name", "Group", "Source", "Precision", "Payout", "Priority", ""].map((head) => (
-                <th key={head} className="px-4 py-3 font-medium">
+              {[t.id, t.ticker, t.name, t.group, t.source, t.precision, t.payout, t.priority, ""].map((head, index) => (
+                <th key={index} className="px-4 py-3 font-medium">
                   {head}
                 </th>
               ))}
@@ -169,8 +172,8 @@ export function AssetTable({ assets, groups }: { assets: AdminAsset[]; groups: A
                           value={draft.source ?? ""}
                           onChange={(v) => setDraft({ ...draft, source: v })}
                           options={[
-                            { value: "BINANCE", label: "Binance" },
-                            { value: "SIMULATED", label: "Synthetic" },
+                            { value: "BINANCE", label: t.binance },
+                            { value: "SIMULATED", label: t.synthetic },
                           ]}
                         />
                         {draft.source === "BINANCE" && (
@@ -184,10 +187,10 @@ export function AssetTable({ assets, groups }: { assets: AdminAsset[]; groups: A
                       </div>
                     ) : asset.source === "BINANCE" ? (
                       <span>
-                        Binance <span className="font-mono text-[12px] text-[#a0a1a6]">{asset.sourceSymbol}</span>
+                        {t.binance} <span className="font-mono text-[12px] text-[#a0a1a6]">{asset.sourceSymbol}</span>
                       </span>
                     ) : (
-                      <span className="text-[#a0a1a6]">Synthetic</span>
+                      <span className="text-[#a0a1a6]">{t.synthetic}</span>
                     )}
                   </td>
 
@@ -235,16 +238,16 @@ export function AssetTable({ assets, groups }: { assets: AdminAsset[]; groups: A
                             type="button"
                             onClick={() => save(asset.id)}
                             disabled={busy}
-                            className="rounded bg-avalon-primary px-3 py-1 text-[12px] font-medium text-white hover:bg-avalon-primary-hover disabled:opacity-50"
+                            className="rounded bg-[var(--accent)] px-3 py-1 text-[12px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
                           >
-                            Save
+                            {c.save}
                           </button>
                           <button
                             type="button"
                             onClick={() => setEditing(null)}
                             className="rounded px-3 py-1 text-[12px] text-[#a0a1a6] hover:text-white"
                           >
-                            Cancel
+                            {c.cancel}
                           </button>
                         </>
                       ) : (
@@ -254,7 +257,7 @@ export function AssetTable({ assets, groups }: { assets: AdminAsset[]; groups: A
                             onClick={() => startEditing(asset)}
                             className="rounded px-3 py-1 text-[12px] text-[#a0a1a6] hover:text-white"
                           >
-                            Edit
+                            {c.edit}
                           </button>
                           <button
                             type="button"
@@ -262,7 +265,7 @@ export function AssetTable({ assets, groups }: { assets: AdminAsset[]; groups: A
                             disabled={busy}
                             className="rounded px-3 py-1 text-[12px] text-[#a0a1a6] hover:text-white disabled:opacity-50"
                           >
-                            {asset.enabled ? "Disable" : "Enable"}
+                            {asset.enabled ? t.disable : t.enable}
                           </button>
                         </>
                       )}
@@ -275,11 +278,7 @@ export function AssetTable({ assets, groups }: { assets: AdminAsset[]; groups: A
         </table>
       </div>
 
-      <p className="text-[12px] leading-relaxed text-[#6f7076]">
-        Disabling takes an instrument off the platform without losing it, and is the
-        one to reach for. The id is <code className="font-mono">active_id</code> on
-        the wire and cannot change once deals reference it.
-      </p>
+      <p className="text-[12px] leading-relaxed text-[#6f7076]">{t.deleteNote}</p>
     </div>
   );
 }
@@ -300,7 +299,7 @@ function Input({
       value={value}
       placeholder={placeholder}
       onChange={(event) => onChange(event.target.value)}
-      className={`rounded border border-white/15 bg-[#0f1013] px-2 py-1 text-[13px] text-white outline-none focus:border-avalon-primary ${className}`}
+      className={`rounded border border-white/15 bg-[#0f1013] px-2 py-1 text-[13px] text-white outline-none focus:border-[var(--accent)] ${className}`}
     />
   );
 }
@@ -318,7 +317,7 @@ function Select({
     <select
       value={value}
       onChange={(event) => onChange(event.target.value)}
-      className="rounded border border-white/15 bg-[#0f1013] px-2 py-1 text-[13px] text-white outline-none focus:border-avalon-primary"
+      className="rounded border border-white/15 bg-[#0f1013] px-2 py-1 text-[13px] text-white outline-none focus:border-[var(--accent)]"
     >
       {options.map((option) => (
         <option key={option.value} value={option.value}>

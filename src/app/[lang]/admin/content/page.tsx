@@ -1,11 +1,18 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
 import { ContentEditor, type AdminContent } from "@/components/admin/ContentEditor";
+import { adminCopy } from "@/i18n/admin";
 
-export const metadata: Metadata = { title: "Content · Admin" };
+export async function generateMetadata(props: PageProps<"/[lang]/admin/content">): Promise<Metadata> {
+  const { lang } = await props.params;
+  const copy = adminCopy(lang);
+  return { title: `${copy.content.heading} · ${copy.shell.title}` };
+}
 export const dynamic = "force-dynamic";
 
-export default async function AdminContentPage() {
+export default async function AdminContentPage(props: PageProps<"/[lang]/admin/content">) {
+  const { lang } = await props.params;
+  const t = adminCopy(lang);
   const items = await prisma.contentItem.findMany({
     orderBy: [{ kind: "asc" }, { priority: "desc" }, { startsAt: "desc" }, { id: "desc" }],
     take: 500,
@@ -24,14 +31,11 @@ export default async function AdminContentPage() {
   return (
     <div className="space-y-6">
       <section>
-        <h1 className="text-[20px] font-semibold">Content</h1>
-        <p className="mt-1 text-[13px] text-[#a0a1a6]">
-          What the traderoom&apos;s left-hand panels show: webinars, tutorials, market news, help
-          and promos. An item with no language is shown in all three.
-        </p>
+        <h1 className="text-[20px] font-semibold">{t.content.heading}</h1>
+        <p className="mt-1 text-[13px] text-[#a0a1a6]">{t.content.lead}</p>
       </section>
 
-      <ContentEditor items={rows} />
+      <ContentEditor items={rows} locale={lang} />
     </div>
   );
 }

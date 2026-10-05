@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { adminCopy, type AdminCopy } from "@/i18n/admin";
 
 export type AdminSetting = {
   key: string;
@@ -21,17 +22,26 @@ export type AdminSetting = {
  * A row is merged over its defaults when it is read, so deleting a field from
  * the document falls back rather than breaking.
  */
-export function SettingsEditor({ settings }: { settings: AdminSetting[] }) {
+export function SettingsEditor({ settings, locale }: { settings: AdminSetting[]; locale: string }) {
+  const copy = adminCopy(locale);
   return (
     <div className="space-y-4">
       {settings.map((setting) => (
-        <SettingCard key={setting.key} setting={setting} />
+        <SettingCard key={setting.key} setting={setting} t={copy.settings} c={copy.common} />
       ))}
     </div>
   );
 }
 
-function SettingCard({ setting }: { setting: AdminSetting }) {
+function SettingCard({
+  setting,
+  t,
+  c,
+}: {
+  setting: AdminSetting;
+  t: AdminCopy["settings"];
+  c: AdminCopy["common"];
+}) {
   const router = useRouter();
   const stored = JSON.stringify(setting.value, null, 2);
   const [text, setText] = useState(stored);
@@ -46,7 +56,7 @@ function SettingCard({ setting }: { setting: AdminSetting }) {
     try {
       parsed = JSON.parse(text);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "That is not valid JSON.");
+      setError(reason instanceof Error ? reason.message : t.badJson);
       return;
     }
 
@@ -61,13 +71,13 @@ function SettingCard({ setting }: { setting: AdminSetting }) {
       });
       const body = await response.json();
       if (!response.ok) {
-        setError(body.error ?? "The change was refused.");
+        setError(body.error ?? c.refused);
         return;
       }
       setSaved(true);
       router.refresh();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Could not reach the server.");
+      setError(reason instanceof Error ? reason.message : c.unreachable);
     } finally {
       setBusy(false);
     }
@@ -78,7 +88,7 @@ function SettingCard({ setting }: { setting: AdminSetting }) {
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h3 className="font-mono text-[13px] font-medium">{setting.key}</h3>
         <span className="text-[12px] text-[#6f7076]">
-          changed {new Date(setting.updatedAt).toLocaleString()}
+          {t.changedAt(new Date(setting.updatedAt).toLocaleString())}
         </span>
       </div>
 
@@ -94,7 +104,7 @@ function SettingCard({ setting }: { setting: AdminSetting }) {
         }}
         spellCheck={false}
         rows={Math.min(text.split("\n").length + 1, 14)}
-        className="mt-3 w-full resize-y rounded border border-white/15 bg-[#0f1013] px-3 py-2 font-mono text-[12px] leading-relaxed text-white outline-none focus:border-avalon-primary"
+        className="mt-3 w-full resize-y rounded border border-white/15 bg-[#0f1013] px-3 py-2 font-mono text-[12px] leading-relaxed text-white outline-none focus:border-[var(--accent)]"
       />
 
       <div className="mt-3 flex flex-wrap items-center gap-3">
@@ -102,9 +112,9 @@ function SettingCard({ setting }: { setting: AdminSetting }) {
           type="button"
           onClick={save}
           disabled={busy || !changed}
-          className="rounded bg-avalon-primary px-4 py-1.5 text-[13px] font-medium text-white transition-colors hover:bg-avalon-primary-hover disabled:opacity-40"
+          className="rounded bg-[var(--accent)] px-4 py-1.5 text-[13px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-40"
         >
-          {busy ? "Saving…" : "Save"}
+          {busy ? t.saving : c.save}
         </button>
 
         {changed && (
@@ -116,12 +126,12 @@ function SettingCard({ setting }: { setting: AdminSetting }) {
             }}
             className="text-[13px] text-[#a0a1a6] hover:text-white"
           >
-            Revert
+            {t.revert}
           </button>
         )}
 
         {error && <span className="text-[13px] text-avalon-danger">{error}</span>}
-        {saved && !changed && <span className="text-[13px] text-avalon-primary">Saved.</span>}
+        {saved && !changed && <span className="text-[13px] text-[var(--accent)]">{c.saved}</span>}
       </div>
     </div>
   );

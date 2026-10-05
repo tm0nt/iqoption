@@ -3,8 +3,13 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { PositionTable, type AdminPosition } from "@/components/admin/PositionTable";
 import { AutoRefresh } from "@/components/admin/AutoRefresh";
+import { adminCopy } from "@/i18n/admin";
 
-export const metadata: Metadata = { title: "Deals · Admin" };
+export async function generateMetadata(props: PageProps<"/[lang]/admin/positions">): Promise<Metadata> {
+  const { lang } = await props.params;
+  const copy = adminCopy(lang);
+  return { title: `${copy.deals.heading} · ${copy.shell.title}` };
+}
 export const dynamic = "force-dynamic";
 
 const PAGE_SIZE = 50;
@@ -25,7 +30,7 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: "go
     <div className="rounded-lg border border-white/10 bg-[#15161a] px-5 py-4">
       <div
         className={`text-[22px] font-semibold leading-tight ${
-          tone === "good" ? "text-avalon-primary" : tone === "bad" ? "text-avalon-danger" : ""
+          tone === "good" ? "text-[var(--accent)]" : tone === "bad" ? "text-avalon-danger" : ""
         }`}
       >
         {value}
@@ -37,6 +42,7 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: "go
 
 export default async function AdminPositions(props: PageProps<"/[lang]/admin/positions">) {
   const { lang } = await props.params;
+  const t = adminCopy(lang);
   const query = await props.searchParams;
 
   const filter: Filter = query.filter === "open" || query.filter === "settled" ? query.filter : "all";
@@ -124,15 +130,15 @@ export default async function AdminPositions(props: PageProps<"/[lang]/admin/pos
       {filter !== "settled" && open._count > 0 && <AutoRefresh seconds={10} />}
 
       <section>
-        <h1 className="text-[20px] font-semibold">Deals</h1>
+        <h1 className="text-[20px] font-semibold">{t.deals.heading}</h1>
         <p className="mt-1 text-[13px] text-[#a0a1a6]">
-          Every binary option bought on the platform, running and settled.
+          {t.deals.lead}
           {account && (
             <>
               {" "}
-              Filtered to account {account}.{" "}
-              <Link href={link({ account: undefined, page: 1 })} className="text-avalon-primary hover:underline">
-                Show all
+              {t.deals.filteredTo(account)}{" "}
+              <Link href={link({ account: undefined, page: 1 })} className="text-[var(--accent)] hover:underline">
+                {t.deals.showAll}
               </Link>
             </>
           )}
@@ -140,11 +146,11 @@ export default async function AdminPositions(props: PageProps<"/[lang]/admin/pos
       </section>
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label="Running" value={String(open._count)} />
-        <Stat label="Staked, still running" value={`${Number(open._sum.invest ?? 0).toFixed(2)}`} />
-        <Stat label="Settled" value={String(settled._count)} />
+        <Stat label={t.deals.running} value={String(open._count)} />
+        <Stat label={t.deals.staked} value={`${Number(open._sum.invest ?? 0).toFixed(2)}`} />
+        <Stat label={t.deals.settled} value={String(settled._count)} />
         <Stat
-          label={house >= 0 ? "Kept by the platform" : "Paid out beyond stakes"}
+          label={house >= 0 ? t.deals.kept : t.deals.paidOut}
           value={Math.abs(house).toFixed(2)}
           tone={house >= 0 ? "good" : "bad"}
         />
@@ -156,15 +162,13 @@ export default async function AdminPositions(props: PageProps<"/[lang]/admin/pos
             key={option}
             href={link({ filter: option, page: 1 })}
             className={`rounded px-3 py-1.5 text-[13px] transition-colors ${
-              filter === option ? "bg-avalon-primary text-white" : "bg-white/5 text-[#a0a1a6] hover:text-white"
+              filter === option ? "bg-[var(--accent)] text-white" : "bg-white/5 text-[#a0a1a6] hover:text-white"
             }`}
           >
-            {option === "all" ? "All" : option === "open" ? "Running" : "Settled"}
+            {option === "all" ? t.deals.all : option === "open" ? t.deals.running : t.deals.settled}
           </Link>
         ))}
-        <span className="ml-auto text-[13px] text-[#6f7076]">
-          {total} deal{total === 1 ? "" : "s"}
-        </span>
+        <span className="ml-auto text-[13px] text-[#6f7076]">{t.deals.count(total)}</span>
       </section>
 
       <PositionTable positions={positions} lang={lang} />
@@ -175,16 +179,14 @@ export default async function AdminPositions(props: PageProps<"/[lang]/admin/pos
             href={link({ page: Math.max(1, page - 1) })}
             className={page === 1 ? "pointer-events-none text-[#3c3d42]" : "text-[#a0a1a6] hover:text-white"}
           >
-            ← Newer
+            {t.deals.newer}
           </Link>
-          <span className="text-[#6f7076]">
-            Page {page} of {pages}
-          </span>
+          <span className="text-[#6f7076]">{t.deals.pageOf(page, pages)}</span>
           <Link
             href={link({ page: Math.min(pages, page + 1) })}
             className={page === pages ? "pointer-events-none text-[#3c3d42]" : "text-[#a0a1a6] hover:text-white"}
           >
-            Older →
+            {t.deals.older}
           </Link>
         </nav>
       )}
