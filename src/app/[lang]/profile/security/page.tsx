@@ -54,7 +54,7 @@ export default async function SecurityPage(props: PageProps<"/[lang]/profile/sec
   if (!isLocale(lang)) notFound();
 
   const copy = cabinetCopy(lang);
-  const { user, account } = await loadProfile(lang, "security");
+  const { user, account, brand } = await loadProfile(lang, "security");
 
   const rows = await prisma.tradingSession.findMany({
     where: { userId: user.id, expiresAt: { gt: new Date() } },
@@ -73,7 +73,7 @@ export default async function SecurityPage(props: PageProps<"/[lang]/profile/sec
   }));
 
   return (
-    <CabinetShell locale={lang} account={account}>
+    <CabinetShell locale={lang} account={account} brand={brand}>
       <ProfileHeader locale={lang} createdAt={user.createdAt} id={user.id} />
 
       <div className="mt-6 flex gap-12">

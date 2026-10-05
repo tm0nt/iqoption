@@ -10,6 +10,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { activeWallet } from "@/lib/cabinet/wallet";
 import { cabinetCopy } from "@/i18n/cabinet";
+import { setting } from "@/lib/engine/settings";
 
 const MONEY = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -26,6 +27,7 @@ export function longDate(date: Date) {
  */
 export async function loadProfile(lang: string, slug: string) {
   const copy = cabinetCopy(lang);
+  const brand = await setting("brand");
   const session = await auth();
   if (!session?.user) redirect(`/${lang}/login?next=/${lang}/profile/${slug}`);
 
@@ -52,6 +54,8 @@ export async function loadProfile(lang: string, slug: string) {
 
   return {
     user,
+    /** What the shell needs to wear the platform's own identity. */
+    brand: { name: brand.name, logoUrl: brand.logoUrl, primary: brand.primary },
     account: {
       email: user.email,
       balance: wallet ? `${MONEY.format(Number(wallet.amount))} ${wallet.currency}` : "0.00",

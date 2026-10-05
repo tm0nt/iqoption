@@ -35,7 +35,7 @@ export default async function PaymentMethodsPage(props: PageProps<"/[lang]/profi
   if (!isLocale(lang)) notFound();
 
   const copy = cabinetCopy(lang);
-  const { user, account } = await loadProfile(lang, "payments");
+  const { user, account, brand } = await loadProfile(lang, "payments");
 
   /*
    * "Recently used" is not a stored list: it is what the cashier has actually
@@ -52,7 +52,7 @@ export default async function PaymentMethodsPage(props: PageProps<"/[lang]/profi
   });
 
   return (
-    <CabinetShell locale={lang} account={account}>
+    <CabinetShell locale={lang} account={account} brand={brand}>
       <ProfileHeader locale={lang} createdAt={user.createdAt} id={user.id} />
 
       <div className="mt-6 flex gap-12">

@@ -12,7 +12,7 @@
  * selected (its own default selects nothing, so there is no chart), favourites
  * are filled, and the welcome prompts are marked as already seen.
  */
-import { ACTIVES } from "../market/actives.mjs";
+import { ACTIVES, SETTINGS } from "../market/actives.mjs";
 
 /**
  * Built on demand, not at module scope: the instrument catalogue is loaded from
@@ -302,6 +302,15 @@ export function defaultUserConfig(name, account) {
   if (!value) return {};
   const copy = structuredClone(value);
   // The wallet is per account, so it cannot live in a static default.
-  if (name === "traderoom_gl_common") copy.balanceId = account.activeBalanceId;
+  if (name === "traderoom_gl_common") {
+    copy.balanceId = account.activeBalanceId;
+    /*
+     * The theme is the platform's, not this file's. The engine carries four in
+     * its bundle — black, white, blue and grey — and this is the only thing
+     * that decides which one the chart opens in.
+     */
+    const brand = SETTINGS.brand;
+    if (brand?.theme) copy.theme = brand.theme;
+  }
   return copy;
 }

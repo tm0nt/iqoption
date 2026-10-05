@@ -15,7 +15,8 @@ import { LOCALE_LABELS, LOCALES } from "@/i18n/avalon";
 import { rememberLocale } from "@/i18n/remember";
 import type { AvalonLocale } from "@/types/avalon-login";
 
-const LOGO = "/sites/trade-avalonbroker-com-6f41c8f2/en-login-301e30be/images/avalon-logo.svg";
+/** What an unbranded install shows, until an administrator uploads one. */
+const BUILT_IN_LOGO = "/sites/trade-avalonbroker-com-6f41c8f2/en-login-301e30be/images/avalon-logo.svg";
 
 /** The flag the language trigger shows, from the sprite the auth pages already load. */
 function Flag({ locale }: { locale: AvalonLocale }) {
@@ -35,12 +36,20 @@ function Flag({ locale }: { locale: AvalonLocale }) {
 export function CabinetShell({
   account,
   locale,
+  brand,
   wide = false,
   bleed = false,
   children,
 }: {
   account: DrawerAccount;
   locale: AvalonLocale;
+  /**
+   * The platform's identity, when the page has read it.
+   *
+   * Optional so a page that has not been given one still renders — it falls
+   * back to the build's own mark, which is what an unbranded install shows.
+   */
+  brand?: { name: string; logoUrl: string; primary: string };
   /**
    * The cabinet has two column widths and the live site uses both: 1032px for
    * the profile pages, 1440px for verification, which needs room for a rail
@@ -63,10 +72,10 @@ export function CabinetShell({
       <AvalonIconSprite />
       <header className="sticky top-0 z-30 h-[60px] shrink-0 bg-white">
         <div className="flex h-full items-center px-6">
-          <Link href={`/${locale}/traderoom`} aria-label="Avalon">
+          <Link href={`/${locale}/traderoom`} aria-label={brand?.name ?? "Avalon"}>
             {/* The same file the login header uses, at the size the live cabinet draws it. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={LOGO} alt="Avalon" width={120} height={30} className="h-[30px] w-[120px]" />
+            <img src={brand?.logoUrl || BUILT_IN_LOGO} alt={brand?.name ?? "Avalon"} width={120} height={30} className="h-[30px] max-w-[160px] object-contain" />
           </Link>
 
           <div className="ml-auto flex items-center gap-5">
@@ -127,7 +136,7 @@ export function CabinetShell({
       </main>
 
       <footer className="mt-auto border-t border-avalon-surface-hover py-6 text-center text-[13px] text-avalon-text">
-        Avalon
+        {brand?.name ?? "Avalon"}
       </footer>
 
       <AccountDrawer account={account} locale={locale} open={menuOpen} onClose={() => setMenuOpen(false)} />

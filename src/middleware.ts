@@ -53,8 +53,30 @@ const ENGINE_PATHS = new Set(["/v1/logout"]);
 const ADMIN_ONLY = new Set(["admin"]);
 const GUEST_ONLY = new Set(["login", "register", "change-password"]);
 
+/**
+ * The two files the engine's shell loads with an `<img src>`.
+ *
+ * They are inside the mirrored build and would be served straight off disk,
+ * which is exactly the file a white-labelled platform needs to replace. An
+ * `<img src>` goes through neither `fetch` nor `XMLHttpRequest`, so the host's
+ * own rewrite table cannot reach it — a rewrite here does, however the browser
+ * asks.
+ */
+const ENGINE_LOGOS: Record<string, string> = {
+  "/engine/logo.png": "/api/brand/logo/main",
+  "/engine/logo-big.png": "/api/brand/logo/big",
+};
+
 export default auth((request) => {
   const { pathname } = request.nextUrl;
+
+  const logo = ENGINE_LOGOS[pathname];
+  if (logo) {
+    const url = request.nextUrl.clone();
+    url.pathname = logo;
+    url.search = "";
+    return NextResponse.rewrite(url);
+  }
   const signedIn = Boolean(request.auth?.user);
 
   /*
@@ -153,6 +175,13 @@ export const config = {
    */
   matcher: [
     "/((?!_next/static|_next/image|favicon.ico|engine/|engine-host/|api/auth|api/engine|sites/|storage/).*)",
+    /*
+     * Two exceptions to the `engine/` exclusion above. Matching the whole
+     * directory would put a 103 MB build through the middleware; these two
+     * files are the platform's mark and have to be replaceable.
+     */
+    "/engine/logo.png",
+    "/engine/logo-big.png",
   ],
 };
 

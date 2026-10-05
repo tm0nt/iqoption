@@ -82,7 +82,15 @@ export function bootEngine(options: EngineHostOptions): void {
   if (booted) return;
   booted = true;
 
-  const { wsUrl, ssid, resourceHost, resourceVersion, stubBase, locale, statusElement } = options;
+  const {
+    wsUrl,
+    ssid,
+    resourceHost,
+    resourceVersion,
+    stubBase,
+    locale,
+    statusElement,
+  } = options;
   const shell = window as ShellWindow;
 
   /* ----------------------------------------------------------------- status */
@@ -201,6 +209,7 @@ export function bootEngine(options: EngineHostOptions): void {
     [/^\/storage\/public\//, `${stubBase}/pixel.png`],
   ];
 
+
   /**
    * The engine's own assets, our stubs and the framework's pass through.
    *
@@ -255,6 +264,7 @@ export function bootEngine(options: EngineHostOptions): void {
     }
 
     const pathname = absolute.pathname;
+
     if (isLocalAsset(pathname)) return rawUrl;
 
     for (const [pattern, target] of ROUTES) {

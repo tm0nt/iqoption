@@ -23,10 +23,10 @@ export default async function AccountSettingsPage(props: PageProps<"/[lang]/prof
   if (!isLocale(lang)) notFound();
 
   const copy = cabinetCopy(lang);
-  const { user, account } = await loadProfile(lang, "settings");
+  const { user, account, brand } = await loadProfile(lang, "settings");
 
   return (
-    <CabinetShell locale={lang} account={account}>
+    <CabinetShell locale={lang} account={account} brand={brand}>
       <ProfileHeader locale={lang} createdAt={user.createdAt} id={user.id} />
 
       <div className="mt-6 flex gap-12">
