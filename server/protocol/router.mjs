@@ -937,6 +937,52 @@ export const CALLS = {
   }),
 
   /**
+   * The earnings calendar, which this platform has nothing to fill.
+   *
+   * A sibling of the three above and asked for the same way — `{offset: -20,
+   * limit: 60, symbol: "", lang: "en_US"}` — so the envelope is not a guess:
+   * the recorded economic calendar answers `{events: [...]}` under a name
+   * built by the same rule, object first and verb last.
+   *
+   * The list is empty because it is true. Earnings dates come from a corporate
+   * filings feed, we have none, and this platform trades no single stocks for
+   * them to belong to. An empty list is the honest answer and it is a state
+   * the panel has to handle anyway — most windows have no earnings in them.
+   *
+   * It was worth answering rather than leaving alone: the call was retried ten
+   * times, and an unanswered call is a steady drip in a log that is supposed
+   * to be readable.
+   */
+  "get-earnings-calendar-events": async () => ({
+    name: "earnings-calendar-events",
+    payload: { events: [] },
+  }),
+
+  /*
+   * `get-cashbox-counting` and `get-withdrawal-payouts` are deliberately not
+   * answered here.
+   *
+   * Both are retried — twenty and twenty-six times in the log — so the engine
+   * does want them, and both carry enough in the request to guess at:
+   * `{form_version: 6, crypto_balances: true, soft_restrictions: true}` and a
+   * null body at v3.0. Guessing is the thing not to do. Three wrong shapes
+   * were written for `get-news-feed` before a recording showed the call is
+   * never made at all, and two wrong names for the tournament reply before the
+   * engine's own log named it.
+   *
+   * Leaving them unanswered is a known-safe state: the traderoom opens and
+   * runs with no answer to either, which is observable right now. A reply with
+   * the wrong shape is not known-safe — `get-cashbox-counting` is part of the
+   * boot sequence, and a throw inside the engine's own code there can stop the
+   * traderoom from opening. Worse is that the panels they feed are not used:
+   * the deposit view is replaced with the platform's own cashier page before
+   * the engine draws it, so nothing on screen depends on these.
+   *
+   * What they need is a recording of the live platform's cashier, which needs
+   * somebody to open it there. `scripts/record-live.mjs` is the harness.
+   */
+
+  /**
    * Opening a binary option.
    *
    * The deal panel sends `{user_balance_id, active_id, option_type_id,
