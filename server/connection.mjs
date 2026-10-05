@@ -192,14 +192,29 @@ export class Connection {
   }
 
   async authenticate(frame) {
-    // Two spellings reach us. The older one carries the session id as the whole
-    // message; the engine's `authenticate` wraps it in an object alongside a
-    // protocol version. Both are logged until the shapes are pinned down.
-    console.log(`[avalon] auth frame ${JSON.stringify(frame).slice(0, 400)}`);
+    /*
+     * Two spellings reach us. The older one carries the session id as the whole
+     * message; the engine's `authenticate` wraps it in an object alongside a
+     * protocol version.
+     *
+     * The frame is not logged. It did use to be, while the shapes were being
+     * pinned down, and the shapes are pinned down — what is left in it is the
+     * ssid, which is a live credential: anyone who reads it can open deals on
+     * the account until it expires. A tab left open after a logout retries
+     * every two seconds, so that one line put the token in the log hundreds of
+     * times over. The spelling is all this needs to say.
+     */
     const sessionId =
       typeof frame.msg === "string" ? frame.msg : (frame.msg?.ssid ?? frame.msg?.session_id ?? "");
+    const spelling = typeof frame.msg === "string" ? "bare" : frame.msg?.ssid ? "ssid" : "session_id";
     const account = await resolveSession(String(sessionId));
     if (!account) {
+      /*
+       * The page is expected to leave on this code rather than reconnect; the
+       * engine itself will not, so the host shim watches for it. If this keeps
+       * repeating from one client, that shim is not running.
+       */
+      console.log(`[avalon] #${this.id} refused a ${spelling} session id (${String(sessionId).length} chars)`);
       this.send({ name: "error", status: 4010, msg: { message: "invalid ssid" } });
       this.socket.close(4010, "invalid ssid");
       return;

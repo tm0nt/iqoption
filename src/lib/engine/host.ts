@@ -154,13 +154,41 @@ export function bootEngine(options: EngineHostOptions): void {
   /* ------------------------------------------------------------- websockets */
   {
     const Native = window.WebSocket;
+
+    /*
+     * `4010` is the feed saying the ssid is no longer a session.
+     *
+     * It means the row is gone or expired — someone logged out, here or in
+     * another tab, or the twelve hours ran out. The engine's own answer to a
+     * closed socket is to open another one, immediately and forever: a tab left
+     * open after a logout reconnected 1175 times before this was noticed, and
+     * every one of those printed the dead token in the feed's log.
+     *
+     * Nothing the engine can be told will stop that, because the retry is
+     * inside the WASM. The page has to leave. One close with this code is
+     * decisive — the feed looks the session up in the database every time, so
+     * it is not a race or a restart — so this navigates on the first one.
+     */
+    let leaving = false;
+    const sessionGone = () => {
+      if (leaving) return;
+      leaving = true;
+      status("ws    session is gone — going to the login page", "bad");
+      const next = encodeURIComponent(`${location.pathname}${location.search}`);
+      location.replace(`/${locale}/login?next=${next}`);
+    };
+
     const Redirected = function (this: unknown, url: string | URL, protocols?: string | string[]) {
       const original = String(url);
       // Everything the engine opens is the feed; anything else is unexpected
       // and worth seeing in the log rather than silently rewriting.
       const target = /\/echo\/websocket/.test(original) ? wsUrl : original;
       status(target === original ? `ws    ${original} (not redirected)` : `ws    ${original} -> ${target}`);
-      return protocols === undefined ? new Native(target) : new Native(target, protocols);
+      const socket = protocols === undefined ? new Native(target) : new Native(target, protocols);
+      socket.addEventListener("close", (event) => {
+        if (event.code === 4010) sessionGone();
+      });
+      return socket;
     } as unknown as typeof WebSocket;
 
     Redirected.prototype = Native.prototype;
