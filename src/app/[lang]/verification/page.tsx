@@ -8,8 +8,13 @@ import { prisma } from "@/lib/db";
 import { countryName } from "@/lib/cabinet/countries";
 import { activeWallet } from "@/lib/cabinet/wallet";
 import { isLocale } from "@/i18n/avalon";
+import { cabinetCopy } from "@/i18n/cabinet";
+import { ProfileHeader } from "@/components/cabinet/ProfileHeader";
 
-export const metadata: Metadata = { title: "Account Verification" };
+export async function generateMetadata(props: PageProps<"/[lang]/verification">): Promise<Metadata> {
+  const { lang } = await props.params;
+  return { title: cabinetCopy(lang).verification.title };
+}
 export const dynamic = "force-dynamic";
 
 const MONEY = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -19,11 +24,6 @@ function flagOf(code: string) {
   return code
     .toUpperCase()
     .replace(/./g, (c) => String.fromCodePoint(127397 + c.charCodeAt(0)));
-}
-
-/** "October 2, 2026", as the cabinet writes a registration date. */
-function longDate(date: Date) {
-  return date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 }
 
 /** `dd.mm.yyyy`, which is what the form shows and what an ID document prints. */
@@ -36,6 +36,9 @@ function formDate(date: Date | null) {
 export default async function VerificationPage(props: PageProps<"/[lang]/verification">) {
   const { lang } = await props.params;
   if (!isLocale(lang)) notFound();
+
+  const v = cabinetCopy(lang).verification;
+  const d = cabinetCopy(lang).personal;
 
   const session = await auth();
   if (!session?.user) redirect(`/${lang}/login?next=/${lang}/verification`);
@@ -69,8 +72,8 @@ export default async function VerificationPage(props: PageProps<"/[lang]/verific
    */
   const steps: Step[] = [
     {
-      label: "Email confirmation",
-      note: user.emailVerified ? "Done" : "Pending",
+      label: v.emailStep,
+      note: user.emailVerified ? d.done : cabinetCopy(lang).history.pending,
       state: user.emailVerified ? "done" : "current",
     },
     {
@@ -80,12 +83,12 @@ export default async function VerificationPage(props: PageProps<"/[lang]/verific
        * nobody sends is a page that can never be used. The gate comes back when
        * the mail does.
        */
-      label: "Personal Details",
-      note: detailsDone ? "Done" : undefined,
+      label: v.detailsStep,
+      note: detailsDone ? d.done : undefined,
       state: detailsDone ? "done" : "current",
     },
     {
-      label: "Proof of Identity",
+      label: v.identityStep,
       state: user.kycStatus === "APPROVED" ? "done" : detailsDone ? "current" : "todo",
     },
   ];
@@ -98,23 +101,20 @@ export default async function VerificationPage(props: PageProps<"/[lang]/verific
       account={{
         email: user.email,
         balance: wallet ? `${MONEY.format(Number(wallet.amount))} ${wallet.currency}` : "0.00",
-        balanceLabel: wallet?.type === 4 ? "Practice account" : "Real account",
+        balanceLabel: wallet?.type === 4 ? cabinetCopy(lang).account.practice : cabinetCopy(lang).account.real,
         verified: user.kycStatus === "APPROVED",
       }}
       wide
     >
       <div className="flex items-start justify-between gap-6 pt-7">
         <h1 className="flex items-center gap-2 text-[16px] font-medium text-avalon-text">
-          Account Verification
+          {v.title}
           <span className="flex size-4 items-center justify-center rounded-full border border-avalon-border-muted text-[10px] text-avalon-text">
             ?
           </span>
         </h1>
-        <p className="text-right text-[12px] leading-5 text-avalon-text">
-          Date registered: {longDate(user.createdAt)}
-          <br />
-          Profile ID: {session.user.platformId}
-        </p>
+        {/* Same two lines as the profile pages, so the wording cannot drift. */}
+        <ProfileHeader locale={lang} createdAt={user.createdAt} id={session.user.platformId} />
       </div>
 
       <hr className="mt-5 border-avalon-surface-hover" />
@@ -125,14 +125,11 @@ export default async function VerificationPage(props: PageProps<"/[lang]/verific
         <div className="min-w-0 grow">
           {detailsDone && user.kycStatus !== "REJECTED" ? (
             <div className="mx-auto max-w-[620px] py-10 text-center">
-              <h2 className="text-[24px] font-semibold text-avalon-text-strong">Proof of Identity</h2>
+              <h2 className="text-[24px] font-semibold text-avalon-text-strong">{v.identityStep}</h2>
               <p className="mt-5 text-[15px] leading-[26px] text-avalon-text">
-                Your details are with us. The next step is a photo of an identity document, which a person reads
-                against what you entered.
+                {v.identityPending}
               </p>
-              <p className="mt-8 rounded-[2px] bg-avalon-surface px-6 py-5 text-[14px] leading-[22px] text-avalon-text">
-                Document upload is not built yet. Until it is, an account stays on the practice balance.
-              </p>
+              <p className="mt-8 rounded-[2px] bg-avalon-surface px-6 py-5 text-[14px] leading-[22px] text-avalon-text">{v.uploadMissing}</p>
             </div>
           ) : (
             <>

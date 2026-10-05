@@ -34,10 +34,14 @@ export type HistoryFilter = {
   to?: Date;
 };
 
+/*
+ * Keys, not words. This runs before a request has said which language it is
+ * for, so every label here is something the page looks up.
+ */
 const TRADE_LABEL: Record<string, string> = {
-  win: "Trade won",
-  loose: "Trade lost",
-  equal: "Trade refunded",
+  win: "tradeWon",
+  loose: "tradeLost",
+  equal: "tradeRefunded",
 };
 
 export async function balanceHistory(userId: number, filter: HistoryFilter = {}): Promise<HistoryEntry[]> {
@@ -85,7 +89,11 @@ export async function balanceHistory(userId: number, filter: HistoryFilter = {})
       id: `t${row.id}`,
       at: row.createdAt,
       kind: row.kind === "DEPOSIT" ? "deposit" : "withdrawal",
-      label: row.kind === "DEPOSIT" ? "Deposit" : "Withdrawal",
+      /*
+       * The key, not the words. A label written here would be written in one
+       * language, and this runs long before a request has said which.
+       */
+      label: row.kind === "DEPOSIT" ? "deposit" : "withdrawal",
       amount: row.kind === "DEPOSIT" ? Number(row.amount) : -Number(row.amount),
       currency: row.currency,
       status: row.status.toLowerCase(),
@@ -98,7 +106,7 @@ export async function balanceHistory(userId: number, filter: HistoryFilter = {})
       id: `p${row.id}-open`,
       at: new Date(row.openTime * 1000),
       kind: "trade-open",
-      label: "Trade opened",
+      label: "tradeOpened",
       amount: -Number(row.invest),
       currency: row.currency,
       status: row.closedAt ? "settled" : "open",

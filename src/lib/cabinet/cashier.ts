@@ -8,12 +8,13 @@
  */
 import { prisma } from "@/lib/db";
 import type { CashierSettings } from "./cashier-types";
+import { DEFAULT_DAYS } from "./cashier-types";
 
 export type { CashierMethod, CashierSettings } from "./cashier-types";
 export { methodInitials } from "./cashier-types";
 
 const FALLBACK: CashierSettings = {
-  methods: [{ id: "pix", name: "PIX (CPF)", days: "1 - 3 business days", deposit: true, withdrawal: true, kind: "bank" }],
+  methods: [{ id: "pix", name: "PIX (CPF)", days: DEFAULT_DAYS, deposit: true, withdrawal: true, kind: "bank" }],
   freeWithdrawalsPerMonth: 1,
   minWithdrawal: 10,
   minDeposit: 10,

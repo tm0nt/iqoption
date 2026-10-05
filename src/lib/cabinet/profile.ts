@@ -9,6 +9,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { activeWallet } from "@/lib/cabinet/wallet";
+import { cabinetCopy } from "@/i18n/cabinet";
 
 const MONEY = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -24,6 +25,7 @@ export function longDate(date: Date) {
  * to it rather than to the traderoom.
  */
 export async function loadProfile(lang: string, slug: string) {
+  const copy = cabinetCopy(lang);
   const session = await auth();
   if (!session?.user) redirect(`/${lang}/login?next=/${lang}/profile/${slug}`);
 
@@ -54,7 +56,7 @@ export async function loadProfile(lang: string, slug: string) {
       email: user.email,
       balance: wallet ? `${MONEY.format(Number(wallet.amount))} ${wallet.currency}` : "0.00",
       // Type 4 is the practice wallet; anything else is real money.
-      balanceLabel: wallet?.type === 4 ? "Practice account" : "Real account",
+      balanceLabel: wallet?.type === 4 ? copy.account.practice : copy.account.real,
       verified: user.emailVerified !== null,
     },
   };

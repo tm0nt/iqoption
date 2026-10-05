@@ -8,8 +8,12 @@ import { fetchTopAssets } from "@/lib/market/server";
 import { prisma } from "@/lib/db";
 import { activeWallet } from "@/lib/cabinet/wallet";
 import { isLocale } from "@/i18n/avalon";
+import { cabinetCopy } from "@/i18n/cabinet";
 
-export const metadata: Metadata = { title: "Portfolio" };
+export async function generateMetadata(props: PageProps<"/[lang]/portfolio">): Promise<Metadata> {
+  const { lang } = await props.params;
+  return { title: cabinetCopy(lang).nav.portfolio };
+}
 export const dynamic = "force-dynamic";
 
 const HERO = "/sites/trade-avalonbroker-com-6f41c8f2/cabinet/images/bg-portfolio.jpg";
@@ -39,6 +43,7 @@ function Stat({ value, label, tone }: { value: string; label: string; tone?: "go
 export default async function PortfolioPage(props: PageProps<"/[lang]/portfolio">) {
   const { lang } = await props.params;
   if (!isLocale(lang)) notFound();
+  const t = cabinetCopy(lang).portfolio;
 
   const session = await auth();
   if (!session?.user) redirect(`/${lang}/login?next=/${lang}/portfolio`);
@@ -87,7 +92,7 @@ export default async function PortfolioPage(props: PageProps<"/[lang]/portfolio"
       account={{
         email: user.email,
         balance: money(cash, currency),
-        balanceLabel: wallet?.type === 4 ? "Practice account" : "Real account",
+        balanceLabel: wallet?.type === 4 ? cabinetCopy(lang).account.practice : cabinetCopy(lang).account.real,
         verified: user.kycStatus === "APPROVED",
       }}
       bleed
@@ -97,11 +102,11 @@ export default async function PortfolioPage(props: PageProps<"/[lang]/portfolio"
         style={{ backgroundImage: `url(${HERO})` }}
       >
         <div className="mx-auto flex w-full max-w-[1032px] items-baseline px-6">
-          <h1 className="pr-[30px] text-[40px] font-bold leading-[50px] text-white">Portfolio</h1>
+          <h1 className="pr-[30px] text-[40px] font-bold leading-[50px] text-white">{cabinetCopy(lang).nav.portfolio}</h1>
           <span aria-hidden className="mr-[30px] h-[34px] w-px self-center bg-white/25" />
           <span className="text-[32px] font-bold leading-[50px] text-white">{money(equity, currency)}</span>
           <span className="ml-3 max-w-[110px] text-[12px] leading-[14px] text-white/80">
-            Estimated account value
+            {t.estimatedValue}
           </span>
         </div>
       </section>
@@ -113,14 +118,14 @@ export default async function PortfolioPage(props: PageProps<"/[lang]/portfolio"
           </span>
           <span>
             <span className="block text-[16px] font-medium text-avalon-text-strong">{money(cash, currency)}</span>
-            <span className="block text-[13px] text-avalon-text">{currency} Balance</span>
+            <span className="block text-[13px] text-avalon-text">{cabinetCopy(lang).personal.balanceOf(currency)}</span>
           </span>
 
           <Link
             href={`/${lang}/counting`}
             className="ml-8 flex h-10 items-center rounded-[2px] border border-avalon-primary px-5 text-[14px] font-medium text-avalon-primary transition-colors hover:bg-avalon-primary hover:text-white"
           >
-            Deposit
+            {cabinetCopy(lang).nav.deposit}
           </Link>
           <Link
             href={`/${lang}/withdrawal`}
@@ -139,22 +144,22 @@ export default async function PortfolioPage(props: PageProps<"/[lang]/portfolio"
         <div className="mx-auto w-full max-w-[1032px] px-6">
           <div className="grid grid-cols-2 gap-6 rounded-[4px] bg-white px-8 py-6 md:grid-cols-4">
             <Stat value={`${open.length} Position${open.length === 1 ? "" : "s"}`} label="" />
-            <Stat value={money(invested, currency)} label="Total Investment" />
-            <Stat value={money(equity, currency)} label="Total Equity" />
+            <Stat value={money(invested, currency)} label={t.totalInvestment} />
+            <Stat value={money(equity, currency)} label={t.totalEquity} />
             <Stat
               value={`${grossProfit > 0 ? "+" : ""}${grossProfit.toFixed(0)}%`}
-              label="Total Gross Profit"
+              label={t.totalGrossProfit}
               tone={grossProfit > 0 ? "good" : grossProfit < 0 ? "bad" : undefined}
             />
           </div>
 
           {open.length === 0 ? (
             <p className="mt-8 text-center text-[14px] text-avalon-text">
-              You don&apos;t have any open positions yet. Explore Top Assets and{" "}
+              {cabinetCopy(lang).personal.noOpenPositions}{" "}
               <Link href={`/${lang}/traderoom`} className="text-avalon-primary hover:underline">
-                start
+                {cabinetCopy(lang).personal.start}
               </Link>{" "}
-              the best trading experience ever.
+              {cabinetCopy(lang).personal.bestExperience}
             </p>
           ) : (
             <ul className="mt-6 divide-y divide-avalon-surface-hover rounded-[4px] bg-white">
@@ -182,7 +187,7 @@ export default async function PortfolioPage(props: PageProps<"/[lang]/portfolio"
           <TopAssets assets={assets} locale={lang} />
         ) : (
           <p className="py-12 text-center text-[14px] text-avalon-text">
-            Top assets are unavailable — the market feed is not answering.
+            {t.topAssetsDown}
           </p>
         )}
       </div>

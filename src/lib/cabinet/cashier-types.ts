@@ -29,3 +29,12 @@ export function methodInitials(method: CashierMethod) {
   const match = /\(([^)]+)\)/.exec(method.name);
   return (match?.[1] ?? method.name).slice(0, 4).toUpperCase();
 }
+
+/**
+ * The wording the built-in methods carry for how long they take.
+ *
+ * Exported so the panels can recognise it: a value that matches this is the
+ * default and gets translated, while anything else is what an administrator
+ * typed and is shown as typed. Translating that would overwrite their words.
+ */
+export const DEFAULT_DAYS = "1 - 3 business days";

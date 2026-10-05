@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { FormError } from "@/components/sites/trade-avalonbroker-com-6f41c8f2/shared/FormError";
 import { methodInitials, type CashierMethod } from "@/lib/cabinet/cashier-types";
+import { cabinetCopy } from "@/i18n/cabinet";
+import { DEFAULT_DAYS } from "@/lib/cabinet/cashier-types";
 
 const MONEY = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 
@@ -27,6 +29,7 @@ export function DepositPanel({
   minimum: number;
   locale: string;
 }) {
+  const c = cabinetCopy(locale).cashier;
   const router = useRouter();
   const [selected, setSelected] = useState(methods[0]?.id ?? "");
   const [amount, setAmount] = useState(String(presets[presets.length - 1] ?? minimum));
@@ -52,13 +55,13 @@ export function DepositPanel({
       });
       const body = await response.json();
       if (!response.ok) {
-        setErrors(body.errors ?? { form: [body.error ?? "The deposit was refused."] });
+        setErrors(body.errors ?? { form: [body.error ?? c.refused] });
         return;
       }
       setDone(body.transaction?.id ? `#${body.transaction.id}` : "recorded");
       router.refresh();
     } catch (reason) {
-      setErrors({ form: [reason instanceof Error ? reason.message : "Could not reach the server."] });
+      setErrors({ form: [reason instanceof Error ? reason.message : c.unreachable] });
     } finally {
       setBusy(false);
     }
@@ -88,7 +91,9 @@ export function DepositPanel({
                 </span>
                 <span className="min-w-0">
                   <span className="block truncate text-[13px] text-avalon-text-strong">{candidate.name}</span>
-                  <span className="block text-[11px] text-avalon-text">{candidate.days}</span>
+                  <span className="block text-[11px] text-avalon-text">
+                    {candidate.days === DEFAULT_DAYS ? cabinetCopy(locale).faq.businessDays : candidate.days}
+                  </span>
                 </span>
               </button>
             </li>
@@ -98,7 +103,7 @@ export function DepositPanel({
 
       <div className="grow p-8">
         {!method ? (
-          <p className="text-[14px] text-avalon-text">No deposit methods are configured.</p>
+          <p className="text-[14px] text-avalon-text">{c.noMethods}</p>
         ) : done ? (
           <div className="py-16 text-center">
             <h2 className="text-[20px] font-semibold text-avalon-text-strong">Deposit {done} recorded</h2>
@@ -140,7 +145,7 @@ export function DepositPanel({
               <div className="w-[300px] shrink-0">
                 <div className="flex gap-3">
                   <label className="grow">
-                    <span className="mb-1.5 block text-[12px] text-avalon-text">Deposit amount</span>
+                    <span className="mb-1.5 block text-[12px] text-avalon-text">{c.depositAmount}</span>
                     <input
                       value={amount}
                       onChange={(event) => setAmount(event.target.value)}
@@ -150,7 +155,7 @@ export function DepositPanel({
                     />
                   </label>
                   <label className="w-[86px] shrink-0">
-                    <span className="mb-1.5 block text-[12px] text-avalon-text">Currency</span>
+                    <span className="mb-1.5 block text-[12px] text-avalon-text">{c.currency}</span>
                     <span className="flex h-[46px] items-center rounded-[2px] border border-avalon-border-muted px-3 text-[14px] font-medium text-avalon-text-strong">
                       {currency}
                     </span>
@@ -158,7 +163,7 @@ export function DepositPanel({
                 </div>
                 <FormError className="mt-2">{error("amount")}</FormError>
 
-                <p className="mt-5 text-[12px] text-avalon-text">Promotion</p>
+                <p className="mt-5 text-[12px] text-avalon-text">{c.promotion}</p>
                 <div className="mt-1.5 flex">
                   <input
                     value={promo}
@@ -166,19 +171,19 @@ export function DepositPanel({
                       setPromo(event.target.value);
                       setPromoNote(null);
                     }}
-                    placeholder="Your promo code"
+                    placeholder={c.promoPlaceholder}
                     className="h-[42px] grow rounded-l-[2px] border border-r-0 border-avalon-border-muted px-3 text-[14px] outline-none transition-colors focus:border-avalon-primary"
                   />
                   <button
                     type="button"
-                    onClick={() => setPromoNote("No promotions are running.")}
+                    onClick={() => setPromoNote(c.noPromotions)}
                     className="h-[42px] shrink-0 rounded-r-[2px] bg-[#f58a73] px-5 text-[14px] font-medium text-white transition-opacity hover:opacity-90"
                   >
-                    Apply
+                    {c.apply}
                   </button>
                 </div>
                 <p className="mt-1.5 text-[11px] text-avalon-text">
-                  {promoNote ?? "One promo code per deposit"}
+                  {promoNote ?? c.onePerDeposit}
                 </p>
 
                 <label className="mt-5 flex items-start gap-2 text-[13px] text-avalon-text">
@@ -189,9 +194,9 @@ export function DepositPanel({
                     className="mt-0.5 size-4 shrink-0 accent-avalon-primary"
                   />
                   <span>
-                    I hereby accept the{" "}
+                    {c.acceptTerms}{" "}
                     <a href={`/${locale}/profile/personal`} className="text-avalon-primary hover:underline">
-                      Terms &amp; Conditions
+                      {c.terms}
                     </a>
                     .
                   </span>
@@ -204,7 +209,7 @@ export function DepositPanel({
                   disabled={busy || !accepted}
                   className="mt-5 h-[46px] w-full rounded-[2px] bg-avalon-primary text-[14px] font-medium text-white transition-colors hover:bg-avalon-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {busy ? "Sending…" : "Proceed to Payment"}
+                  {busy ? c.sending : c.proceed}
                 </button>
               </div>
             </div>
@@ -216,7 +221,7 @@ export function DepositPanel({
               instead.
             */}
             <p className="mt-8 border-t border-avalon-surface-hover pt-5 text-[11px] text-avalon-text">
-              Connections to this site are encrypted. No card network is connected yet, and no payment is taken.
+              {c.encrypted}
             </p>
           </>
         )}

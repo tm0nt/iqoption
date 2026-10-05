@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { FormError } from "@/components/sites/trade-avalonbroker-com-6f41c8f2/shared/FormError";
 import { VERIFICATION_COUNTRIES } from "@/lib/cabinet/countries";
+import { cabinetCopy } from "@/i18n/cabinet";
 
 export type DetailsDefaults = {
   firstName: string;
@@ -46,6 +47,7 @@ const BOX =
  * happens when a person reads the document against these values.
  */
 export function PersonalDetailsForm({ defaults, locale }: { defaults: DetailsDefaults; locale: string }) {
+  const v = cabinetCopy(locale).verification;
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState<Record<string, string[]>>({});
@@ -91,10 +93,8 @@ export function PersonalDetailsForm({ defaults, locale }: { defaults: DetailsDef
     <form onSubmit={handleSubmit}>
       <div className="flex gap-[34px] border-b border-avalon-surface-hover pb-8">
         <div className="w-[220px] shrink-0">
-          <p className="text-[16px] font-semibold text-avalon-text">Personal info</p>
-          <p className="mt-4 text-[13px] leading-[22px] text-avalon-text">
-            Provide your personal data exactly as it appears on your ID to avoid verification issues in the future.
-          </p>
+          <p className="text-[16px] font-semibold text-avalon-text">{v.personalInfo}</p>
+          <p className="mt-4 text-[13px] leading-[22px] text-avalon-text">{v.exactlyAsId}</p>
         </div>
 
         <div className="ml-auto w-[440px] shrink-0">
@@ -115,7 +115,7 @@ export function PersonalDetailsForm({ defaults, locale }: { defaults: DetailsDef
             <input
               name="dateOfBirth"
               defaultValue={defaults.dateOfBirth}
-              placeholder="dd.mm.yyyy"
+              placeholder={v.datePlaceholder}
               disabled={busy}
               className={`${BOX} placeholder:text-avalon-placeholder`}
               inputMode="numeric"
@@ -141,18 +141,14 @@ export function PersonalDetailsForm({ defaults, locale }: { defaults: DetailsDef
               defaultChecked={defaults.isUsPerson}
               disabled={busy}
               className="mt-0.5 size-4 shrink-0 accent-avalon-primary"
-            />
-            I am a U.S. citizen or tax resident.
-          </label>
+            />{v.usPerson}</label>
         </div>
       </div>
 
       <div className="flex gap-[34px] pt-8">
         <div className="w-[220px] shrink-0">
-          <p className="text-[16px] font-semibold text-avalon-text">Residence info</p>
-          <p className="mt-4 text-[13px] leading-[22px] text-avalon-text">
-            Please make sure that your residence information is correct.
-          </p>
+          <p className="text-[16px] font-semibold text-avalon-text">{v.residenceInfo}</p>
+          <p className="mt-4 text-[13px] leading-[22px] text-avalon-text">{v.checkResidence}</p>
         </div>
 
         <div className="ml-auto w-[440px] shrink-0">

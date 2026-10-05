@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormError } from "@/components/sites/trade-avalonbroker-com-6f41c8f2/shared/FormError";
 import { methodInitials, type CashierMethod } from "@/lib/cabinet/cashier-types";
+import { cabinetCopy } from "@/i18n/cabinet";
+import { DEFAULT_DAYS } from "@/lib/cabinet/cashier-types";
 
 const MONEY = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -28,6 +30,7 @@ export function WithdrawalPanel({
   minimum: number;
   locale: string;
 }) {
+  const c = cabinetCopy(locale).cashier;
   const router = useRouter();
   const [selected, setSelected] = useState(methods[0]?.id ?? "");
   const [busy, setBusy] = useState(false);
@@ -58,13 +61,13 @@ export function WithdrawalPanel({
       });
       const body = await response.json();
       if (!response.ok) {
-        setErrors(body.errors ?? { form: [body.error ?? "The request was refused."] });
+        setErrors(body.errors ?? { form: [body.error ?? c.requestRefused] });
         return;
       }
       setSent(true);
       router.refresh();
     } catch (reason) {
-      setErrors({ form: [reason instanceof Error ? reason.message : "Could not reach the server."] });
+      setErrors({ form: [reason instanceof Error ? reason.message : c.unreachable] });
     } finally {
       setBusy(false);
     }
@@ -95,7 +98,9 @@ export function WithdrawalPanel({
                 </span>
                 <span className="min-w-0">
                   <span className="block truncate text-[13px] text-avalon-text-strong">{candidate.name}</span>
-                  <span className="block text-[11px] text-avalon-text">{candidate.days}</span>
+                  <span className="block text-[11px] text-avalon-text">
+                    {candidate.days === DEFAULT_DAYS ? cabinetCopy(locale).faq.businessDays : candidate.days}
+                  </span>
                 </span>
               </button>
             </li>
@@ -105,7 +110,7 @@ export function WithdrawalPanel({
 
       <div className="flex min-h-[450px] grow items-center justify-center px-10 py-10">
         {!method ? (
-          <p className="text-[14px] text-avalon-text">No withdrawal methods are configured.</p>
+          <p className="text-[14px] text-avalon-text">{c.noWithdrawMethods}</p>
         ) : (
           <div className="w-full max-w-[400px] text-center">
             <span className="mx-auto flex size-[60px] items-center justify-center rounded-full bg-avalon-surface text-[13px] font-semibold text-avalon-text">
@@ -117,14 +122,14 @@ export function WithdrawalPanel({
               <>
                 <p className="mt-3 text-[14px] text-avalon-text">
                   {balance <= 0
-                    ? "You cannot withdraw funds because your balance is 0."
+                    ? c.emptyBalance
                     : `The smallest withdrawal is ${MONEY.format(minimum)} ${currency}.`}
                 </p>
                 <Link
                   href={`/${locale}/counting`}
                   className="mt-7 flex h-[50px] w-full items-center justify-center rounded-[2px] bg-avalon-primary text-[14px] font-medium text-white transition-colors hover:bg-avalon-primary-hover"
                 >
-                  Deposit
+                  {c.deposit}
                 </Link>
               </>
             ) : sent ? (
@@ -135,7 +140,7 @@ export function WithdrawalPanel({
             ) : (
               <form onSubmit={handleSubmit} className="mt-6 text-left">
                 <label className="mb-2 block text-[13px] font-medium text-avalon-text">
-                  Amount ({currency})
+                  {cabinetCopy(locale).personal.amountIn(currency)}
                 </label>
                 <input
                   name="amount"
@@ -150,7 +155,7 @@ export function WithdrawalPanel({
                 <FormError>{error("amount")}</FormError>
 
                 <label className="mb-2 mt-4 block text-[13px] font-medium text-avalon-text">
-                  {method.kind === "bank" ? "PIX key" : "Wallet address"}
+                  {method.kind === "bank" ? "PIX" : c.walletAddress}
                 </label>
                 <input
                   name="destination"
@@ -166,7 +171,7 @@ export function WithdrawalPanel({
                   disabled={busy}
                   className="mt-6 h-[50px] w-full rounded-[2px] bg-avalon-primary text-[14px] font-medium text-white transition-colors hover:bg-avalon-primary-hover disabled:opacity-60"
                 >
-                  {busy ? "Sending…" : "Request withdrawal"}
+                  {busy ? c.sending : c.requestWithdrawal}
                 </button>
               </form>
             )}

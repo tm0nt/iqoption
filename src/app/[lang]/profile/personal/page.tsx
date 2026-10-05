@@ -38,6 +38,8 @@ export default async function PersonalDataPage(props: PageProps<"/[lang]/profile
   const { lang } = await props.params;
   if (!isLocale(lang)) notFound();
 
+  const d = cabinetCopy(lang).personal;
+
   /*
    * The photo dialog is a URL, not component state — which is how the live site
    * opens it, and what makes it survive a reload and a shared address.
@@ -78,7 +80,7 @@ export default async function PersonalDataPage(props: PageProps<"/[lang]/profile
         email: user.email,
         balance,
         // Type 4 is the practice wallet; anything else is real money.
-        balanceLabel: wallet?.type === 4 ? "Practice account" : "Real account",
+        balanceLabel: wallet?.type === 4 ? cabinetCopy(lang).account.practice : cabinetCopy(lang).account.real,
         verified: user.emailVerified !== null,
       }}
     >
@@ -109,11 +111,11 @@ export default async function PersonalDataPage(props: PageProps<"/[lang]/profile
                 href={`/${lang}/profile/personal?act=changephoto`}
                 className="mt-5 flex h-[42px] w-[234px] items-center justify-center rounded-[2px] border border-dashed border-avalon-border-muted text-[14px] text-avalon-text transition-colors hover:border-avalon-primary hover:text-avalon-primary"
               >
-                {user.avatarUrl ? "Change photo" : "+ Upload a photo"}
+                {user.avatarUrl ? d.changePhoto : d.uploadPhoto}
               </Link>
 
               <p className="mt-4 text-center text-[13px] text-avalon-text">
-                Your photo will be displayed in direct messages, public chats, and rankings.
+                {d.photoNote}
               </p>
             </div>
           </Row>
@@ -122,13 +124,13 @@ export default async function PersonalDataPage(props: PageProps<"/[lang]/profile
             <div className="flex items-start justify-between gap-6">
               <div className="min-w-0">
                 <h2 className="text-[16px] font-semibold text-avalon-text-strong">
-                  Account statement:{" "}
+                  {d.statement}:{" "}
                   <span className="font-medium text-avalon-text">
                     {shortDate(from)} — {shortDate(today)}
                   </span>
                 </h2>
                 <p className="mt-2 max-w-[340px] text-[13px] leading-[22px] text-avalon-text">
-                  Get detailed information on your trading account for the selected period.
+                  {d.statementBody}
                 </p>
               </div>
 
@@ -140,14 +142,14 @@ export default async function PersonalDataPage(props: PageProps<"/[lang]/profile
                   <rect x="1" y="2.5" width="14" height="12.5" rx="1.5" />
                   <path d="M1 6h14M5 1v3M11 1v3" />
                 </svg>
-                Create a request
+                {d.createRequest}
               </Link>
             </div>
           </Row>
 
           <Row>
             <h2 className="text-[16px] font-semibold text-avalon-text-strong">
-              Email address: <span className="font-medium text-avalon-text">{user.email}</span>
+              {d.emailAddress}: <span className="font-medium text-avalon-text">{user.email}</span>
               {user.emailVerified && (
                 <span className="ml-1.5 inline-flex size-4 translate-y-0.5 items-center justify-center rounded-full bg-avalon-primary text-[10px] text-white">
                   ✓
@@ -155,18 +157,18 @@ export default async function PersonalDataPage(props: PageProps<"/[lang]/profile
               )}
             </h2>
             <p className="mt-2 text-[13px] text-avalon-text">
-              You can change the email address that your account is linked to.
+              {d.emailNote}
             </p>
             <Link
               href={`/${lang}/profile/settings`}
               className="mt-4 inline-block text-[14px] text-avalon-primary hover:underline"
             >
-              Change email
+              {d.changeEmail}
             </Link>
           </Row>
 
           <Row>
-            <h2 className="text-[16px] font-semibold text-avalon-text-strong">Contact info:</h2>
+            <h2 className="text-[16px] font-semibold text-avalon-text-strong">{d.contactInfo}:</h2>
 
             {user.phone && user.emailVerified ? (
               <dl className="mt-4 grid grid-cols-[150px_1fr] gap-y-3 text-[14px]">
@@ -176,16 +178,16 @@ export default async function PersonalDataPage(props: PageProps<"/[lang]/profile
             ) : (
               <div className="mt-4 flex flex-col items-center justify-center bg-avalon-surface px-6 py-12 text-center">
                 <p className="max-w-[260px] text-[14px] leading-[18px] text-avalon-text">
-                  You haven&apos;t filled in your contact details yet.
+                  {d.noContact}
                 </p>
                 <Link href={`/${lang}/verification`} className="mt-1 text-[14px] text-avalon-primary hover:underline">
-                  Please verify your account
+                  {d.verifyPrompt}
                 </Link>
               </div>
             )}
 
             <p className="mt-4 text-[12px] text-avalon-text">
-              If you would like to rectify and/or manage your data, please contact{" "}
+              {d.rectify}{" "}
               <a href="mailto:support@avalonbroker.com" className="text-avalon-primary hover:underline">
                 support@avalonbroker.com
               </a>
@@ -194,15 +196,15 @@ export default async function PersonalDataPage(props: PageProps<"/[lang]/profile
           </Row>
 
           <section className="py-6">
-            <h2 className="text-[16px] font-semibold text-avalon-text-strong">Access My Data</h2>
+            <h2 className="text-[16px] font-semibold text-avalon-text-strong">{d.accessMyData}</h2>
             <p className="mt-2 text-[13px] text-avalon-text">
-              You can view your personal information that you have provided to us by category.
+              {d.byCategory}
             </p>
             <Link
               href={`/${lang}/profile/personal`}
               className="mt-4 inline-block text-[14px] text-avalon-primary hover:underline"
             >
-              Show my data
+              {d.showMyData}
             </Link>
           </section>
         </div>

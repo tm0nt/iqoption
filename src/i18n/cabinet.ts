@@ -136,6 +136,8 @@ export type CabinetCopy = {
     rejected: string;
     open: string;
     settled: string;
+    /** One status value, as the database spells it. */
+    statusOf: (value: string) => string;
     accountType: string;
     allAccounts: string;
     real: string;
@@ -147,6 +149,112 @@ export type CabinetCopy = {
     blitz: string;
     totalNetProfit: string;
     periodData: string;
+  };
+  /** The cashier: paying in and taking out. */
+  cashier: {
+    depositAmount: string;
+    currency: string;
+    promotion: string;
+    promoPlaceholder: string;
+    apply: string;
+    onePerDeposit: string;
+    acceptTerms: string;
+    terms: string;
+    proceed: string;
+    sending: string;
+    encrypted: string;
+    noMethods: string;
+    noPromotions: string;
+    refused: string;
+    unreachable: string;
+    walletAddress: string;
+    requestWithdrawal: string;
+    noWithdrawMethods: string;
+    requestRefused: string;
+    emptyBalance: string;
+    deposit: string;
+  };
+  portfolio: {
+    totalEquity: string;
+    estimatedValue: string;
+    totalInvestment: string;
+    totalGrossProfit: string;
+    withdrawFunds: string;
+    topAssets: string;
+    topAssetsDown: string;
+    all: string;
+    crypto: string;
+    forex: string;
+    stocks: string;
+    indices: string;
+    gainers: string;
+    losers: string;
+    perWeek: string;
+    previous: string;
+    next: string;
+  };
+  verification: {
+    title: string;
+    emailStep: string;
+    detailsStep: string;
+    identityStep: string;
+    identityPending: string;
+    uploadMissing: string;
+    personalInfo: string;
+    residenceInfo: string;
+    exactlyAsId: string;
+    checkResidence: string;
+    firstName: string;
+    lastName: string;
+    dateOfBirth: string;
+    datePlaceholder: string;
+    citizenship: string;
+    usPerson: string;
+    refresh: string;
+  };
+  /** The deposit page's question list, and the one label the methods carry. */
+  faq: {
+    heading: string;
+    businessDays: string;
+    items: { q: string; a: string }[];
+  };
+  /** Personal Data, the portfolio's empty state and two footnotes. */
+  personal: {
+    changePhoto: string;
+    uploadPhoto: string;
+    photoNote: string;
+    statement: string;
+    statementBody: string;
+    createRequest: string;
+    emailAddress: string;
+    emailNote: string;
+    changeEmail: string;
+    contactInfo: string;
+    noContact: string;
+    verifyPrompt: string;
+    rectify: string;
+    byCategory: string;
+    accessMyData: string;
+    showMyData: string;
+    noOpenPositions: string;
+    start: string;
+    bestExperience: string;
+    entries: (n: number) => string;
+    settledTwice: string;
+    freeWithdrawals: (n: number) => string;
+    /** Table headers and the odd standalone label. */
+    balanceOf: (currency: string) => string;
+    amountIn: (currency: string) => string;
+    done: string;
+    requested: string;
+    method: string;
+    destination: string;
+    when: string;
+    what: string;
+    reference: string;
+    amount: string;
+    /** One row of the balance history, by the key the reader hands over. */
+    entryOf: (key: string) => string;
   };
 };
 
@@ -276,6 +384,8 @@ const en: CabinetCopy = {
     rejected: "Rejected",
     open: "Open",
     settled: "Settled",
+    statusOf: (value) =>
+      ({ pending: "Pending", approved: "Approved", rejected: "Rejected", cancelled: "Cancelled", settled: "Settled", open: "Open" })[value.toLowerCase()] ?? value,
     accountType: "Account type",
     allAccounts: "All accounts",
     real: "Real",
@@ -287,6 +397,125 @@ const en: CabinetCopy = {
     blitz: "Blitz options",
     totalNetProfit: "Total Net Profit",
     periodData: "Data for the selected period",
+  },
+  cashier: {
+    depositAmount: "Deposit amount",
+    currency: "Currency",
+    promotion: "Promotion",
+    promoPlaceholder: "Your promo code",
+    apply: "Apply",
+    onePerDeposit: "One promo code per deposit",
+    acceptTerms: "I hereby accept the",
+    terms: "Terms & Conditions",
+    proceed: "Proceed to Payment",
+    sending: "Sending…",
+    encrypted: "Connections to this site are encrypted. No card network is connected yet, and no payment is taken.",
+    noMethods: "No deposit methods are configured.",
+    noPromotions: "No promotions are running.",
+    refused: "The deposit was refused.",
+    unreachable: "Could not reach the server.",
+    walletAddress: "Wallet address",
+    requestWithdrawal: "Request withdrawal",
+    noWithdrawMethods: "No withdrawal methods are configured.",
+    requestRefused: "The request was refused.",
+    emptyBalance: "You cannot withdraw funds because your balance is 0.",
+    deposit: "Deposit",
+  },
+  portfolio: {
+    totalEquity: "Total Equity",
+    estimatedValue: "Estimated account value",
+    totalInvestment: "Total Investment",
+    totalGrossProfit: "Total Gross Profit",
+    withdrawFunds: "Withdraw funds",
+    topAssets: "Top Assets",
+    topAssetsDown: "Top assets are unavailable — the market feed is not answering.",
+    all: "All",
+    crypto: "Crypto",
+    forex: "Forex",
+    stocks: "Stocks",
+    indices: "Indices",
+    gainers: "Gainers",
+    losers: "Losers",
+    perWeek: "Per week",
+    previous: "Previous",
+    next: "Next",
+  },
+  verification: {
+    title: "Account Verification",
+    emailStep: "Email confirmation",
+    detailsStep: "Personal Details",
+    identityStep: "Proof of Identity",
+    identityPending: "Your details are with us. The next step is a photo of an identity document, which a person reads against what you entered.",
+    uploadMissing: "Document upload is not built yet. Until it is, an account stays on the practice balance.",
+    personalInfo: "Personal info",
+    residenceInfo: "Residence info",
+    exactlyAsId: "Provide your personal data exactly as it appears on your ID to avoid verification issues in the future.",
+    checkResidence: "Please make sure that your residence information is correct.",
+    firstName: "First Name",
+    lastName: "Last Name",
+    dateOfBirth: "Date of Birth",
+    datePlaceholder: "dd.mm.yyyy",
+    citizenship: "Country of citizenship",
+    usPerson: "I am a U.S. citizen or tax resident.",
+    refresh: "Refresh",
+  },
+  faq: {
+    heading: "Frequently Asked Questions",
+    businessDays: "1 - 3 business days",
+    items: [
+      {
+        q: "How long does a deposit take to arrive?",
+        a: "Nothing is charged yet. A deposit here is recorded as pending and the balance only moves once someone approves it, because no payment provider is connected.",
+      },
+      {
+        q: "Why is my balance unchanged after depositing?",
+        a: "For the same reason: the request is a record, not a payment. You can see it under Balance History with its status.",
+      },
+      {
+        q: "Which currency is my account in?",
+        a: "The one your wallet was opened in. It is shown beside the amount field and cannot be changed from this page.",
+      },
+      {
+        q: "Can I trade while a deposit is pending?",
+        a: "Yes, with the balance you already have. A practice balance is funded from the start and is not affected by deposits.",
+      },
+    ],
+  },
+  personal: {
+    changePhoto: "Change photo",
+    uploadPhoto: "+ Upload a photo",
+    photoNote: "Your photo will be displayed in direct messages, public chats, and rankings.",
+    statement: "Account statement",
+    statementBody: "Get detailed information on your trading account for the selected period.",
+    createRequest: "Create a request",
+    emailAddress: "Email address",
+    emailNote: "You can change the email address that your account is linked to.",
+    changeEmail: "Change email",
+    contactInfo: "Contact info",
+    noContact: "You haven't filled in your contact details yet.",
+    verifyPrompt: "Please verify your account",
+    rectify: "If you would like to rectify and/or manage your data, please contact",
+    byCategory: "You can view your personal information that you have provided to us by category.",
+    accessMyData: "Access My Data",
+    showMyData: "Show my data",
+    noOpenPositions: "You don't have any open positions yet. Explore Top Assets and",
+    start: "start",
+    bestExperience: "the best trading experience ever.",
+    entries: (n) => `${n} ${n === 1 ? "entry" : "entries"}.`,
+    settledTwice: "A settled deal appears twice: the stake leaving when it opened, and the payout arriving when it closed.",
+    freeWithdrawals: (n) => `You have ${n} free withdrawal${n === 1 ? "" : "s"} left until the end of the calendar month.`,
+    balanceOf: (c) => `${c} Balance`,
+    amountIn: (c) => `Amount (${c})`,
+    done: "Done",
+    requested: "Requested",
+    method: "Method",
+    destination: "Destination",
+    when: "When",
+    what: "What",
+    reference: "Reference",
+    amount: "Amount",
+    entryOf: (key) =>
+      ({ deposit: "Deposit", withdrawal: "Withdrawal", tradeOpened: "Trade opened", tradeWon: "Trade won", tradeLost: "Trade lost", tradeRefunded: "Trade refunded" })[key] ?? key,
   },
 };
 
@@ -416,6 +645,8 @@ const pt: CabinetCopy = {
     rejected: "Recusada",
     open: "Em aberto",
     settled: "Liquidados",
+    statusOf: (value) =>
+      ({ pending: "Pendente", approved: "Aprovada", rejected: "Recusada", cancelled: "Cancelada", settled: "Liquidada", open: "Em aberto" })[value.toLowerCase()] ?? value,
     accountType: "Tipo de conta",
     allAccounts: "Todas as contas",
     real: "Real",
@@ -427,6 +658,125 @@ const pt: CabinetCopy = {
     blitz: "Opções blitz",
     totalNetProfit: "Lucro líquido total",
     periodData: "Dados do período selecionado",
+  },
+  cashier: {
+    depositAmount: "Valor do depósito",
+    currency: "Moeda",
+    promotion: "Promoção",
+    promoPlaceholder: "Seu código promocional",
+    apply: "Aplicar",
+    onePerDeposit: "Um código promocional por depósito",
+    acceptTerms: "Eu aceito os",
+    terms: "Termos e Condições",
+    proceed: "Ir para o pagamento",
+    sending: "Enviando…",
+    encrypted: "As conexões com este site são criptografadas. Nenhuma bandeira de cartão está conectada ainda, e nenhum pagamento é cobrado.",
+    noMethods: "Nenhum método de depósito configurado.",
+    noPromotions: "Nenhuma promoção em andamento.",
+    refused: "O depósito foi recusado.",
+    unreachable: "Não foi possível falar com o servidor.",
+    walletAddress: "Endereço da carteira",
+    requestWithdrawal: "Solicitar saque",
+    noWithdrawMethods: "Nenhum método de saque configurado.",
+    requestRefused: "A solicitação foi recusada.",
+    emptyBalance: "Você não pode sacar porque seu saldo é 0.",
+    deposit: "Depositar",
+  },
+  portfolio: {
+    totalEquity: "Patrimônio total",
+    estimatedValue: "Valor estimado da conta",
+    totalInvestment: "Total investido",
+    totalGrossProfit: "Lucro bruto total",
+    withdrawFunds: "Retirar fundos",
+    topAssets: "Ativos em destaque",
+    topAssetsDown: "Os ativos em destaque estão indisponíveis — o feed de mercado não está respondendo.",
+    all: "Todos",
+    crypto: "Cripto",
+    forex: "Forex",
+    stocks: "Ações",
+    indices: "Índices",
+    gainers: "Em alta",
+    losers: "Em baixa",
+    perWeek: "Na semana",
+    previous: "Anterior",
+    next: "Próximo",
+  },
+  verification: {
+    title: "Verificação da conta",
+    emailStep: "Confirmação de e-mail",
+    detailsStep: "Dados pessoais",
+    identityStep: "Comprovante de identidade",
+    identityPending: "Recebemos seus dados. O próximo passo é a foto de um documento de identidade, que uma pessoa confere com o que você informou.",
+    uploadMissing: "O envio de documentos ainda não foi construído. Até lá, a conta permanece no saldo de treinamento.",
+    personalInfo: "Dados pessoais",
+    residenceInfo: "Dados de residência",
+    exactlyAsId: "Informe seus dados exatamente como aparecem no seu documento, para evitar problemas na verificação depois.",
+    checkResidence: "Confira se os dados de residência estão corretos.",
+    firstName: "Nome",
+    lastName: "Sobrenome",
+    dateOfBirth: "Data de nascimento",
+    datePlaceholder: "dd.mm.aaaa",
+    citizenship: "País de cidadania",
+    usPerson: "Sou cidadão ou residente fiscal dos Estados Unidos.",
+    refresh: "Atualizar",
+  },
+  faq: {
+    heading: "Perguntas frequentes",
+    businessDays: "1 a 3 dias úteis",
+    items: [
+      {
+        q: "Quanto tempo leva para o depósito cair?",
+        a: "Ainda não há cobrança. Um depósito aqui é registrado como pendente e o saldo só se move quando alguém aprova, porque nenhum provedor de pagamento está conectado.",
+      },
+      {
+        q: "Por que meu saldo não mudou depois de depositar?",
+        a: "Pelo mesmo motivo: o pedido é um registro, não um pagamento. Você o vê no Histórico do saldo, com a situação dele.",
+      },
+      {
+        q: "Em qual moeda está a minha conta?",
+        a: "Na moeda em que a carteira foi aberta. Ela aparece ao lado do campo de valor e não pode ser trocada nesta página.",
+      },
+      {
+        q: "Posso negociar enquanto um depósito está pendente?",
+        a: "Sim, com o saldo que você já tem. O saldo de treinamento já vem com fundos e não é afetado por depósitos.",
+      },
+    ],
+  },
+  personal: {
+    changePhoto: "Trocar foto",
+    uploadPhoto: "+ Enviar uma foto",
+    photoNote: "Sua foto aparecerá nas mensagens diretas, nos chats públicos e nos rankings.",
+    statement: "Extrato da conta",
+    statementBody: "Veja informações detalhadas da sua conta de negociação no período escolhido.",
+    createRequest: "Criar solicitação",
+    emailAddress: "Endereço de e-mail",
+    emailNote: "Você pode trocar o endereço de e-mail ligado à sua conta.",
+    changeEmail: "Trocar e-mail",
+    contactInfo: "Dados de contato",
+    noContact: "Você ainda não preencheu seus dados de contato.",
+    verifyPrompt: "Verifique sua conta",
+    rectify: "Se quiser corrigir ou gerenciar seus dados, fale com",
+    byCategory: "Você pode ver, por categoria, os dados pessoais que nos forneceu.",
+    accessMyData: "Acessar meus dados",
+    showMyData: "Ver meus dados",
+    noOpenPositions: "Você ainda não tem posições abertas. Veja os ativos em destaque e",
+    start: "comece",
+    bestExperience: "a melhor experiência de negociação.",
+    entries: (n) => `${n} ${n === 1 ? "lançamento" : "lançamentos"}.`,
+    settledTwice: "Um negócio liquidado aparece duas vezes: a aposta saindo na abertura e o retorno entrando no encerramento.",
+    freeWithdrawals: (n) => `Você ainda tem ${n} ${n === 1 ? "saque gratuito" : "saques gratuitos"} até o fim do mês.`,
+    balanceOf: (c) => `Saldo em ${c}`,
+    amountIn: (c) => `Valor (${c})`,
+    done: "Concluído",
+    requested: "Solicitado em",
+    method: "Método",
+    destination: "Destino",
+    when: "Quando",
+    what: "O quê",
+    reference: "Referência",
+    amount: "Valor",
+    entryOf: (key) =>
+      ({ deposit: "Depósito", withdrawal: "Saque", tradeOpened: "Negócio aberto", tradeWon: "Negócio ganho", tradeLost: "Negócio perdido", tradeRefunded: "Negócio devolvido" })[key] ?? key,
   },
 };
 
@@ -556,6 +906,8 @@ const es: CabinetCopy = {
     rejected: "Rechazada",
     open: "Abierta",
     settled: "Liquidadas",
+    statusOf: (value) =>
+      ({ pending: "Pendiente", approved: "Aprobada", rejected: "Rechazada", cancelled: "Cancelada", settled: "Liquidada", open: "Abierta" })[value.toLowerCase()] ?? value,
     accountType: "Tipo de cuenta",
     allAccounts: "Todas las cuentas",
     real: "Real",
@@ -567,6 +919,125 @@ const es: CabinetCopy = {
     blitz: "Opciones blitz",
     totalNetProfit: "Beneficio neto total",
     periodData: "Datos del período seleccionado",
+  },
+  cashier: {
+    depositAmount: "Importe del depósito",
+    currency: "Divisa",
+    promotion: "Promoción",
+    promoPlaceholder: "Tu código promocional",
+    apply: "Aplicar",
+    onePerDeposit: "Un código promocional por depósito",
+    acceptTerms: "Acepto los",
+    terms: "Términos y Condiciones",
+    proceed: "Ir al pago",
+    sending: "Enviando…",
+    encrypted: "Las conexiones con este sitio están cifradas. Todavía no hay ninguna red de tarjetas conectada y no se cobra ningún pago.",
+    noMethods: "No hay métodos de depósito configurados.",
+    noPromotions: "No hay promociones activas.",
+    refused: "El depósito fue rechazado.",
+    unreachable: "No se pudo contactar con el servidor.",
+    walletAddress: "Dirección de la cartera",
+    requestWithdrawal: "Solicitar retirada",
+    noWithdrawMethods: "No hay métodos de retirada configurados.",
+    requestRefused: "La solicitud fue rechazada.",
+    emptyBalance: "No puedes retirar fondos porque tu saldo es 0.",
+    deposit: "Depositar",
+  },
+  portfolio: {
+    totalEquity: "Patrimonio total",
+    estimatedValue: "Valor estimado de la cuenta",
+    totalInvestment: "Total invertido",
+    totalGrossProfit: "Beneficio bruto total",
+    withdrawFunds: "Retirar fondos",
+    topAssets: "Activos destacados",
+    topAssetsDown: "Los activos destacados no están disponibles: el feed de mercado no responde.",
+    all: "Todos",
+    crypto: "Cripto",
+    forex: "Forex",
+    stocks: "Acciones",
+    indices: "Índices",
+    gainers: "Al alza",
+    losers: "A la baja",
+    perWeek: "En la semana",
+    previous: "Anterior",
+    next: "Siguiente",
+  },
+  verification: {
+    title: "Verificación de la cuenta",
+    emailStep: "Confirmación de correo",
+    detailsStep: "Datos personales",
+    identityStep: "Prueba de identidad",
+    identityPending: "Hemos recibido tus datos. El siguiente paso es una foto de un documento de identidad, que una persona compara con lo que indicaste.",
+    uploadMissing: "La subida de documentos todavía no está construida. Hasta entonces, la cuenta se queda en el saldo de práctica.",
+    personalInfo: "Datos personales",
+    residenceInfo: "Datos de residencia",
+    exactlyAsId: "Indica tus datos exactamente como aparecen en tu documento, para evitar problemas de verificación más adelante.",
+    checkResidence: "Comprueba que los datos de residencia sean correctos.",
+    firstName: "Nombre",
+    lastName: "Apellido",
+    dateOfBirth: "Fecha de nacimiento",
+    datePlaceholder: "dd.mm.aaaa",
+    citizenship: "País de ciudadanía",
+    usPerson: "Soy ciudadano o residente fiscal de Estados Unidos.",
+    refresh: "Actualizar",
+  },
+  faq: {
+    heading: "Preguntas frecuentes",
+    businessDays: "1 a 3 días hábiles",
+    items: [
+      {
+        q: "¿Cuánto tarda en llegar un depósito?",
+        a: "Todavía no se cobra nada. Un depósito aquí se registra como pendiente y el saldo solo se mueve cuando alguien lo aprueba, porque no hay ningún proveedor de pago conectado.",
+      },
+      {
+        q: "¿Por qué mi saldo no ha cambiado tras depositar?",
+        a: "Por el mismo motivo: la solicitud es un registro, no un pago. Puedes verla en el Historial de saldo, con su estado.",
+      },
+      {
+        q: "¿En qué divisa está mi cuenta?",
+        a: "En la divisa con la que se abrió tu cartera. Aparece junto al campo del importe y no se puede cambiar desde esta página.",
+      },
+      {
+        q: "¿Puedo operar mientras un depósito está pendiente?",
+        a: "Sí, con el saldo que ya tienes. El saldo de práctica viene con fondos desde el principio y los depósitos no lo afectan.",
+      },
+    ],
+  },
+  personal: {
+    changePhoto: "Cambiar foto",
+    uploadPhoto: "+ Subir una foto",
+    photoNote: "Tu foto aparecerá en los mensajes directos, los chats públicos y las clasificaciones.",
+    statement: "Extracto de la cuenta",
+    statementBody: "Consulta información detallada de tu cuenta de operaciones en el período elegido.",
+    createRequest: "Crear solicitud",
+    emailAddress: "Dirección de correo",
+    emailNote: "Puedes cambiar la dirección de correo vinculada a tu cuenta.",
+    changeEmail: "Cambiar correo",
+    contactInfo: "Datos de contacto",
+    noContact: "Todavía no has rellenado tus datos de contacto.",
+    verifyPrompt: "Verifica tu cuenta",
+    rectify: "Si quieres rectificar o gestionar tus datos, contacta con",
+    byCategory: "Puedes ver, por categoría, los datos personales que nos has facilitado.",
+    accessMyData: "Acceder a mis datos",
+    showMyData: "Ver mis datos",
+    noOpenPositions: "Todavía no tienes posiciones abiertas. Mira los activos destacados y",
+    start: "empieza",
+    bestExperience: "la mejor experiencia de operaciones.",
+    entries: (n) => `${n} ${n === 1 ? "apunte" : "apuntes"}.`,
+    settledTwice: "Una operación liquidada aparece dos veces: la apuesta al abrirse y el retorno al cerrarse.",
+    freeWithdrawals: (n) => `Todavía tienes ${n} ${n === 1 ? "retirada gratuita" : "retiradas gratuitas"} hasta fin de mes.`,
+    balanceOf: (c) => `Saldo en ${c}`,
+    amountIn: (c) => `Importe (${c})`,
+    done: "Hecho",
+    requested: "Solicitado el",
+    method: "Método",
+    destination: "Destino",
+    when: "Cuándo",
+    what: "Qué",
+    reference: "Referencia",
+    amount: "Importe",
+    entryOf: (key) =>
+      ({ deposit: "Depósito", withdrawal: "Retirada", tradeOpened: "Operación abierta", tradeWon: "Operación ganada", tradeLost: "Operación perdida", tradeRefunded: "Operación devuelta" })[key] ?? key,
   },
 };
 

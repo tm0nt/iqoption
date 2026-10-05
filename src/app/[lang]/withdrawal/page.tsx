@@ -7,8 +7,12 @@ import { cashierSettings } from "@/lib/cabinet/cashier";
 import { prisma } from "@/lib/db";
 import { activeWallet } from "@/lib/cabinet/wallet";
 import { isLocale } from "@/i18n/avalon";
+import { cabinetCopy } from "@/i18n/cabinet";
 
-export const metadata: Metadata = { title: "Withdraw Funds" };
+export async function generateMetadata(props: PageProps<"/[lang]/withdrawal">): Promise<Metadata> {
+  const { lang } = await props.params;
+  return { title: cabinetCopy(lang).nav.withdrawFunds };
+}
 export const dynamic = "force-dynamic";
 
 const MONEY = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -30,6 +34,8 @@ function maskDestination(value: string | null) {
 export default async function WithdrawalPage(props: PageProps<"/[lang]/withdrawal">) {
   const { lang } = await props.params;
   if (!isLocale(lang)) notFound();
+
+  const d = cabinetCopy(lang).personal;
 
   const session = await auth();
   if (!session?.user) redirect(`/${lang}/login?next=/${lang}/withdrawal`);
@@ -76,16 +82,16 @@ export default async function WithdrawalPage(props: PageProps<"/[lang]/withdrawa
       account={{
         email: user.email,
         balance: `${MONEY.format(balance)} ${currency}`,
-        balanceLabel: wallet?.type === 4 ? "Practice account" : "Real account",
+        balanceLabel: wallet?.type === 4 ? cabinetCopy(lang).account.practice : cabinetCopy(lang).account.real,
         verified: user.kycStatus === "APPROVED",
       }}
       bleed
     >
       <div className="bg-avalon-surface pb-16 pt-9">
         <div className="mx-auto w-full max-w-[1041px] px-6">
-          <h1 className="text-center text-[26px] font-semibold text-avalon-text-strong">Withdrawal</h1>
+          <h1 className="text-center text-[26px] font-semibold text-avalon-text-strong">{cabinetCopy(lang).nav.withdrawFunds}</h1>
           <p className="mt-3 text-center text-[14px] text-avalon-text">
-            You have {freeLeft} free withdrawal{freeLeft === 1 ? "" : "s"} left until the end of the calendar month.
+            {cabinetCopy(lang).personal.freeWithdrawals(freeLeft)}
           </p>
 
           <div className="mt-8">
@@ -99,7 +105,7 @@ export default async function WithdrawalPage(props: PageProps<"/[lang]/withdrawa
           </div>
 
           <section className="mt-9 rounded-[4px] bg-white px-8 py-8 shadow-avalon">
-            <h2 className="text-center text-[18px] font-semibold text-avalon-text-strong">Withdrawal requests</h2>
+            <h2 className="text-center text-[18px] font-semibold text-avalon-text-strong">{cabinetCopy(lang).history.withdrawals}</h2>
 
             {requests.length === 0 ? (
               <div className="flex flex-col items-center py-10">
@@ -113,7 +119,7 @@ export default async function WithdrawalPage(props: PageProps<"/[lang]/withdrawa
               <table className="mt-6 w-full text-left text-[13px]">
                 <thead className="text-[12px] uppercase tracking-wide text-avalon-text">
                   <tr>
-                    {["Requested", "Method", "Destination", "Amount", "Status"].map((head) => (
+                    {[d.requested, d.method, d.destination, d.amount, cabinetCopy(lang).history.status].map((head) => (
                       <th key={head} className="pb-3 font-medium">
                         {head}
                       </th>
@@ -133,7 +139,7 @@ export default async function WithdrawalPage(props: PageProps<"/[lang]/withdrawa
                       </td>
                       <td className="py-3">
                         <span className={`rounded px-2 py-0.5 text-[12px] ${STATUS_TONE[request.status]}`}>
-                          {request.status.toLowerCase()}
+                          {cabinetCopy(lang).history.statusOf(request.status)}
                         </span>
                       </td>
                     </tr>

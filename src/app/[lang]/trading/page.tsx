@@ -110,7 +110,7 @@ export default async function TradingHistoryPage(props: PageProps<"/[lang]/tradi
       account={{
         email: user.email,
         balance: `${MONEY.format(Number(wallet?.amount ?? 0))} ${currency}`,
-        balanceLabel: wallet?.type === 4 ? "Practice account" : "Real account",
+        balanceLabel: wallet?.type === 4 ? cabinetCopy(lang).account.practice : cabinetCopy(lang).account.real,
         verified: user.kycStatus === "APPROVED",
       }}
     >

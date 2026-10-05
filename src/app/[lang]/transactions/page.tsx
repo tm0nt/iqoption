@@ -33,6 +33,7 @@ export default async function TransactionsPage(props: PageProps<"/[lang]/transac
   if (!isLocale(lang)) notFound();
 
   const h = cabinetCopy(lang).history;
+  const d = cabinetCopy(lang).personal;
   const types = [
     { value: "all", label: h.allTypes },
     { value: "deposit", label: h.deposits },
@@ -90,7 +91,7 @@ export default async function TransactionsPage(props: PageProps<"/[lang]/transac
       account={{
         email: user.email,
         balance: `${MONEY.format(Number(wallet?.amount ?? 0))} ${currency}`,
-        balanceLabel: wallet?.type === 4 ? "Practice account" : "Real account",
+        balanceLabel: wallet?.type === 4 ? cabinetCopy(lang).account.practice : cabinetCopy(lang).account.real,
         verified: user.kycStatus === "APPROVED",
       }}
     >
@@ -120,7 +121,7 @@ export default async function TransactionsPage(props: PageProps<"/[lang]/transac
           <table className="w-full text-left text-[13px]">
             <thead className="text-[12px] uppercase tracking-wide text-avalon-text">
               <tr>
-                {["When", "What", "Reference", "Status", "Amount"].map((head) => (
+                {[d.when, d.what, d.reference, h.status, d.amount].map((head) => (
                   <th key={head} className="py-4 font-medium last:text-right">
                     {head}
                   </th>
@@ -131,11 +132,11 @@ export default async function TransactionsPage(props: PageProps<"/[lang]/transac
               {entries.map((entry) => (
                 <tr key={entry.id}>
                   <td className="py-3.5 whitespace-nowrap text-avalon-text">{entry.at.toLocaleString()}</td>
-                  <td className="py-3.5 text-avalon-text-strong">{entry.label}</td>
+                  <td className="py-3.5 text-avalon-text-strong">{d.entryOf(entry.label)}</td>
                   <td className="py-3.5 font-mono text-[12px] text-avalon-text">{entry.reference}</td>
                   <td className="py-3.5">
                     <span className={`rounded px-2 py-0.5 text-[12px] ${TONE[entry.status] ?? ""}`}>
-                      {entry.status}
+                      {h.statusOf(entry.status)}
                     </span>
                   </td>
                   <td
@@ -156,8 +157,8 @@ export default async function TransactionsPage(props: PageProps<"/[lang]/transac
       <div className="border-t border-avalon-surface-hover pt-4 text-[12px] text-avalon-text">
         {entries.length > 0 && (
           <>
-            {entries.length} entr{entries.length === 1 ? "y" : "ies"}. A settled deal appears twice: the stake
-            leaving when it opened, and the payout arriving when it closed.
+            {cabinetCopy(lang).personal.entries(entries.length)}{" "}
+            {cabinetCopy(lang).personal.settledTwice}
           </>
         )}
       </div>

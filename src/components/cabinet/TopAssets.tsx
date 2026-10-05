@@ -4,19 +4,27 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Sparkline } from "./Sparkline";
 import type { TopAsset } from "@/lib/market/top-assets-type";
+import { cabinetCopy, type CabinetCopy } from "@/i18n/cabinet";
 
 const CARDS_PER_PAGE = 4;
 
 type Sort = "gainers" | "losers";
 
-/** The instrument families the filter offers, by the `kind` the catalogue uses. */
-const FAMILIES: { value: string; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "crypto", label: "Crypto" },
-  { value: "forex", label: "Forex" },
-  { value: "index", label: "Indices" },
-  { value: "stock", label: "Stocks" },
-];
+/**
+ * The instrument families the filter offers, by the `kind` the catalogue uses.
+ *
+ * A function rather than a constant: a constant is built once, before any
+ * request has said which language it is for.
+ */
+function families(t: CabinetCopy["portfolio"]) {
+  return [
+    { value: "all", label: t.all },
+    { value: "crypto", label: t.crypto },
+    { value: "forex", label: t.forex },
+    { value: "index", label: t.indices },
+    { value: "stock", label: t.stocks },
+  ];
+}
 
 function Select({
   value,
@@ -61,6 +69,7 @@ function Select({
  * looking at rather than merely reordering a list you could already read.
  */
 export function TopAssets({ assets, locale }: { assets: TopAsset[]; locale: string }) {
+  const t = cabinetCopy(locale).portfolio;
   const [sort, setSort] = useState<Sort>("gainers");
   const [family, setFamily] = useState("all");
   const [page, setPage] = useState(0);
@@ -77,7 +86,7 @@ export function TopAssets({ assets, locale }: { assets: TopAsset[]; locale: stri
   return (
     <section className="pb-12 pt-10">
       <div className="flex flex-wrap items-center gap-4">
-        <h2 className="text-[20px] font-semibold text-avalon-text-strong">Top Assets</h2>
+        <h2 className="text-[20px] font-semibold text-avalon-text-strong">{t.topAssets}</h2>
         <div className="ml-auto flex gap-4">
           <Select
             value={sort}
@@ -86,8 +95,8 @@ export function TopAssets({ assets, locale }: { assets: TopAsset[]; locale: stri
               setPage(0);
             }}
             options={[
-              { value: "gainers", label: "Gainers" },
-              { value: "losers", label: "Losers" },
+              { value: "gainers", label: t.gainers },
+              { value: "losers", label: t.losers },
             ]}
           />
           <Select
@@ -96,7 +105,7 @@ export function TopAssets({ assets, locale }: { assets: TopAsset[]; locale: stri
               setFamily(value);
               setPage(0);
             }}
-            options={FAMILIES}
+            options={families(t)}
           />
         </div>
       </div>
@@ -106,7 +115,7 @@ export function TopAssets({ assets, locale }: { assets: TopAsset[]; locale: stri
           <>
             <button
               type="button"
-              aria-label="Previous"
+              aria-label={t.previous}
               onClick={() => setPage((p) => Math.max(0, p - 1))}
               disabled={current === 0}
               className="absolute -left-5 top-1/2 z-10 flex size-9 -translate-y-1/2 items-center justify-center rounded-full border border-avalon-surface-hover bg-white text-avalon-text transition-colors hover:text-avalon-primary disabled:opacity-40"
@@ -115,7 +124,7 @@ export function TopAssets({ assets, locale }: { assets: TopAsset[]; locale: stri
             </button>
             <button
               type="button"
-              aria-label="Next"
+              aria-label={t.next}
               onClick={() => setPage((p) => Math.min(pages - 1, p + 1))}
               disabled={current === pages - 1}
               className="absolute -right-5 top-1/2 z-10 flex size-9 -translate-y-1/2 items-center justify-center rounded-full border border-avalon-surface-hover bg-white text-avalon-text transition-colors hover:text-avalon-primary disabled:opacity-40"
@@ -157,7 +166,7 @@ export function TopAssets({ assets, locale }: { assets: TopAsset[]; locale: stri
                         {rising ? "+" : ""}
                         {asset.change.toFixed(2)}%
                       </span>
-                      <span className="block text-[11px] text-avalon-text">Per week</span>
+                      <span className="block text-[11px] text-avalon-text">{t.perWeek}</span>
                     </span>
                   </div>
                 </Link>
