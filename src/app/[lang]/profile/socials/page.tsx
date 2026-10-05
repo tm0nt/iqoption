@@ -43,8 +43,7 @@ export default async function SocialNetworksPage(props: PageProps<"/[lang]/profi
           <h1 className="pb-2 text-[28px] font-semibold text-avalon-text-strong">{copy.profile.socialNetworks}</h1>
 
           <p className="max-w-[640px] pt-5 text-[14px] leading-[22px] text-avalon-text">
-            You can use your social media accounts to log in to our site, as well as to share your
-            trading achievements with your friends.
+            {copy.socials.body}
           </p>
 
           <div className="flex items-center gap-4 pt-8">
@@ -59,20 +58,19 @@ export default async function SocialNetworksPage(props: PageProps<"/[lang]/profi
 
             <div className="min-w-0">
               <p className="text-[15px] font-semibold text-avalon-text-strong">Google</p>
-              <p className="text-[14px] text-avalon-text">Account not linked</p>
+              <p className="text-[14px] text-avalon-text">{copy.socials.notLinked}</p>
             </div>
 
             <span
               className="ml-auto text-[14px] text-avalon-border-muted"
-              title="This platform signs in with an email and a password only."
+              title={copy.socials.unavailableWhy}
             >
-              Unavailable
+              {copy.socials.unavailable}
             </span>
           </div>
 
           <p className="max-w-[640px] pt-8 text-[13px] leading-5 text-avalon-text">
-            Signing in with a social account is not set up on this platform. Your account uses the
-            email address and password you registered with.
+            {copy.socials.unavailableWhy}
           </p>
         </div>
       </div>

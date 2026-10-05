@@ -35,7 +35,7 @@ export default async function NotificationSettingsPage(props: PageProps<"/[lang]
         <ProfileNav locale={lang} />
         <div className="min-w-0 grow">
           <h1 className="pb-2 text-[28px] font-semibold text-avalon-text-strong">{copy.profile.notificationSettings}</h1>
-          <NotificationForm settings={settings} />
+          <NotificationForm settings={settings} locale={lang} />
         </div>
       </div>
     </CabinetShell>

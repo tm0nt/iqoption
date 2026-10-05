@@ -82,43 +82,31 @@ export default async function SecurityPage(props: PageProps<"/[lang]/profile/sec
         <div className="min-w-0 grow">
           <h1 className="pb-2 text-[28px] font-semibold text-avalon-text-strong">{copy.profile.safetySecurity}</h1>
 
-          <ProfileSection title="2-Step Authentication">
-            <p>You will receive an extra confirmation code to log in to your account.</p>
-            <p className="text-avalon-border-muted">
-              Not available yet. This account is protected by its password alone.
-            </p>
+          <ProfileSection title={copy.security.twoStepTitle}>
+            <p>{copy.security.twoStepBody}</p>
+            <p className="text-avalon-border-muted">{copy.security.twoStepUnavailable}</p>
           </ProfileSection>
 
-          <ProfileSection title="Change Password">
-            <p>Choose a new password for your account.</p>
+          <ProfileSection title={copy.security.passwordTitle}>
+            <p>{copy.security.passwordBody}</p>
             <Link
               href={`/${lang}/change-password`}
               className="inline-block text-[14px] text-avalon-primary transition-colors hover:text-avalon-primary-hover"
             >
-              Change password
+              {copy.security.passwordAction}
             </Link>
           </ProfileSection>
 
-          <ProfileSection title="Active Sessions">
-            <p>
-              Information about the use of your account on other devices. Ending a session stops
-              that device trading straight away.
-            </p>
+          <ProfileSection title={copy.security.sessionsTitle}>
+            <p>{copy.security.sessionsBody}</p>
             <div className="pt-3">
-              <SessionList sessions={sessions} />
+              <SessionList sessions={sessions} locale={lang} />
             </div>
           </ProfileSection>
 
-          <ProfileSection title="Session History" last>
-            <p>
-              This section shows which devices you used to log in and when you logged in. If you
-              suspect that someone else has access to your profile, please consider changing your
-              password.
-            </p>
-            <p className="text-avalon-border-muted">
-              Only sessions that are still open are kept. An expired one is removed rather than
-              recorded.
-            </p>
+          <ProfileSection title={copy.security.historyTitle} last>
+            <p>{copy.security.historyBody}</p>
+            <p className="text-avalon-border-muted">{copy.security.historyNote}</p>
           </ProfileSection>
         </div>
       </div>

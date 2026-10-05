@@ -112,7 +112,7 @@ export function CabinetShell({
               href={`/${locale}/traderoom`}
               className="flex h-10 items-center rounded-[2px] border border-avalon-primary bg-avalon-primary px-4 text-[14px] font-medium text-white transition-colors hover:bg-avalon-primary-hover"
             >
-              Trade Now
+              {cabinetCopy(locale).nav.tradeNow}
             </Link>
           </div>
         </div>

@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { cabinetCopy } from "@/i18n/cabinet";
 import { ProfileAction, ProfileSection } from "./ProfileSection";
 import { Toggle } from "./Toggle";
 
@@ -11,7 +12,7 @@ async function save(key: string, value: boolean) {
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ key, value }),
   }).catch(() => null);
-  if (!response?.ok) return { error: "could not save that" };
+  if (!response?.ok) return { error: "save failed" };
   return {};
 }
 
@@ -31,11 +32,14 @@ export function AccountSettingsForm({
   publicProfile,
   displayName,
   deletionRequested,
+  locale,
 }: {
   publicProfile: boolean;
   displayName: string;
   deletionRequested: boolean;
+  locale: string;
 }) {
+  const copy = cabinetCopy(locale).settings;
   const router = useRouter();
   const [name, setName] = useState(displayName);
   const [error, setError] = useState<string | null>(null);
@@ -54,9 +58,9 @@ export function AccountSettingsForm({
         return;
       }
       if (said.displayName) setName(said.displayName);
-      if (action === "reset") setDone("Your platform settings are back to their defaults.");
-      if (action === "close") setDone("Your account is closed. Contact support to reopen it.");
-      if (action === "delete") setDone("Your deletion request has been recorded.");
+      if (action === "reset") setDone(copy.resetDone);
+      if (action === "close") setDone(copy.closeDone);
+      if (action === "delete") setDone(copy.deleteDone);
       router.refresh();
     });
   }
@@ -64,18 +68,18 @@ export function AccountSettingsForm({
   return (
     <>
       <ProfileSection
-        title="Using Public Profile"
-        aside={<Toggle checked={publicProfile} label="Public profile" onSave={(v) => save("publicProfile", v)} />}
+        title={copy.publicTitle}
+        aside={<Toggle checked={publicProfile} label={copy.publicTitle} onSave={(v) => save("publicProfile", v)} />}
       >
-        <p>You can pick a generated name that will be displayed in the trading statistics on the platform.</p>
+        <p>{copy.publicBody}</p>
         <div className="flex items-center gap-3 pt-1">
-          <span>Name on the platform: {name}</span>
+          <span>{copy.nameOnPlatform}: {name}</span>
           <button
             type="button"
             disabled={busy}
             onClick={() => run("reroll")}
-            aria-label="Pick another name"
-            title="Pick another name"
+            aria-label={copy.pickAnother}
+            title={copy.pickAnother}
             className="flex size-[30px] items-center justify-center rounded-full bg-avalon-primary text-white transition-colors hover:bg-avalon-primary-hover disabled:opacity-50"
           >
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden>
@@ -91,54 +95,42 @@ export function AccountSettingsForm({
         </p>
       )}
 
-      <p className="pt-7 text-[14px] text-avalon-text">Additional settings</p>
+      <p className="pt-7 text-[14px] text-avalon-text">{copy.additional}</p>
 
-      <ProfileSection title="Reset">
-        <p>
-          If you have problems using our trading platform, please try resetting your settings. After
-          resetting, <strong className="font-semibold text-avalon-text-strong">all settings</strong>{" "}
-          will have default values.
-        </p>
+      <ProfileSection title={copy.resetTitle}>
+        <p>{copy.resetBody}</p>
         <ProfileAction
           disabled={busy}
-          onClick={() => run("reset", "Reset every platform setting to its default?")}
+          onClick={() => run("reset", copy.resetConfirm)}
         >
-          Reset settings
+          {copy.resetAction}
         </ProfileAction>
       </ProfileSection>
 
-      <ProfileSection title="Temporary Closing of Account">
-        <p>
-          You can temporarily close your account. Once your account is closed, you will not be able
-          to log in or make transactions. You can reopen your account by contacting our Support Team.
-        </p>
+      <ProfileSection title={copy.closeTitle}>
+        <p>{copy.closeBody}</p>
         <ProfileAction
           disabled={busy}
-          onClick={() => run("close", "Close your account? You will be signed out and cannot log back in without support.")}
+          onClick={() => run("close", copy.closeConfirm)}
         >
-          Close account
+          {copy.closeAction}
         </ProfileAction>
       </ProfileSection>
 
-      <ProfileSection title="Deletion of Account and Personal Data" last>
+      <ProfileSection title={copy.deleteTitle} last>
         <p>
-          Deletion of your account and all personal data is permanent. You will not be able to
-          access your account, trade, or make use of any of the Avalon services.
+          {copy.deleteBody}
           <br />
-          NOTE: Prior to submitting your personal data deletion request, you need to{" "}
-          <strong className="font-semibold text-avalon-text-strong">
-            close any remaining open positions and pending orders
-          </strong>
-          .
+          {copy.deleteNote}
         </p>
         {deletionRequested ? (
-          <p className="text-avalon-text-strong">A deletion request is already on file.</p>
+          <p className="text-avalon-text-strong">{copy.deleteOnFile}</p>
         ) : (
           <ProfileAction
             disabled={busy}
-            onClick={() => run("delete", "Request deletion of your account and personal data?")}
+            onClick={() => run("delete", copy.deleteConfirm)}
           >
-            Request Deletion
+            {copy.deleteAction}
           </ProfileAction>
         )}
       </ProfileSection>

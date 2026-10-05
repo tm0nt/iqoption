@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { CabinetShell } from "@/components/cabinet/CabinetShell";
 import { ProfileNav } from "@/components/cabinet/ProfileNav";
 import { ProfileHeader } from "@/components/cabinet/ProfileHeader";
-import { loadProfile, longDate } from "@/lib/cabinet/profile";
+import { loadProfile } from "@/lib/cabinet/profile";
 import { prisma } from "@/lib/db";
 import { isLocale } from "@/i18n/avalon";
 import { cabinetCopy } from "@/i18n/cabinet";
@@ -63,7 +63,7 @@ export default async function PaymentMethodsPage(props: PageProps<"/[lang]/profi
 
           <section className="pt-7">
             <h2 className="border-b border-avalon-surface-hover pb-3 text-[16px] font-semibold text-avalon-text-strong">
-              Linked Bank Cards
+              {copy.payments.linkedCards}
             </h2>
 
             {/* Always empty: no card network is connected, so nothing can be
@@ -77,13 +77,13 @@ export default async function PaymentMethodsPage(props: PageProps<"/[lang]/profi
                   <path d="M30 22l4 4M34 22l-4 4" />
                 </svg>
               }
-              title="No cards"
-              line="You don't have any linked cards yet"
+              title={copy.payments.noCards}
+              line={copy.payments.noCardsBody}
             />
           </section>
 
           <section className="pt-6">
-            <h2 className="pb-3 text-[16px] font-semibold text-avalon-text-strong">Recently Used Methods</h2>
+            <h2 className="pb-3 text-[16px] font-semibold text-avalon-text-strong">{copy.payments.recent}</h2>
 
             {recent.length === 0 ? (
               <div className="border border-avalon-surface-hover">
@@ -94,8 +94,8 @@ export default async function PaymentMethodsPage(props: PageProps<"/[lang]/profi
                       <path d="M25 25l11 11M12 12l8 8M20 12l-8 8" />
                     </svg>
                   }
-                  title="No data found"
-                  line="You haven't made any payments yet."
+                  title={copy.payments.noData}
+                  line={copy.payments.noDataBody}
                 />
               </div>
             ) : (
@@ -107,10 +107,10 @@ export default async function PaymentMethodsPage(props: PageProps<"/[lang]/profi
                   >
                     <span className="text-[14px] text-avalon-text-strong">{row.method}</span>
                     <span className="text-[13px] text-avalon-text">
-                      {row._count._all} payment{row._count._all === 1 ? "" : "s"} · {row.currency}
+                      {copy.payments.payments(row._count._all)} · {row.currency}
                     </span>
                     <span className="text-[13px] text-avalon-text">
-                      {row._max.createdAt ? longDate(row._max.createdAt) : ""}
+                      {row._max.createdAt ? row._max.createdAt.toLocaleDateString(lang === "pt" ? "pt-BR" : lang === "es" ? "es-ES" : "en-US", { year: "numeric", month: "long", day: "numeric" }) : ""}
                     </span>
                   </li>
                 ))}
@@ -119,8 +119,7 @@ export default async function PaymentMethodsPage(props: PageProps<"/[lang]/profi
           </section>
 
           <p className="max-w-[640px] pt-6 text-[13px] leading-5 text-avalon-text">
-            Deposits and withdrawals are reviewed by hand. No card network is connected, so nothing
-            is charged and no card details are held.
+            {copy.payments.byHand}
           </p>
         </div>
       </div>

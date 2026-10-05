@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { cabinetCopy } from "@/i18n/cabinet";
 
 export type SessionRow = {
   id: string;
@@ -19,7 +20,8 @@ export type SessionRow = {
  * shown but cannot be ended from here — a button that logs you out while you
  * are reading the page is a trap, and Log Out already does that deliberately.
  */
-export function SessionList({ sessions }: { sessions: SessionRow[] }) {
+export function SessionList({ sessions, locale }: { sessions: SessionRow[]; locale: string }) {
+  const copy = cabinetCopy(locale).security;
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [busy, start] = useTransition();
@@ -34,7 +36,7 @@ export function SessionList({ sessions }: { sessions: SessionRow[] }) {
       }).catch(() => null);
 
       if (!response?.ok) {
-        setError("could not end that session");
+        setError(copy.endFailed);
         return;
       }
       router.refresh();
@@ -42,7 +44,7 @@ export function SessionList({ sessions }: { sessions: SessionRow[] }) {
   }
 
   if (sessions.length === 0) {
-    return <p className="text-[14px] text-avalon-text">No trading sessions are open.</p>;
+    return <p className="text-[14px] text-avalon-text">{copy.noSessions}</p>;
   }
 
   return (
@@ -59,7 +61,7 @@ export function SessionList({ sessions }: { sessions: SessionRow[] }) {
             <p className="truncate text-[13px] text-avalon-text-strong">
               Browser {session.browser}
               {session.ip ? `. IP address - ${session.ip}` : ""}
-              {session.current ? " · this device" : ""}
+              {session.current ? ` · ${copy.thisDevice}` : ""}
             </p>
             <p className="text-[13px] text-avalon-text">{session.when}</p>
           </div>
@@ -69,7 +71,7 @@ export function SessionList({ sessions }: { sessions: SessionRow[] }) {
               type="button"
               disabled={busy}
               onClick={() => end(session.id)}
-              aria-label="End this session"
+              aria-label={copy.endSession}
               className="ml-auto text-avalon-text transition-colors hover:text-avalon-danger disabled:opacity-50"
             >
               <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>

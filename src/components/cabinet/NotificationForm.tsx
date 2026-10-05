@@ -2,6 +2,7 @@
 
 import { CheckRow, Toggle } from "./Toggle";
 import { EMAIL_TOPICS, type NotificationSettings } from "@/lib/cabinet/notifications";
+import { cabinetCopy } from "@/i18n/cabinet";
 import { ProfileSection } from "./ProfileSection";
 
 /** One `{key, value}` write, which is how every switch on these pages saves. */
@@ -19,14 +20,22 @@ async function save(key: string, value: boolean) {
   return {};
 }
 
-export function NotificationForm({ settings }: { settings: NotificationSettings }) {
+export function NotificationForm({
+  settings,
+  locale,
+}: {
+  settings: NotificationSettings;
+  locale: string;
+}) {
+  const copy = cabinetCopy(locale).notifications;
+
   return (
     <>
       <ProfileSection
-        title="Email Notifications"
-        aside={<Toggle checked={settings.email} label="Email notifications" onSave={(v) => save("email", v)} />}
+        title={copy.emailTitle}
+        aside={<Toggle checked={settings.email} label={copy.emailTitle} onSave={(v) => save("email", v)} />}
       >
-        <p>Receive emails about new platform features and big events</p>
+        <p>{copy.emailBody}</p>
 
         {/* The list is always shown. The live page leaves it in place with the
             switch off, which is what lets someone set their topics before
@@ -35,7 +44,7 @@ export function NotificationForm({ settings }: { settings: NotificationSettings 
           {EMAIL_TOPICS.map((topic) => (
             <CheckRow
               key={topic.key}
-              label={topic.label}
+              label={copy.topics[topic.key] ?? topic.label}
               checked={settings[topic.key]}
               onSave={(v) => save(topic.key, v)}
             />
@@ -44,34 +53,26 @@ export function NotificationForm({ settings }: { settings: NotificationSettings 
       </ProfileSection>
 
       <ProfileSection
-        title="Push Notifications"
-        aside={<Toggle checked={settings.push} label="Push notifications" onSave={(v) => save("push", v)} />}
+        title={copy.pushTitle}
+        aside={<Toggle checked={settings.push} label={copy.pushTitle} onSave={(v) => save("push", v)} />}
       >
-        <p>Get push notifications about the latest trading news.</p>
-        <p>
-          By turning off push notifications, you&apos;re missing out on important market news alerts
-          in the Avalon Mobile App.
-        </p>
+        <p>{copy.pushBody}</p>
+        <p>{copy.pushAside}</p>
       </ProfileSection>
 
       <ProfileSection
-        title="Phone calls &amp; SMS"
-        aside={<Toggle checked={settings.calls} label="Calls and SMS" onSave={(v) => save("calls", v)} />}
+        title={copy.callsTitle}
+        aside={<Toggle checked={settings.calls} label={copy.callsTitle} onSave={(v) => save("calls", v)} />}
       >
-        <p>Receive calls and SMS from our support team about special offers.</p>
+        <p>{copy.callsBody}</p>
       </ProfileSection>
 
       <ProfileSection
-        title="Communication of Data"
+        title={copy.consentTitle}
         last
-        aside={<Toggle checked={settings.marketing} label="Communication of data" onSave={(v) => save("marketing", v)} />}
+        aside={<Toggle checked={settings.marketing} label={copy.consentTitle} onSave={(v) => save("marketing", v)} />}
       >
-        <p>
-          I hereby consent to the processing of my personal information by Avalon and its partners
-          and related entities for marketing purposes which shall include in particular
-          communicating with me to inform me about its products and/or services and/or offers as
-          described above for the purpose of a more tailored marketing experience.
-        </p>
+        <p>{copy.consentBody}</p>
       </ProfileSection>
     </>
   );

@@ -39,6 +39,7 @@ export default async function AccountSettingsPage(props: PageProps<"/[lang]/prof
                until they do, rather than an empty line where a name goes. */
             displayName={user.displayName ?? user.email.split("@")[0]}
             deletionRequested={user.deletionRequestedAt !== null}
+            locale={lang}
           />
         </div>
       </div>
