@@ -49,6 +49,8 @@ const books = new Map();
 
 let socket = null;
 let reconnectTimer = null;
+/** Set by `disconnect()` so a close in flight does not schedule a reconnect. */
+let closing = false;
 let log = () => {};
 
 function bookOf(symbol) {
@@ -142,15 +144,32 @@ export function connect(assets, WebSocketImpl, logger = () => {}) {
     .filter((asset) => asset.source === "BINANCE" && asset.sourceSymbol)
     .map((asset) => asset.sourceSymbol.toLowerCase());
   if (!symbols.length) return;
+  closing = false;
 
   const url = `${STREAM}?streams=${symbols.map((s) => `${s}@kline_1s`).join("/")}`;
 
   const open = () => {
-    socket = new WebSocketImpl(url);
+    /*
+     * The instance, not the module's `socket`, for the same reason the Twelve
+     * Data stream holds one: `/reload` disconnects and reconnects, and the old
+     * socket's `close` arrives after `disconnect()` has already cancelled the
+     * reconnect it then schedules. There the shared variable produced a crash;
+     * here it only leaked a socket per reload, each one still writing the same
+     * bars into the same books. Quiet rather than harmless.
+     */
+    const ws = new WebSocketImpl(url);
+    socket = ws;
+    const retired = () => closing || socket !== ws;
 
-    socket.on("open", () => log(`binance: streaming ${symbols.length} instruments`));
+    ws.on("open", () => {
+      if (retired()) {
+        ws.close();
+        return;
+      }
+      log(`binance: streaming ${symbols.length} instruments`);
+    });
 
-    socket.on("message", (raw) => {
+    ws.on("message", (raw) => {
       let frame;
       try {
         frame = JSON.parse(raw.toString());
@@ -195,12 +214,13 @@ export function connect(assets, WebSocketImpl, logger = () => {}) {
       trim(book);
     });
 
-    socket.on("close", () => {
+    ws.on("close", () => {
+      if (retired()) return;
       log("binance: stream closed, reconnecting in 5s");
       reconnectTimer = setTimeout(open, 5_000);
     });
 
-    socket.on("error", (error) => log(`binance: ${error.message}`));
+    ws.on("error", (error) => log(`binance: ${error.message}`));
   };
 
   open();
@@ -217,6 +237,7 @@ function trim(book) {
 }
 
 export function disconnect() {
+  closing = true;
   clearTimeout(reconnectTimer);
   if (socket) socket.close();
   socket = null;

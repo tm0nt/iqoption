@@ -44,6 +44,18 @@ const REST = "https://api.twelvedata.com/time_series";
  */
 const STREAM = "wss://ws.twelvedata.com/v1/quotes/price";
 
+/*
+ * One stream per API key, on this plan.
+ *
+ * A second connection does not queue or get refused — it takes over, and the
+ * one already running is dropped. That is worth knowing before debugging this
+ * module: a probe script run against the same key while the feed is up will
+ * silently steal the stream, the one-second series will stop filling, and the
+ * five-second candles will go back to the curve. It reads exactly like a
+ * broken feed. The feed does reconnect, so the damage is a gap rather than an
+ * outage, but the measurement taken during it is worthless.
+ */
+
 /** The most rows one request will return, and the most buckets a series keeps. */
 const OUTPUT_SIZE = 5_000;
 const LIMIT = 1_000;
@@ -63,6 +75,8 @@ let reconnectTimer = null;
 let fillTimer = null;
 let heartbeatTimer = null;
 let streaming = false;
+/** Set by `disconnect()` so a close in flight does not schedule a reconnect. */
+let closing = false;
 let log = () => {};
 
 /** Symbols the plan refused, so they are not reported as merely unlucky. */
@@ -297,19 +311,43 @@ export function connect(assets, WebSocketImpl, logger = () => {}, notify = () =>
     .filter((asset) => asset.source === "TWELVEDATA" && asset.sourceSymbol)
     .map((asset) => asset.sourceSymbol);
   if (!symbols.length || !apiKey) return;
+  closing = false;
 
   const open = () => {
-    socket = new WebSocketImpl(`${STREAM}?apikey=${apiKey}`);
+    /*
+     * Held as a local, and every handler below talks to `ws` rather than to
+     * the module's `socket`.
+     *
+     * The difference crashed the whole feed. `/reload` calls `disconnect()`
+     * then `connect()`; `disconnect()` clears the pending reconnect timer, but
+     * the old socket's `close` event arrives *after* that and set a fresh
+     * timer, so five seconds later a third socket was created and assigned to
+     * the shared `socket`. The middle socket's `open` handler then fired,
+     * reached for `socket` — now the newest one, still CONNECTING — and `send`
+     * threw "WebSocket is not open: readyState 0". An unhandled throw in an
+     * event handler takes the process with it, so prices, settlement and every
+     * open position's clock went down with the stream.
+     */
+    const ws = new WebSocketImpl(`${STREAM}?apikey=${apiKey}`);
+    socket = ws;
+    let beat = null;
+    /** True once this socket has been replaced or shut down deliberately. */
+    const retired = () => closing || socket !== ws;
 
-    socket.on("open", () => {
-      socket.send(JSON.stringify({ action: "subscribe", params: { symbols: symbols.join(",") } }));
+    ws.on("open", () => {
+      if (retired()) {
+        ws.close();
+        return;
+      }
+      ws.send(JSON.stringify({ action: "subscribe", params: { symbols: symbols.join(",") } }));
       // The service drops an idle connection; its own docs ask for this.
-      heartbeatTimer = setInterval(() => {
-        if (socket?.readyState === 1) socket.send(JSON.stringify({ action: "heartbeat" }));
+      beat = setInterval(() => {
+        if (ws.readyState === ws.OPEN) ws.send(JSON.stringify({ action: "heartbeat" }));
       }, 10_000);
+      heartbeatTimer = beat;
     });
 
-    socket.on("message", (raw) => {
+    ws.on("message", (raw) => {
       let frame;
       try {
         frame = JSON.parse(raw.toString());
@@ -347,14 +385,20 @@ export function connect(assets, WebSocketImpl, logger = () => {}, notify = () =>
       }
     });
 
-    socket.on("close", () => {
+    ws.on("close", () => {
+      clearInterval(beat);
+      /*
+       * A socket that was replaced or shut down does not ask for a successor.
+       * Without this the close that `disconnect()` causes schedules the very
+       * reconnect `disconnect()` just cancelled.
+       */
+      if (retired()) return;
       streaming = false;
-      clearInterval(heartbeatTimer);
       log("twelvedata: stream closed, reconnecting in 5s");
       reconnectTimer = setTimeout(open, 5_000);
     });
 
-    socket.on("error", (error) => log(`twelvedata: ${error.message}`));
+    ws.on("error", (error) => log(`twelvedata: ${error.message}`));
   };
 
   open();
@@ -435,6 +479,7 @@ async function refresh(symbols, apiKey) {
 }
 
 export function disconnect() {
+  closing = true;
   clearTimeout(reconnectTimer);
   clearInterval(fillTimer);
   clearInterval(refreshTimer);
@@ -505,6 +550,26 @@ export function candleAt(asset, from, size) {
       max: round(high, asset.precision),
       volume: 0,
     };
+  }
+
+  /*
+   * The bar at the live edge, in the gap before the filler reaches it.
+   *
+   * The one-second filler runs once a second, so for up to a second the bucket
+   * for the second just begun does not exist yet. `priceAt` already answers
+   * that moment from the last price; this did not, so the newest bar of a
+   * one-second chart would come from the synthetic curve and then correct
+   * itself — a flicker at exactly the spot a person is watching.
+   *
+   * A bucket at or after the newest second we know about is answered flat at
+   * the last price, which is the same claim `priceAt` makes: no tick has
+   * arrived since, so the price has not moved. Buckets *older* than what we
+   * hold are left alone — those are genuinely unknown, and inventing them is
+   * the thing this module refuses to do.
+   */
+  if (book.last > 0 && from + size > book.lastAt) {
+    const price = round(book.last, asset.precision);
+    return { open: price, close: price, min: price, max: price, volume: 0 };
   }
 
   return null;
