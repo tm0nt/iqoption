@@ -5,6 +5,7 @@ import { CabinetShell } from "@/components/cabinet/CabinetShell";
 import { ProfileFrame } from "@/components/cabinet/ProfileFrame";
 import { ProfileSection } from "@/components/cabinet/ProfileSection";
 import { SessionList, type SessionRow } from "@/components/cabinet/SessionList";
+import { TwoFactorPanel } from "@/components/cabinet/TwoFactorPanel";
 import { loadProfile } from "@/lib/cabinet/profile";
 import { formatLongDate, localeTag } from "@/lib/cabinet/format";
 import { cabinetExtra, type CabinetExtraCopy } from "@/i18n/cabinet-extra";
@@ -58,6 +59,12 @@ export default async function SecurityPage(props: PageProps<"/[lang]/profile/sec
   const x = cabinetExtra(lang).profile;
   const { user, account, brand } = await loadProfile(lang, "security");
 
+  const twoFactor = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { twoFactorEnabledAt: true, twoFactorRecovery: true },
+  });
+  const recoveryLeft = Array.isArray(twoFactor?.twoFactorRecovery) ? twoFactor.twoFactorRecovery.length : 0;
+
   const rows = await prisma.tradingSession.findMany({
     where: { userId: user.id, expiresAt: { gt: new Date() } },
     orderBy: { createdAt: "desc" },
@@ -79,7 +86,13 @@ export default async function SecurityPage(props: PageProps<"/[lang]/profile/sec
       <ProfileFrame locale={lang} createdAt={user.createdAt} id={user.id} title={copy.profile.safetySecurity}>
         <ProfileSection title={copy.security.twoStepTitle}>
           <p>{copy.security.twoStepBody}</p>
-          <p className="text-avalon-border-muted">{copy.security.twoStepUnavailable}</p>
+          <TwoFactorPanel
+            enabled={Boolean(twoFactor?.twoFactorEnabledAt)}
+            since={twoFactor?.twoFactorEnabledAt ? formatLongDate(twoFactor.twoFactorEnabledAt, lang) : null}
+            recoveryLeft={recoveryLeft}
+            brand={brand.name}
+            locale={lang}
+          />
         </ProfileSection>
 
         <ProfileSection title={copy.security.passwordTitle}>

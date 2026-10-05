@@ -78,7 +78,7 @@ export default async function AdminOverview(props: PageProps<"/[lang]/admin">) {
     prisma.affiliatePayout.aggregate({ where: { status: "PENDING" }, _sum: { amount: true }, _count: { _all: true } }),
     prisma.user.count({ where: { createdAt: { gte: today } } }),
     prisma.user.count({ where: { createdAt: { gte: week } } }),
-    prisma.user.count({ where: { kycStatus: "PENDING" } }),
+    prisma.kycSubmission.count({ where: { status: "PENDING" } }),
     prisma.affiliate.count({ where: { status: "ACTIVE" } }),
     prisma.affiliate.count({ where: { status: "PENDING" } }),
     prisma.referral.count(),
@@ -146,7 +146,7 @@ export default async function AdminOverview(props: PageProps<"/[lang]/admin">) {
       <section className="space-y-3">
         <h2 className="text-[13px] font-semibold uppercase tracking-wide text-[#6f7076]">{m.people}</h2>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard label={t.accounts} value={users} hint={m.awaitingReview(kycPending)} icon={<Users size={16} />} href={`${base}/users`} />
+          <StatCard label={t.accounts} value={users} hint={m.awaitingReview(kycPending)} icon={<Users size={16} />} href={kycPending > 0 ? `${base}/kyc` : `${base}/users`} />
           <StatCard label={m.newToday} value={newToday} hint={`${m.new7}: ${new7}`} icon={<UserPlus size={16} />} />
           <StatCard
             label={m.activeAffiliates}

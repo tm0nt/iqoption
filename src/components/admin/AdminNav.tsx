@@ -9,6 +9,7 @@ import {
   ChartCandlestick,
   ChartLine,
   Handshake,
+  IdCard,
   LayoutDashboard,
   Newspaper,
   Palette,
@@ -58,7 +59,8 @@ export function AdminNav({
       items: [
         { href: `${base}/cashier`, label: copy.cashier, Icon: ArrowLeftRight, badge: badges.cashier },
         { href: `${base}/finance`, label: money.limits, Icon: SlidersHorizontal },
-        { href: `${base}/users`, label: money.users, Icon: Users, badge: badges.kyc },
+        { href: `${base}/users`, label: money.users, Icon: Users },
+        { href: `${base}/kyc`, label: money.kyc, Icon: IdCard, badge: badges.kyc },
       ],
     },
     {

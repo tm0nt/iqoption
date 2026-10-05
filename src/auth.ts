@@ -11,7 +11,7 @@
  * trading protocol carries. Everything downstream — the traderoom's ssid, the
  * `check-session` answer, the wallet — keys off it.
  */
-import NextAuth, { type DefaultSession } from "next-auth";
+import NextAuth, { CredentialsSignin, type DefaultSession } from "next-auth";
 // Imported for its side effect on the type graph: a module augmentation can
 // only attach to a module TypeScript has actually resolved.
 import type { JWT } from "next-auth/jwt";
@@ -19,6 +19,26 @@ import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
 import { emailSchema } from "@/lib/auth/validation";
+import { verifySecondFactor } from "@/lib/auth/two-factor";
+
+/*
+ * The second step's three answers, as error codes the login form can read.
+ *
+ * Auth.js turns a thrown `CredentialsSignin` into `?code=` on its answer, and
+ * `signIn(..., { redirect: false })` hands that code back. They are only ever
+ * reached after the password matched, so saying "a code is needed" tells
+ * nobody anything they could not learn by knowing the password — and the
+ * password is the thing the second factor exists to back up.
+ */
+class TwoFactorRequired extends CredentialsSignin {
+  code = "2fa_required";
+}
+class TwoFactorInvalid extends CredentialsSignin {
+  code = "2fa_invalid";
+}
+class TwoFactorLocked extends CredentialsSignin {
+  code = "2fa_locked";
+}
 
 /*
  * Our own fields, under our own names.
@@ -75,6 +95,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
+        /** The authenticator app's code, or a recovery code. Only asked for when the account has it on. */
+        code: { label: "Code", type: "text" },
       },
 
       async authorize(credentials) {
@@ -92,6 +114,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             emailVerified: true,
             isActive: true,
             role: true,
+            twoFactorEnabledAt: true,
           },
         });
 
@@ -99,6 +122,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // time whether or not the address is registered.
         const matches = await bcrypt.compare(password, user?.passwordHash ?? DUMMY_HASH);
         if (!user || !matches || !user.isActive) return null;
+
+        if (user.twoFactorEnabledAt) {
+          const code = typeof credentials?.code === "string" ? credentials.code.trim() : "";
+          if (!code) throw new TwoFactorRequired();
+          const result = await verifySecondFactor(user.id, code);
+          if (result === "locked") throw new TwoFactorLocked();
+          if (result !== "ok") throw new TwoFactorInvalid();
+        }
 
         return {
           id: String(user.id),

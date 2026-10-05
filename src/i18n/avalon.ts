@@ -47,7 +47,15 @@ export const DICTIONARIES: Record<AvalonLocale, AvalonDictionary> = {
       noAccountLink: "Sign Up",
       noAccountTail: "",
       submitting: "Signing in…",
-      invalidCredentials: "Your email or password is incorrect."
+      invalidCredentials: "Your email or password is incorrect.",
+      twoFactorHeading: "Two-step verification",
+      twoFactorBody: "Enter the 6-digit code from your authenticator app.",
+      twoFactorPlaceholder: "123 456",
+      twoFactorRecoveryHint: "Lost your phone? Enter one of your recovery codes instead.",
+      twoFactorInvalid: "That code is not right. Check your app and try again.",
+      twoFactorLocked: "Too many wrong codes. Try again in 15 minutes.",
+      twoFactorBack: "Use another account",
+      twoFactorVerify: "Verify"
     },
     register: {
       title: "Sign Up",
@@ -122,7 +130,15 @@ export const DICTIONARIES: Record<AvalonLocale, AvalonDictionary> = {
       noAccountLink: "Regístrate",
       noAccountTail: "",
       submitting: "Iniciando sesión…",
-      invalidCredentials: "Tu correo electrónico o contraseña es incorrecto."
+      invalidCredentials: "Tu correo electrónico o contraseña es incorrecto.",
+      twoFactorHeading: "Verificación en dos pasos",
+      twoFactorBody: "Introduce el código de 6 dígitos de tu app de autenticación.",
+      twoFactorPlaceholder: "123 456",
+      twoFactorRecoveryHint: "¿Perdiste el teléfono? Introduce uno de tus códigos de recuperación.",
+      twoFactorInvalid: "Ese código no es correcto. Revisa tu app e inténtalo de nuevo.",
+      twoFactorLocked: "Demasiados códigos incorrectos. Vuelve a intentarlo en 15 minutos.",
+      twoFactorBack: "Usar otra cuenta",
+      twoFactorVerify: "Verificar"
     },
     register: {
       title: "Regístrate",
@@ -197,7 +213,15 @@ export const DICTIONARIES: Record<AvalonLocale, AvalonDictionary> = {
       noAccountLink: "Inscrever-se",
       noAccountTail: "",
       submitting: "Entrando…",
-      invalidCredentials: "Seu e-mail ou senha está incorreto."
+      invalidCredentials: "Seu e-mail ou senha está incorreto.",
+      twoFactorHeading: "Verificação em duas etapas",
+      twoFactorBody: "Digite o código de 6 dígitos do seu app autenticador.",
+      twoFactorPlaceholder: "123 456",
+      twoFactorRecoveryHint: "Perdeu o celular? Digite um dos seus códigos de recuperação.",
+      twoFactorInvalid: "Esse código não está certo. Confira o app e tente de novo.",
+      twoFactorLocked: "Muitos códigos errados. Tente de novo em 15 minutos.",
+      twoFactorBack: "Usar outra conta",
+      twoFactorVerify: "Verificar"
     },
     register: {
       title: "Registrar-se",

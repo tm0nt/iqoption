@@ -4,6 +4,11 @@ import { CabinetShell } from "@/components/cabinet/CabinetShell";
 import { PersonalDetailsForm } from "@/components/cabinet/PersonalDetailsForm";
 import { VerificationStepper, type Step } from "@/components/cabinet/VerificationStepper";
 import { countryName } from "@/lib/cabinet/countries";
+import { DocumentUploadForm } from "@/components/cabinet/DocumentUploadForm";
+import { kycRules } from "@/lib/kyc/rules";
+import { formatDateTime, localeTag } from "@/lib/cabinet/format";
+import { prisma } from "@/lib/db";
+import Link from "next/link";
 import { loadCabinet } from "@/lib/cabinet/profile";
 import { cabinetExtra } from "@/i18n/cabinet-extra";
 import { isLocale } from "@/i18n/avalon";
@@ -38,9 +43,35 @@ export default async function VerificationPage(props: PageProps<"/[lang]/verific
   const d = cabinetCopy(lang).personal;
 
   const x = cabinetExtra(lang).profile;
+  const k = cabinetExtra(lang).kyc;
   const { user, account, brand } = await loadCabinet(lang, `/${lang}/verification`);
+  const query = await props.searchParams;
+
+  const [latest, rules] = await Promise.all([
+    prisma.kycSubmission.findFirst({ where: { userId: user.id }, orderBy: { createdAt: "desc" } }),
+    kycRules(),
+  ]);
 
   const detailsDone = user.kycStatus !== "NONE";
+  const underReview = latest?.status === "PENDING";
+  /*
+   * Which panel the page shows. The details form comes first; then the
+   * documents; then the wait for a reviewer. A rejection goes back to the
+   * documents with the reviewer's reason, and the details can be reopened
+   * from there in case the reason is that they were wrong.
+   */
+  const panel =
+    user.kycStatus === "APPROVED"
+      ? "verified"
+      : !detailsDone || (query.step === "details" && !underReview)
+        ? "details"
+        : underReview
+          ? "review"
+          : "documents";
+
+  const names = new Intl.DisplayNames([localeTag(lang)], { type: "region" });
+  const countries = rules.countries.map((rule) => ({ code: rule.code, name: names.of(rule.code) ?? rule.code, documents: rule.documents }));
+  const defaultCountry = countries.some((country) => country.code === user.citizenship) ? user.citizenship! : countries[0]?.code ?? "BR";
 
   /*
    * The rail reads as progress, so each step's state comes from the one before
@@ -66,6 +97,7 @@ export default async function VerificationPage(props: PageProps<"/[lang]/verific
     },
     {
       label: v.identityStep,
+      note: user.kycStatus === "APPROVED" ? d.done : underReview ? cabinetCopy(lang).history.pending : undefined,
       state: user.kycStatus === "APPROVED" ? "done" : detailsDone ? "current" : "todo",
     },
   ];
@@ -91,19 +123,37 @@ export default async function VerificationPage(props: PageProps<"/[lang]/verific
         <VerificationStepper steps={steps} />
 
         <div className="min-w-0 grow">
-          {user.kycStatus === "APPROVED" ? (
+          {panel === "verified" ? (
             <div className="mx-auto max-w-[620px] py-10 text-center">
               <span className="mx-auto flex size-12 items-center justify-center rounded-full bg-avalon-primary/10 text-[22px] text-avalon-primary">✓</span>
               <h2 className="mt-4 text-[24px] font-semibold text-avalon-text-strong">{v.title}</h2>
               <p className="mt-5 text-[15px] leading-[26px] text-avalon-text">{x.kycApproved}</p>
             </div>
-          ) : detailsDone && user.kycStatus !== "REJECTED" ? (
+          ) : panel === "review" ? (
             <div className="mx-auto max-w-[620px] py-10 text-center">
-              <h2 className="text-[24px] font-semibold text-avalon-text-strong">{v.identityStep}</h2>
-              <p className="mt-5 text-[15px] leading-[26px] text-avalon-text">
-                {v.identityPending}
-              </p>
-              <p className="mt-8 rounded-[2px] bg-avalon-surface px-6 py-5 text-[14px] leading-[22px] text-avalon-text">{v.uploadMissing}</p>
+              <span className="mx-auto flex size-12 items-center justify-center rounded-full bg-amber-50 text-[22px] text-amber-600">⏳</span>
+              <h2 className="mt-4 text-[22px] font-semibold text-avalon-text-strong sm:text-[24px]">{k.reviewTitle}</h2>
+              <p className="mt-4 text-[15px] leading-[26px] text-avalon-text">{k.reviewBody(formatDateTime(latest!.createdAt, lang))}</p>
+            </div>
+          ) : panel === "documents" ? (
+            <div>
+              <h2 className="text-[22px] font-semibold text-avalon-text-strong sm:text-[24px]">{v.identityStep}</h2>
+              {latest?.status === "REJECTED" && (
+                <div className="mt-4 rounded-[2px] bg-[#fdeff1] px-5 py-4 text-[14px] leading-[22px] text-avalon-danger">
+                  <p className="font-semibold">{k.rejectedTitle}</p>
+                  {latest.reason && (
+                    <p className="mt-1">
+                      {k.reason}: {latest.reason}
+                    </p>
+                  )}
+                  <Link href={`/${lang}/verification?step=details`} className="mt-2 inline-block text-avalon-primary hover:underline">
+                    {k.editDetails}
+                  </Link>
+                </div>
+              )}
+              <div className="mt-6">
+                <DocumentUploadForm countries={countries} defaultCountry={defaultCountry} locale={lang} />
+              </div>
             </div>
           ) : (
             <>

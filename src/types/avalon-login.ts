@@ -58,6 +58,15 @@ export interface AvalonLoginCopy {
    * was wrong turns the form into a way of discovering who has an account.
    */
   invalidCredentials: string;
+  /** The second step, for an account with two-step sign-in on. */
+  twoFactorHeading: string;
+  twoFactorBody: string;
+  twoFactorPlaceholder: string;
+  twoFactorRecoveryHint: string;
+  twoFactorInvalid: string;
+  twoFactorLocked: string;
+  twoFactorBack: string;
+  twoFactorVerify: string;
 }
 
 export interface AvalonRegisterCopy {

@@ -71,6 +71,8 @@ export default async function AdminUsersPage(props: PageProps<"/[lang]/admin/use
         kycStatus: true,
         isActive: true,
         role: true,
+        twoFactorEnabledAt: true,
+        _count: { select: { kycSubmissions: true } },
         balances: { where: { type: { in: [REAL, PRACTICE] } }, select: { type: true, amount: true, currency: true } },
         referral: { select: { affiliate: { select: { id: true, code: true } } } },
         affiliate: { select: { id: true, code: true } },
@@ -148,13 +150,13 @@ export default async function AdminUsersPage(props: PageProps<"/[lang]/admin/use
                   <td className={`${td} whitespace-nowrap text-[#a0a1a6]`}>{formatDateTime(user.createdAt, lang)}</td>
                   <td className={td}>
                     <Badge tone={KYC_TONE[user.kycStatus]}>{t.kyc[user.kycStatus]}</Badge>
-                    {(user.kycStatus === "PENDING" || user.kycStatus === "REJECTED") && (
-                      <div className="mt-1.5 flex flex-wrap gap-1.5">
-                        <ActionButton url={`/api/admin/users/${user.id}`} method="PATCH" body={{ kycStatus: "APPROVED" }} label={t.approveKyc} variant="primary" failed={c.actionFailed} />
-                        {user.kycStatus === "PENDING" && (
-                          <ActionButton url={`/api/admin/users/${user.id}`} method="PATCH" body={{ kycStatus: "REJECTED" }} label={t.rejectKyc} variant="danger" failed={c.actionFailed} />
-                        )}
-                      </div>
+                    {user._count.kycSubmissions > 0 && (
+                      <Link
+                        href={`/${lang}/admin/kyc?status=all&q=${user.id}`}
+                        className={`${buttonClass(user.kycStatus === "PENDING" ? "primary" : "ghost", "sm")} mt-1.5`}
+                      >
+                        {t.reviewKyc}
+                      </Link>
                     )}
                   </td>
                   <td className={`${td} whitespace-nowrap font-medium`}>{real ? formatMoney(Number(real.amount), real.currency, lang) : "—"}</td>
@@ -179,9 +181,21 @@ export default async function AdminUsersPage(props: PageProps<"/[lang]/admin/use
                     <span className="flex flex-wrap gap-1.5">
                       <Badge tone={user.isActive ? "success" : "danger"}>{user.isActive ? t.active : t.closed}</Badge>
                       {user.role === "ADMIN" && <Badge tone="accent">{t.admin}</Badge>}
+                      {user.twoFactorEnabledAt && <Badge tone="info">{t.twoFactor}</Badge>}
                     </span>
                   </td>
-                  <td className={td}>
+                  <td className={`${td} space-y-1.5`}>
+                    {user.twoFactorEnabledAt && (
+                      <ActionButton
+                        url={`/api/admin/users/${user.id}`}
+                        method="PATCH"
+                        body={{ resetTwoFactor: true }}
+                        label={t.resetTwoFactor}
+                        variant="ghost"
+                        confirm={t.confirmResetTwoFactor}
+                        failed={c.actionFailed}
+                      />
+                    )}
                     {user.isActive ? (
                       <ActionButton
                         url={`/api/admin/users/${user.id}`}

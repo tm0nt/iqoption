@@ -17,7 +17,7 @@ import { AdminShell } from "@/components/admin/AdminShell";
  * signed in.
  *
  * It also counts the four queues — deposits and withdrawals, affiliate
- * payouts, affiliates asking to join, identity checks — so the rail can put a
+ * payouts, affiliates asking to join, identity documents waiting for review — so the rail can put a
  * number on the link with work behind it. Four counts on indexed columns,
  * cheap enough for every page.
  */
@@ -34,7 +34,7 @@ export default async function AdminLayout(props: LayoutProps<"/[lang]/admin">) {
     prisma.transaction.count({ where: { status: "PENDING" } }),
     prisma.affiliatePayout.count({ where: { status: "PENDING" } }),
     prisma.affiliate.count({ where: { status: "PENDING" } }),
-    prisma.user.count({ where: { kycStatus: "PENDING" } }),
+    prisma.kycSubmission.count({ where: { status: "PENDING" } }),
   ]);
 
   return (

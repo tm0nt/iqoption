@@ -25,6 +25,7 @@ export type AdminMoneyCopy = {
     payouts: string;
     program: string;
     advanced: string;
+    kyc: string;
     menu: string;
     close: string;
     signOut: string;
@@ -141,12 +142,63 @@ export type AdminMoneyCopy = {
     admin: string;
     disable: string;
     enable: string;
-    approveKyc: string;
-    rejectKyc: string;
     kyc: Record<KycName, string>;
     none: string;
     filters: { all: string; kycPending: string; referred: string; closed: string };
     confirmDisable: string;
+    twoFactor: string;
+    resetTwoFactor: string;
+    confirmResetTwoFactor: string;
+    reviewKyc: string;
+  };
+  kyc: {
+    heading: string;
+    lead: string;
+    queueTab: string;
+    rulesTab: string;
+    searchPlaceholder: string;
+    nothingWaiting: string;
+    noneMatch: string;
+    declared: string;
+    document: string;
+    name: string;
+    birth: string;
+    age: (years: number) => string;
+    minor: string;
+    citizenship: string;
+    usPerson: string;
+    country: string;
+    countryMismatch: string;
+    type: string;
+    number: string;
+    submitted: string;
+    attempts: (n: number) => string;
+    sameDocument: (accounts: string) => string;
+    front: string;
+    back: string;
+    selfie: string;
+    openFull: string;
+    missing: string;
+    reviewed: (who: string, when: string) => string;
+    reason: string;
+    reasonPlaceholder: string;
+    presets: string[];
+    approve: string;
+    reject: string;
+    confirmApprove: string;
+    needReason: string;
+    docTypes: Record<"ID_CARD" | "DRIVERS_LICENSE" | "PASSPORT" | "RESIDENCE_PERMIT", string>;
+    rulesTitle: string;
+    rulesLead: string;
+    noBack: string;
+    addCountry: string;
+    addCountryHint: string;
+    remove: string;
+    save: string;
+    saved: string;
+    needOneDocument: (country: string) => string;
+    unknownCountry: string;
+    duplicate: string;
   };
   affiliates: {
     heading: string;
@@ -303,6 +355,7 @@ const en: AdminMoneyCopy = {
     payouts: "Affiliate payouts",
     program: "Programme",
     advanced: "Advanced (JSON)",
+    kyc: "Verification (KYC)",
     menu: "Menu",
     close: "Close",
     signOut: "Sign out",
@@ -419,12 +472,14 @@ const en: AdminMoneyCopy = {
     admin: "Admin",
     disable: "Disable",
     enable: "Enable",
-    approveKyc: "Approve verification",
-    rejectKyc: "Reject verification",
     kyc: { NONE: "Not started", PENDING: "Pending", APPROVED: "Approved", REJECTED: "Rejected" },
     none: "No accounts match.",
     filters: { all: "Everyone", kycPending: "Verification pending", referred: "Referred", closed: "Disabled" },
     confirmDisable: "Disable this account? They are signed out of trading and cannot sign back in.",
+    twoFactor: "2FA",
+    resetTwoFactor: "Reset 2FA",
+    confirmResetTwoFactor: "Turn off this account's two-step sign-in? Only do this once you have confirmed who is asking.",
+    reviewKyc: "Review documents",
   },
   affiliates: {
     heading: "Affiliates",
@@ -548,6 +603,62 @@ const en: AdminMoneyCopy = {
     saved: "Saved. New commissions accrue on these terms.",
     saveFailed: "Could not save that.",
   },
+  kyc: {
+    heading: "Verification (KYC)",
+    lead: "Identity documents waiting to be checked. Compare the photos with what the person declared — name, date of birth, nationality — and with each other: the selfie should show the same face holding the same document. A rejection needs a reason; it is what they read on their verification page.",
+    queueTab: "Submissions",
+    rulesTab: "Accepted documents",
+    searchPlaceholder: "Email, account id or document number",
+    nothingWaiting: "Nothing waiting for review.",
+    noneMatch: "No submissions match.",
+    declared: "Declared",
+    document: "Document",
+    name: "Name",
+    birth: "Date of birth",
+    age: (years) => `${years} years old`,
+    minor: "Under 18",
+    citizenship: "Citizenship",
+    usPerson: "US person",
+    country: "Issuing country",
+    countryMismatch: "differs from citizenship",
+    type: "Type",
+    number: "Number",
+    submitted: "Sent",
+    attempts: (n) => (n === 1 ? "1 earlier attempt" : `${n} earlier attempts`),
+    sameDocument: (accounts) => `Same document on account ${accounts}`,
+    front: "Front",
+    back: "Back",
+    selfie: "Selfie with document",
+    openFull: "Open full size",
+    missing: "Not sent",
+    reviewed: (who, when) => `Decided by ${who} on ${when}`,
+    reason: "Reason",
+    reasonPlaceholder: "What was wrong, in words the person can act on",
+    presets: [
+      "The photo is blurry or cut off — every corner and every line must be readable.",
+      "The document is expired.",
+      "The selfie must show your face and the same document, held next to it.",
+      "The name on the document does not match the one on your account.",
+      "The date of birth does not match the one on your account.",
+      "This document type is not accepted for your country.",
+    ],
+    approve: "Approve",
+    reject: "Reject",
+    confirmApprove: "Approve this identity? The account becomes verified and can withdraw.",
+    needReason: "Write the reason first — the person reads it.",
+    docTypes: { ID_CARD: "ID card", DRIVERS_LICENSE: "Driver's licence", PASSPORT: "Passport", RESIDENCE_PERMIT: "Residence permit" },
+    rulesTitle: "Accepted documents by country",
+    rulesLead: "The countries offered on the verification form, and the documents each one may send. A country left out cannot be verified at all.",
+    noBack: "Passports are sent without a back; every other document needs both sides.",
+    addCountry: "Add country",
+    addCountryHint: "Two-letter ISO code, e.g. UY",
+    remove: "Remove",
+    save: "Save",
+    saved: "Saved.",
+    needOneDocument: (country) => `${country} needs at least one document.`,
+    unknownCountry: "That is not a two-letter country code.",
+    duplicate: "That country is already listed.",
+  },
   payouts: {
     heading: "Affiliate payouts",
     lead: "Affiliates asking to be paid. The amount left their balance when they asked; approving says it was sent, rejecting gives it back. Nothing here sends money.",
@@ -581,6 +692,7 @@ const pt: AdminMoneyCopy = {
     payouts: "Saques de afiliados",
     program: "Programa",
     advanced: "Avançado (JSON)",
+    kyc: "Verificação (KYC)",
     menu: "Menu",
     close: "Fechar",
     signOut: "Sair",
@@ -697,12 +809,14 @@ const pt: AdminMoneyCopy = {
     admin: "Admin",
     disable: "Desativar",
     enable: "Ativar",
-    approveKyc: "Aprovar verificação",
-    rejectKyc: "Recusar verificação",
     kyc: { NONE: "Não iniciada", PENDING: "Pendente", APPROVED: "Aprovada", REJECTED: "Recusada" },
     none: "Nenhuma conta encontrada.",
     filters: { all: "Todos", kycPending: "Verificação pendente", referred: "Indicados", closed: "Desativados" },
     confirmDisable: "Desativar esta conta? A pessoa sai do trading e não consegue entrar de novo.",
+    twoFactor: "2FA",
+    resetTwoFactor: "Resetar 2FA",
+    confirmResetTwoFactor: "Desativar a verificação em duas etapas desta conta? Faça isso só depois de confirmar quem está pedindo.",
+    reviewKyc: "Revisar documentos",
   },
   affiliates: {
     heading: "Afiliados",
@@ -826,6 +940,62 @@ const pt: AdminMoneyCopy = {
     saved: "Salvo. As novas comissões acumulam nestes termos.",
     saveFailed: "Não foi possível salvar.",
   },
+  kyc: {
+    heading: "Verificação (KYC)",
+    lead: "Documentos de identidade esperando conferência. Compare as fotos com o que a pessoa declarou — nome, data de nascimento, nacionalidade — e entre si: a selfie deve mostrar o mesmo rosto segurando o mesmo documento. Recusar exige um motivo; é o que a pessoa lê na página de verificação.",
+    queueTab: "Envios",
+    rulesTab: "Documentos aceitos",
+    searchPlaceholder: "E-mail, id da conta ou número do documento",
+    nothingWaiting: "Nada esperando revisão.",
+    noneMatch: "Nenhum envio encontrado.",
+    declared: "Declarado",
+    document: "Documento",
+    name: "Nome",
+    birth: "Data de nascimento",
+    age: (years) => `${years} anos`,
+    minor: "Menor de 18",
+    citizenship: "Nacionalidade",
+    usPerson: "US person",
+    country: "País emissor",
+    countryMismatch: "diferente da nacionalidade",
+    type: "Tipo",
+    number: "Número",
+    submitted: "Enviado",
+    attempts: (n) => (n === 1 ? "1 tentativa anterior" : `${n} tentativas anteriores`),
+    sameDocument: (accounts) => `Mesmo documento na conta ${accounts}`,
+    front: "Frente",
+    back: "Verso",
+    selfie: "Selfie com documento",
+    openFull: "Abrir em tamanho real",
+    missing: "Não enviado",
+    reviewed: (who, when) => `Decidido por ${who} em ${when}`,
+    reason: "Motivo",
+    reasonPlaceholder: "O que estava errado, em palavras que a pessoa consiga resolver",
+    presets: [
+      "A foto está desfocada ou cortada — todos os cantos e linhas precisam estar legíveis.",
+      "O documento está vencido.",
+      "A selfie precisa mostrar o seu rosto e o mesmo documento, segurado ao lado.",
+      "O nome no documento não confere com o da sua conta.",
+      "A data de nascimento não confere com a da sua conta.",
+      "Este tipo de documento não é aceito para o seu país.",
+    ],
+    approve: "Aprovar",
+    reject: "Recusar",
+    confirmApprove: "Aprovar esta identidade? A conta fica verificada e pode sacar.",
+    needReason: "Escreva o motivo antes — a pessoa vai lê-lo.",
+    docTypes: { ID_CARD: "RG / Identidade", DRIVERS_LICENSE: "CNH / Carteira de motorista", PASSPORT: "Passaporte", RESIDENCE_PERMIT: "Autorização de residência" },
+    rulesTitle: "Documentos aceitos por país",
+    rulesLead: "Os países oferecidos no formulário de verificação e os documentos que cada um pode enviar. Um país fora da lista não consegue se verificar.",
+    noBack: "Passaporte é enviado sem verso; todos os outros documentos precisam dos dois lados.",
+    addCountry: "Adicionar país",
+    addCountryHint: "Código ISO de duas letras, ex.: UY",
+    remove: "Remover",
+    save: "Salvar",
+    saved: "Salvo.",
+    needOneDocument: (country) => `${country} precisa de pelo menos um documento.`,
+    unknownCountry: "Isso não é um código de país de duas letras.",
+    duplicate: "Esse país já está na lista.",
+  },
   payouts: {
     heading: "Saques de afiliados",
     lead: "Afiliados pedindo para receber. O valor saiu do saldo quando pediram; aprovar diz que foi enviado, recusar devolve. Nada aqui envia dinheiro.",
@@ -859,6 +1029,7 @@ const es: AdminMoneyCopy = {
     payouts: "Retiros de afiliados",
     program: "Programa",
     advanced: "Avanzado (JSON)",
+    kyc: "Verificación (KYC)",
     menu: "Menú",
     close: "Cerrar",
     signOut: "Salir",
@@ -975,12 +1146,14 @@ const es: AdminMoneyCopy = {
     admin: "Admin",
     disable: "Desactivar",
     enable: "Activar",
-    approveKyc: "Aprobar verificación",
-    rejectKyc: "Rechazar verificación",
     kyc: { NONE: "Sin iniciar", PENDING: "Pendiente", APPROVED: "Aprobada", REJECTED: "Rechazada" },
     none: "Ninguna cuenta coincide.",
     filters: { all: "Todos", kycPending: "Verificación pendiente", referred: "Referidos", closed: "Desactivados" },
     confirmDisable: "¿Desactivar esta cuenta? Sale del trading y no puede volver a entrar.",
+    twoFactor: "2FA",
+    resetTwoFactor: "Restablecer 2FA",
+    confirmResetTwoFactor: "¿Desactivar la verificación en dos pasos de esta cuenta? Hazlo solo tras confirmar quién lo pide.",
+    reviewKyc: "Revisar documentos",
   },
   affiliates: {
     heading: "Afiliados",
@@ -1103,6 +1276,62 @@ const es: AdminMoneyCopy = {
     macros: "Macros del postback: {event} {click_id} {sub_id} {user_id} {amount} {currency}",
     saved: "Guardado. Las nuevas comisiones se acumulan con estos términos.",
     saveFailed: "No se pudo guardar.",
+  },
+  kyc: {
+    heading: "Verificación (KYC)",
+    lead: "Documentos de identidad pendientes de revisión. Compara las fotos con lo que la persona declaró — nombre, fecha de nacimiento, nacionalidad — y entre sí: la selfie debe mostrar la misma cara sosteniendo el mismo documento. Rechazar exige un motivo; es lo que la persona lee en su página de verificación.",
+    queueTab: "Envíos",
+    rulesTab: "Documentos aceptados",
+    searchPlaceholder: "Correo, id de cuenta o número de documento",
+    nothingWaiting: "Nada pendiente de revisión.",
+    noneMatch: "Ningún envío coincide.",
+    declared: "Declarado",
+    document: "Documento",
+    name: "Nombre",
+    birth: "Fecha de nacimiento",
+    age: (years) => `${years} años`,
+    minor: "Menor de 18",
+    citizenship: "Nacionalidad",
+    usPerson: "US person",
+    country: "País emisor",
+    countryMismatch: "distinto de la nacionalidad",
+    type: "Tipo",
+    number: "Número",
+    submitted: "Enviado",
+    attempts: (n) => (n === 1 ? "1 intento anterior" : `${n} intentos anteriores`),
+    sameDocument: (accounts) => `Mismo documento en la cuenta ${accounts}`,
+    front: "Anverso",
+    back: "Reverso",
+    selfie: "Selfie con documento",
+    openFull: "Abrir a tamaño real",
+    missing: "No enviado",
+    reviewed: (who, when) => `Decidido por ${who} el ${when}`,
+    reason: "Motivo",
+    reasonPlaceholder: "Qué estaba mal, en palabras con las que la persona pueda actuar",
+    presets: [
+      "La foto está borrosa o cortada — todas las esquinas y líneas deben ser legibles.",
+      "El documento está vencido.",
+      "La selfie debe mostrar tu cara y el mismo documento, sostenido al lado.",
+      "El nombre del documento no coincide con el de tu cuenta.",
+      "La fecha de nacimiento no coincide con la de tu cuenta.",
+      "Este tipo de documento no se acepta para tu país.",
+    ],
+    approve: "Aprobar",
+    reject: "Rechazar",
+    confirmApprove: "¿Aprobar esta identidad? La cuenta queda verificada y puede retirar.",
+    needReason: "Escribe el motivo primero — la persona lo leerá.",
+    docTypes: { ID_CARD: "Documento de identidad", DRIVERS_LICENSE: "Licencia de conducir", PASSPORT: "Pasaporte", RESIDENCE_PERMIT: "Permiso de residencia" },
+    rulesTitle: "Documentos aceptados por país",
+    rulesLead: "Los países que ofrece el formulario de verificación y los documentos que cada uno puede enviar. Un país fuera de la lista no puede verificarse.",
+    noBack: "El pasaporte se envía sin reverso; todos los demás documentos necesitan ambas caras.",
+    addCountry: "Añadir país",
+    addCountryHint: "Código ISO de dos letras, p. ej. UY",
+    remove: "Quitar",
+    save: "Guardar",
+    saved: "Guardado.",
+    needOneDocument: (country) => `${country} necesita al menos un documento.`,
+    unknownCountry: "Eso no es un código de país de dos letras.",
+    duplicate: "Ese país ya está en la lista.",
   },
   payouts: {
     heading: "Retiros de afiliados",

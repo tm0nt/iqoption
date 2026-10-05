@@ -216,6 +216,28 @@ model User {
   deletionRequestedAt DateTime? @map("deletion_requested_at")
 
   /**
+   * Two-step sign-in with an authenticator app (TOTP, RFC 6238).
+   *
+   * The secret is stored encrypted with a key derived from AUTH_SECRET, so a
+   * copy of the database alone does not hand anyone the second factor. It is
+   * written when setup starts and only counts once `twoFactorEnabledAt` is
+   * set, which happens when the person proves their app produces the codes.
+   *
+   * `twoFactorLastStep` is the 30-second step of the last code accepted; a code
+   * is never accepted twice, so one read over a shoulder cannot be replayed
+   * inside its own window. Recovery codes are kept as SHA-256 hashes and each
+   * is removed when used. Failures are counted and lock the second step for a
+   * while, because six digits is a million guesses and nothing else limits
+   * them.
+   */
+  twoFactorSecret      String?   @map("two_factor_secret") @db.VarChar(255)
+  twoFactorEnabledAt   DateTime? @map("two_factor_enabled_at")
+  twoFactorLastStep    Int?      @map("two_factor_last_step")
+  twoFactorRecovery    Json?     @map("two_factor_recovery")
+  twoFactorFailures    Int       @default(0) @map("two_factor_failures")
+  twoFactorLockedUntil DateTime? @map("two_factor_locked_until")
+
+  /**
    * The wallet this person is trading on.
    *
    * Everyone has a real and a practice wallet, and the traderoom lets them
@@ -257,6 +279,9 @@ model User {
   affiliate Affiliate?
   /// Set when this person arrived through someone else's link.
   referral  Referral?
+
+  /// Identity documents sent for review, newest last.
+  kycSubmissions KycSubmission[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -1034,4 +1059,59 @@ model AffiliatePostback {
 
   @@index([affiliateId, createdAt])
   @@map("affiliate_postbacks")
+}
+
+/// What an identity document is. A Brazilian RG or CIN is an ID card; a CNH
+/// is a driver's licence.
+enum KycDocumentType {
+  ID_CARD
+  DRIVERS_LICENSE
+  PASSPORT
+  RESIDENCE_PERMIT
+}
+
+/**
+ * One set of identity documents sent for review: the front, the back where the
+ * document has one, and a selfie holding it.
+ *
+ * A row per attempt rather than columns on the user, because a rejected
+ * attempt is part of the record — the next reviewer should see what was sent
+ * before and why it was turned down. The account's own `kycStatus` follows the
+ * latest decision.
+ *
+ * The files are named, not linked: they live outside `public` and are only
+ * ever served through a route that checks the person asking is the owner or an
+ * administrator. A URL in a column is a URL someone pastes into a chat.
+ */
+model KycSubmission {
+  id Int @id @default(autoincrement())
+
+  userId Int  @map("user_id")
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// ISO 3166-1 alpha-2 of the country that issued the document.
+  country        String          @db.Char(2)
+  documentType   KycDocumentType @map("document_type")
+  /// The document's number — or, for Brazil, the CPF, which every document
+  /// there carries and which is what a Brazilian KYC is keyed on.
+  documentNumber String          @map("document_number") @db.VarChar(64)
+
+  frontFile  String  @map("front_file") @db.VarChar(96)
+  backFile   String? @map("back_file") @db.VarChar(96)
+  selfieFile String  @map("selfie_file") @db.VarChar(96)
+
+  /// PENDING until reviewed; then APPROVED or REJECTED.
+  status       KycStatus @default(PENDING)
+  /// Why it was rejected, shown to the person so they can fix it.
+  reason       String?   @db.Text
+  reviewedById Int?      @map("reviewed_by_id")
+  reviewedAt   DateTime? @map("reviewed_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  /// The same document sent from two accounts is the first thing a reviewer wants to know.
+  @@index([country, documentNumber])
+  @@map("kyc_submissions")
 }

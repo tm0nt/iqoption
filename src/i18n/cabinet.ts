@@ -103,7 +103,6 @@ export type CabinetCopy = {
   security: {
     twoStepTitle: string;
     twoStepBody: string;
-    twoStepUnavailable: string;
     passwordTitle: string;
     passwordBody: string;
     passwordAction: string;
@@ -198,8 +197,6 @@ export type CabinetCopy = {
     emailStep: string;
     detailsStep: string;
     identityStep: string;
-    identityPending: string;
-    uploadMissing: string;
     personalInfo: string;
     residenceInfo: string;
     exactlyAsId: string;
@@ -352,7 +349,6 @@ const en: CabinetCopy = {
   security: {
     twoStepTitle: "2-Step Authentication",
     twoStepBody: "You will receive an extra confirmation code to log in to your account.",
-    twoStepUnavailable: "Not available yet. This account is protected by its password alone.",
     passwordTitle: "Change Password",
     passwordBody: "Choose a new password for your account.",
     passwordAction: "Change password",
@@ -445,8 +441,6 @@ const en: CabinetCopy = {
     emailStep: "Email confirmation",
     detailsStep: "Personal Details",
     identityStep: "Proof of Identity",
-    identityPending: "Your details are with us. The next step is a photo of an identity document, which a person reads against what you entered.",
-    uploadMissing: "Document upload is not built yet. Until it is, an account stays on the practice balance.",
     personalInfo: "Personal info",
     residenceInfo: "Residence info",
     exactlyAsId: "Provide your personal data exactly as it appears on your ID to avoid verification issues in the future.",
@@ -613,7 +607,6 @@ const pt: CabinetCopy = {
   security: {
     twoStepTitle: "Verificação em duas etapas",
     twoStepBody: "Você receberá um código de confirmação a mais para entrar na sua conta.",
-    twoStepUnavailable: "Ainda não disponível. Esta conta é protegida apenas pela senha.",
     passwordTitle: "Alterar senha",
     passwordBody: "Escolha uma nova senha para a sua conta.",
     passwordAction: "Alterar senha",
@@ -706,8 +699,6 @@ const pt: CabinetCopy = {
     emailStep: "Confirmação de e-mail",
     detailsStep: "Dados pessoais",
     identityStep: "Comprovante de identidade",
-    identityPending: "Recebemos seus dados. O próximo passo é a foto de um documento de identidade, que uma pessoa confere com o que você informou.",
-    uploadMissing: "O envio de documentos ainda não foi construído. Até lá, a conta permanece no saldo de treinamento.",
     personalInfo: "Dados pessoais",
     residenceInfo: "Dados de residência",
     exactlyAsId: "Informe seus dados exatamente como aparecem no seu documento, para evitar problemas na verificação depois.",
@@ -874,7 +865,6 @@ const es: CabinetCopy = {
   security: {
     twoStepTitle: "Verificación en dos pasos",
     twoStepBody: "Recibirás un código de confirmación adicional para entrar en tu cuenta.",
-    twoStepUnavailable: "Todavía no disponible. Esta cuenta está protegida solo por su contraseña.",
     passwordTitle: "Cambiar contraseña",
     passwordBody: "Elige una nueva contraseña para tu cuenta.",
     passwordAction: "Cambiar contraseña",
@@ -967,8 +957,6 @@ const es: CabinetCopy = {
     emailStep: "Confirmación de correo",
     detailsStep: "Datos personales",
     identityStep: "Prueba de identidad",
-    identityPending: "Hemos recibido tus datos. El siguiente paso es una foto de un documento de identidad, que una persona compara con lo que indicaste.",
-    uploadMissing: "La subida de documentos todavía no está construida. Hasta entonces, la cuenta se queda en el saldo de práctica.",
     personalInfo: "Datos personales",
     residenceInfo: "Datos de residencia",
     exactlyAsId: "Indica tus datos exactamente como aparecen en tu documento, para evitar problemas de verificación más adelante.",

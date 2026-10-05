@@ -2,6 +2,11 @@
  * What an administrator can change about an account: whether it can sign in,
  * and where its identity verification stands.
  *
+ * And, for someone who lost both their phone and their recovery codes, turn
+ * their two-step sign-in off — after which they sign in with the password and
+ * can set it up again. That is a support decision, made once identity has
+ * been checked some other way.
+ *
  * Not its role. Granting administrator rights stays a command-line act —
  * `npm run admin:grant` — for the reason given in scripts/grant-admin.ts: any
  * path from a web form to "can change what the platform trades" is a path an
@@ -15,6 +20,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
+import { TWO_FACTOR_OFF } from "@/lib/auth/two-factor";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +34,7 @@ export async function PATCH(request: Request, context: Context) {
   const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
   const session = await auth();
 
-  const data: { isActive?: boolean; closedAt?: Date | null; kycStatus?: (typeof KYC)[number] } = {};
+  const data: { isActive?: boolean; closedAt?: Date | null; kycStatus?: (typeof KYC)[number] } & Partial<typeof TWO_FACTOR_OFF> = {};
   if (typeof body?.isActive === "boolean") {
     if (!body.isActive && session?.user?.platformId === id) {
       return NextResponse.json({ error: "you cannot disable your own account" }, { status: 409 });
@@ -42,6 +48,7 @@ export async function PATCH(request: Request, context: Context) {
     }
     data.kycStatus = body.kycStatus as (typeof KYC)[number];
   }
+  if (body?.resetTwoFactor === true) Object.assign(data, TWO_FACTOR_OFF);
   if (Object.keys(data).length === 0) return NextResponse.json({ error: "nothing to change" }, { status: 400 });
 
   const exists = await prisma.user.findUnique({ where: { id }, select: { id: true } });

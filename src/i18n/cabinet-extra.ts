@@ -100,6 +100,79 @@ export type CabinetExtraCopy = {
     kycRejected: string;
     kycApproved: string;
   };
+  twoFactor: {
+    on: string;
+    off: string;
+    onSince: (date: string) => string;
+    enable: string;
+    disable: string;
+    setupTitle: string;
+    step1: string;
+    step2: string;
+    manualKey: string;
+    step3: string;
+    code: string;
+    confirm: string;
+    cancel: string;
+    codesTitle: string;
+    codesBody: string;
+    copy: string;
+    copied: string;
+    download: string;
+    done: string;
+    disableTitle: string;
+    disableBody: string;
+    password: string;
+    regenerate: string;
+    regenerateBody: string;
+    recoveryLeft: (n: number) => string;
+    invalidCode: string;
+    locked: string;
+    wrongPassword: string;
+    alreadyOn: string;
+    notOn: string;
+    failed: string;
+  };
+  kyc: {
+    lead: string;
+    country: string;
+    documentType: string;
+    docTypes: Record<"ID_CARD" | "DRIVERS_LICENSE" | "PASSPORT" | "RESIDENCE_PERMIT", string>;
+    cpf: string;
+    cpfHint: string;
+    number: string;
+    numberHint: string;
+    front: string;
+    frontHint: string;
+    back: string;
+    backHint: string;
+    selfie: string;
+    selfieHint: string;
+    choose: string;
+    change: string;
+    formats: string;
+    submit: string;
+    sending: string;
+    reviewTitle: string;
+    reviewBody: (date: string) => string;
+    rejectedTitle: string;
+    reason: string;
+    editDetails: string;
+    needDetails: string;
+    alreadyVerified: string;
+    alreadyPending: string;
+    tooMany: string;
+    countryInvalid: string;
+    docTypeInvalid: string;
+    cpfInvalid: string;
+    numberInvalid: string;
+    frontRequired: string;
+    backRequired: string;
+    selfieRequired: string;
+    fileType: string;
+    fileSize: string;
+    failed: string;
+  };
 };
 
 const en: CabinetExtraCopy = {
@@ -195,6 +268,79 @@ const en: CabinetExtraCopy = {
     detailsLead: "Providing correct personal information will facilitate the verification of your account and its funding. The details you provide will be kept confidential.",
     kycRejected: "Your verification was not approved. Check that your details match your identity document exactly and send them again.",
     kycApproved: "Your identity is verified. Nothing else is needed.",
+  },
+  twoFactor: {
+    on: "On",
+    off: "Off",
+    onSince: (date) => `On since ${date}.`,
+    enable: "Turn on",
+    disable: "Turn off",
+    setupTitle: "Set up your authenticator app",
+    step1: "Install an authenticator app — Google Authenticator, Microsoft Authenticator, Authy or 1Password.",
+    step2: "Scan this QR code with the app, or type the key in by hand.",
+    manualKey: "Key",
+    step3: "Enter the 6-digit code the app shows.",
+    code: "Code",
+    confirm: "Turn on",
+    cancel: "Cancel",
+    codesTitle: "Save your recovery codes",
+    codesBody: "Each code signs you in once if you lose your phone. Keep them somewhere safe: they are not shown again.",
+    copy: "Copy",
+    copied: "Copied",
+    download: "Download",
+    done: "I have saved them",
+    disableTitle: "Turn off two-step sign-in",
+    disableBody: "Enter your password and a code from your app, or a recovery code.",
+    password: "Password",
+    regenerate: "New recovery codes",
+    regenerateBody: "Enter a code from your app. Your old recovery codes stop working.",
+    recoveryLeft: (n) => `${n} recovery code${n === 1 ? "" : "s"} left.`,
+    invalidCode: "That code is not right.",
+    locked: "Too many wrong codes. Try again in 15 minutes.",
+    wrongPassword: "That password is not right.",
+    alreadyOn: "Two-step sign-in is already on.",
+    notOn: "Two-step sign-in is not on.",
+    failed: "That did not work. Try again.",
+  },
+  kyc: {
+    lead: "Send a clear photo of your document and a selfie holding it. A person compares them with the details you entered, usually within one business day.",
+    country: "Country that issued the document",
+    documentType: "Document",
+    docTypes: { ID_CARD: "Identity card", DRIVERS_LICENSE: "Driver's license", PASSPORT: "Passport", RESIDENCE_PERMIT: "Residence permit" },
+    cpf: "CPF",
+    cpfHint: "Every Brazilian document carries it, and it is what your account is checked against.",
+    number: "Document number",
+    numberHint: "Exactly as it is printed on the document.",
+    front: "Front",
+    frontHint: "The whole document, all four corners in the frame, nothing covered, no glare.",
+    back: "Back",
+    backHint: "The other side, the same way.",
+    selfie: "Selfie with the document",
+    selfieHint: "Your face and the document beside it, both clearly visible.",
+    choose: "Choose a photo",
+    change: "Change",
+    formats: "JPG, PNG or WebP. Large photos are reduced before they are sent.",
+    submit: "Send for review",
+    sending: "Sending…",
+    reviewTitle: "Your documents are being reviewed",
+    reviewBody: (date) => `Sent on ${date}. The result will appear here.`,
+    rejectedTitle: "Your documents were not accepted",
+    reason: "Reason",
+    editDetails: "Edit personal details",
+    needDetails: "Fill in your personal details first.",
+    alreadyVerified: "Your identity is already verified.",
+    alreadyPending: "Your documents are already being reviewed.",
+    tooMany: "Too many attempts today. Try again tomorrow.",
+    countryInvalid: "Choose the country that issued the document.",
+    docTypeInvalid: "Choose a document that country is accepted with.",
+    cpfInvalid: "That CPF is not valid.",
+    numberInvalid: "Enter the number as it appears on the document.",
+    frontRequired: "Add a photo of the front.",
+    backRequired: "Add a photo of the back.",
+    selfieRequired: "Add a selfie with the document.",
+    fileType: "Only JPG, PNG or WebP photos are accepted.",
+    fileSize: "That photo is larger than 8 MB.",
+    failed: "Could not send that. Try again.",
   },
 };
 
@@ -292,6 +438,79 @@ const pt: CabinetExtraCopy = {
     kycRejected: "Sua verificação não foi aprovada. Confira se os dados batem exatamente com seu documento de identidade e envie de novo.",
     kycApproved: "Sua identidade está verificada. Não é preciso mais nada.",
   },
+  twoFactor: {
+    on: "Ativada",
+    off: "Desativada",
+    onSince: (date) => `Ativada desde ${date}.`,
+    enable: "Ativar",
+    disable: "Desativar",
+    setupTitle: "Configure seu app autenticador",
+    step1: "Instale um app autenticador — Google Authenticator, Microsoft Authenticator, Authy ou 1Password.",
+    step2: "Escaneie este QR code com o app, ou digite a chave manualmente.",
+    manualKey: "Chave",
+    step3: "Digite o código de 6 dígitos que o app mostra.",
+    code: "Código",
+    confirm: "Ativar",
+    cancel: "Cancelar",
+    codesTitle: "Guarde seus códigos de recuperação",
+    codesBody: "Cada código permite entrar uma vez se você perder o celular. Guarde-os em local seguro: eles não serão mostrados de novo.",
+    copy: "Copiar",
+    copied: "Copiado",
+    download: "Baixar",
+    done: "Já guardei",
+    disableTitle: "Desativar a verificação em duas etapas",
+    disableBody: "Digite sua senha e um código do app, ou um código de recuperação.",
+    password: "Senha",
+    regenerate: "Novos códigos de recuperação",
+    regenerateBody: "Digite um código do app. Os códigos de recuperação antigos deixam de funcionar.",
+    recoveryLeft: (n) => `Restam ${n} código${n === 1 ? "" : "s"} de recuperação.`,
+    invalidCode: "Esse código não está certo.",
+    locked: "Muitos códigos errados. Tente de novo em 15 minutos.",
+    wrongPassword: "Essa senha não está certa.",
+    alreadyOn: "A verificação em duas etapas já está ativada.",
+    notOn: "A verificação em duas etapas não está ativada.",
+    failed: "Não deu certo. Tente de novo.",
+  },
+  kyc: {
+    lead: "Envie uma foto nítida do seu documento e uma selfie segurando-o. Uma pessoa compara com os dados que você informou, normalmente em até um dia útil.",
+    country: "País que emitiu o documento",
+    documentType: "Documento",
+    docTypes: { ID_CARD: "Carteira de identidade (RG/CIN)", DRIVERS_LICENSE: "Carteira de motorista (CNH)", PASSPORT: "Passaporte", RESIDENCE_PERMIT: "Autorização de residência" },
+    cpf: "CPF",
+    cpfHint: "Todo documento brasileiro traz o CPF, e é com ele que sua conta é conferida.",
+    number: "Número do documento",
+    numberHint: "Exatamente como está impresso no documento.",
+    front: "Frente",
+    frontHint: "O documento inteiro, os quatro cantos na foto, nada coberto, sem reflexo.",
+    back: "Verso",
+    backHint: "O outro lado, do mesmo jeito.",
+    selfie: "Selfie com o documento",
+    selfieHint: "Seu rosto e o documento ao lado, os dois bem visíveis.",
+    choose: "Escolher foto",
+    change: "Trocar",
+    formats: "JPG, PNG ou WebP. Fotos grandes são reduzidas antes do envio.",
+    submit: "Enviar para análise",
+    sending: "Enviando…",
+    reviewTitle: "Seus documentos estão em análise",
+    reviewBody: (date) => `Enviados em ${date}. O resultado aparece aqui.`,
+    rejectedTitle: "Seus documentos não foram aceitos",
+    reason: "Motivo",
+    editDetails: "Editar dados pessoais",
+    needDetails: "Preencha seus dados pessoais primeiro.",
+    alreadyVerified: "Sua identidade já está verificada.",
+    alreadyPending: "Seus documentos já estão em análise.",
+    tooMany: "Muitas tentativas hoje. Tente de novo amanhã.",
+    countryInvalid: "Escolha o país que emitiu o documento.",
+    docTypeInvalid: "Escolha um documento aceito para esse país.",
+    cpfInvalid: "Esse CPF não é válido.",
+    numberInvalid: "Digite o número como aparece no documento.",
+    frontRequired: "Adicione a foto da frente.",
+    backRequired: "Adicione a foto do verso.",
+    selfieRequired: "Adicione a selfie com o documento.",
+    fileType: "Só aceitamos fotos JPG, PNG ou WebP.",
+    fileSize: "Essa foto tem mais de 8 MB.",
+    failed: "Não foi possível enviar. Tente de novo.",
+  },
 };
 
 const es: CabinetExtraCopy = {
@@ -387,6 +606,79 @@ const es: CabinetExtraCopy = {
     detailsLead: "Facilitar tus datos personales correctamente agiliza la verificación de tu cuenta y sus depósitos. Los datos que nos des se mantienen confidenciales.",
     kycRejected: "Tu verificación no fue aprobada. Comprueba que tus datos coinciden exactamente con tu documento de identidad y envíalos de nuevo.",
     kycApproved: "Tu identidad está verificada. No hace falta nada más.",
+  },
+  twoFactor: {
+    on: "Activada",
+    off: "Desactivada",
+    onSince: (date) => `Activada desde ${date}.`,
+    enable: "Activar",
+    disable: "Desactivar",
+    setupTitle: "Configura tu app de autenticación",
+    step1: "Instala una app de autenticación — Google Authenticator, Microsoft Authenticator, Authy o 1Password.",
+    step2: "Escanea este código QR con la app, o escribe la clave a mano.",
+    manualKey: "Clave",
+    step3: "Introduce el código de 6 dígitos que muestra la app.",
+    code: "Código",
+    confirm: "Activar",
+    cancel: "Cancelar",
+    codesTitle: "Guarda tus códigos de recuperación",
+    codesBody: "Cada código te permite entrar una vez si pierdes el teléfono. Guárdalos en un lugar seguro: no se volverán a mostrar.",
+    copy: "Copiar",
+    copied: "Copiado",
+    download: "Descargar",
+    done: "Ya los guardé",
+    disableTitle: "Desactivar la verificación en dos pasos",
+    disableBody: "Introduce tu contraseña y un código de la app, o un código de recuperación.",
+    password: "Contraseña",
+    regenerate: "Nuevos códigos de recuperación",
+    regenerateBody: "Introduce un código de la app. Tus códigos de recuperación anteriores dejan de funcionar.",
+    recoveryLeft: (n) => `Te quedan ${n} código${n === 1 ? "" : "s"} de recuperación.`,
+    invalidCode: "Ese código no es correcto.",
+    locked: "Demasiados códigos incorrectos. Vuelve a intentarlo en 15 minutos.",
+    wrongPassword: "Esa contraseña no es correcta.",
+    alreadyOn: "La verificación en dos pasos ya está activada.",
+    notOn: "La verificación en dos pasos no está activada.",
+    failed: "No funcionó. Inténtalo de nuevo.",
+  },
+  kyc: {
+    lead: "Envía una foto nítida de tu documento y un selfie sosteniéndolo. Una persona los compara con los datos que indicaste, normalmente en un día hábil.",
+    country: "País que emitió el documento",
+    documentType: "Documento",
+    docTypes: { ID_CARD: "Documento de identidad", DRIVERS_LICENSE: "Licencia de conducir", PASSPORT: "Pasaporte", RESIDENCE_PERMIT: "Permiso de residencia" },
+    cpf: "CPF",
+    cpfHint: "Todo documento brasileño lleva el CPF, y es con él que se verifica tu cuenta.",
+    number: "Número del documento",
+    numberHint: "Exactamente como aparece impreso en el documento.",
+    front: "Anverso",
+    frontHint: "El documento entero, las cuatro esquinas en la foto, nada tapado, sin reflejos.",
+    back: "Reverso",
+    backHint: "El otro lado, de la misma forma.",
+    selfie: "Selfie con el documento",
+    selfieHint: "Tu cara y el documento al lado, ambos bien visibles.",
+    choose: "Elegir foto",
+    change: "Cambiar",
+    formats: "JPG, PNG o WebP. Las fotos grandes se reducen antes de enviarlas.",
+    submit: "Enviar para revisión",
+    sending: "Enviando…",
+    reviewTitle: "Tus documentos están en revisión",
+    reviewBody: (date) => `Enviados el ${date}. El resultado aparecerá aquí.`,
+    rejectedTitle: "Tus documentos no fueron aceptados",
+    reason: "Motivo",
+    editDetails: "Editar datos personales",
+    needDetails: "Completa primero tus datos personales.",
+    alreadyVerified: "Tu identidad ya está verificada.",
+    alreadyPending: "Tus documentos ya están en revisión.",
+    tooMany: "Demasiados intentos hoy. Vuelve a intentarlo mañana.",
+    countryInvalid: "Elige el país que emitió el documento.",
+    docTypeInvalid: "Elige un documento aceptado para ese país.",
+    cpfInvalid: "Ese CPF no es válido.",
+    numberInvalid: "Introduce el número como aparece en el documento.",
+    frontRequired: "Añade la foto del anverso.",
+    backRequired: "Añade la foto del reverso.",
+    selfieRequired: "Añade el selfie con el documento.",
+    fileType: "Solo se aceptan fotos JPG, PNG o WebP.",
+    fileSize: "Esa foto pesa más de 8 MB.",
+    failed: "No se pudo enviar. Inténtalo de nuevo.",
   },
 };
 
