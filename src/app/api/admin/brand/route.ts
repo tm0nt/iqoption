@@ -6,6 +6,7 @@
  * is not an administrator before this runs.
  */
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { setting, type Brand } from "@/lib/engine/settings";
 
@@ -63,8 +64,30 @@ export async function PATCH(request: Request) {
     next.primary = primary;
   }
 
+  /*
+   * The three sentences a link preview and a browser tab are made of. Each is
+   * allowed to be empty: a platform that has not written a tagline should show
+   * none rather than ours.
+   */
+  for (const [field, max] of [["tagline", 160], ["description", 320]] as const) {
+    const value = text(body[field], max);
+    if (value !== null) next[field] = value;
+  }
+
+  const siteUrl = text(body.siteUrl, 256);
+  if (siteUrl !== null) {
+    /*
+     * Checked rather than trusted: it becomes an `og:url` and a canonical, and
+     * a `javascript:` there is a link anyone following the card would run.
+     */
+    if (siteUrl && !/^https?:\/\/[^\s/$.?#][^\s]*$/i.test(siteUrl)) {
+      return NextResponse.json({ error: "the address has to start with http:// or https://" }, { status: 400 });
+    }
+    next.siteUrl = siteUrl.replace(/\/+$/, "");
+  }
+
   // An empty string clears a logo, which is how you go back to the build's own.
-  for (const slot of ["logoUrl", "logoBigUrl"] as const) {
+  for (const slot of ["logoUrl", "logoBigUrl", "iconUrl"] as const) {
     const value = text(body[slot], 512);
     if (value === null) continue;
     if (value && !value.startsWith("/api/admin/brand/logo/")) {
@@ -78,6 +101,18 @@ export async function PATCH(request: Request) {
     update: { value: next },
     create: { key: "brand", value: next },
   });
+
+  /*
+   * The name is in the root layout's metadata, and the auth pages under it are
+   * prerendered — so without this they keep serving the name they were built
+   * with. Measured, not assumed: the login page answered with the old name
+   * while the row already held the new one.
+   *
+   * `"layout"` on `/` reaches every page beneath it, which is all of them.
+   * From a route handler this marks the paths rather than rebuilding them now,
+   * so the cost falls on the first visit to each after a rename.
+   */
+  revalidatePath("/", "layout");
 
   return NextResponse.json({ brand: next });
 }

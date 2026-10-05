@@ -19,15 +19,26 @@ export const dynamic = "force-dynamic";
 
 const TYPES: Record<string, string> = { png: "image/png", jpg: "image/jpeg", svg: "image/svg+xml" };
 
-/** What the mirrored build carries, for a platform that has uploaded nothing. */
-const BUILT_IN: Record<string, string> = { main: "logo.png", big: "logo-big.png" };
+/**
+ * What the mirrored build carries, for a platform that has uploaded nothing.
+ *
+ * The icon has no counterpart in the engine build — the tab icon came from the
+ * site's SEO folder — so it falls back there instead.
+ */
+const BUILT_IN: Record<string, string> = { main: "engine/logo.png", big: "engine/logo-big.png" };
+const BUILT_IN_ICON = "sites/trade-avalonbroker-com-6f41c8f2/en-login-301e30be/seo/favicon.png";
+
+/** Which brand field holds each slot's upload. */
+const FIELD = { main: "logoUrl", big: "logoBigUrl", icon: "iconUrl" } as const;
 
 export async function GET(_request: Request, context: { params: Promise<{ slot: string }> }) {
   const { slot } = await context.params;
-  if (slot !== "main" && slot !== "big") return NextResponse.json({ error: "no such logo" }, { status: 404 });
+  if (slot !== "main" && slot !== "big" && slot !== "icon") {
+    return NextResponse.json({ error: "no such logo" }, { status: 404 });
+  }
 
   const brand = await setting("brand");
-  const uploaded = slot === "main" ? brand.logoUrl : brand.logoBigUrl;
+  const uploaded = brand[FIELD[slot]];
 
   /*
    * The stored value is the URL of this platform's own upload route, so the
@@ -49,7 +60,8 @@ export async function GET(_request: Request, context: { params: Promise<{ slot: 
   }
 
   // Nothing uploaded, or the file is gone: the build's own.
-  const body = await readFile(path.join(process.cwd(), "public", "engine", BUILT_IN[slot])).catch(() => null);
+  const builtIn = slot === "icon" ? BUILT_IN_ICON : BUILT_IN[slot];
+  const body = await readFile(path.join(process.cwd(), "public", builtIn)).catch(() => null);
   if (!body) return NextResponse.json({ error: "no logo" }, { status: 404 });
 
   return new NextResponse(new Uint8Array(body), {

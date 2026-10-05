@@ -37,6 +37,24 @@ export type Brand = {
   theme: "black" | "white" | "blue" | "grey";
   /** The accent, as a CSS colour. Drives the cabinet's buttons and links. */
   primary: string;
+  /** The square mark for the browser tab. Empty falls back to the build's. */
+  iconUrl: string;
+  /**
+   * The headline a link preview shows.
+   *
+   * Separate from `name` because they are different sentences: the tab says
+   * the platform's name, and a card shared into a chat says what it is for.
+   */
+  tagline: string;
+  /** The sentence under that headline, and the page's meta description. */
+  description: string;
+  /**
+   * The platform's own address, for the canonical and `og:url` tags.
+   *
+   * Empty leaves both out, which is right until a platform knows where it
+   * lives: a link preview pointing at the wrong host is worse than none.
+   */
+  siteUrl: string;
 };
 export type EngineSession = { userId: number };
 export type DemoBalance = { amount: number; currency: string };
@@ -54,6 +72,10 @@ const DEFAULTS = {
     logoBigUrl: "",
     theme: "black",
     primary: "#00b17a",
+    iconUrl: "",
+    tagline: "Online trading platform",
+    description: "Trade forex, stocks, ETFs and options.",
+    siteUrl: "",
   } satisfies Brand,
   "trading.demoBalance": { amount: 10000, currency: "USD" } satisfies DemoBalance,
 };

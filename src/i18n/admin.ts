@@ -37,6 +37,14 @@ export type AdminCopy = {
     themes: Record<"black" | "white" | "blue" | "grey", string>;
     logo: string;
     logoBig: string;
+    icon: string;
+    tagline: string;
+    taglineHint: string;
+    description: string;
+    descriptionHint: string;
+    siteUrl: string;
+    siteUrlHint: string;
+    preview: string;
     usingBuilt: string;
     chooseFile: string;
     revert: string;
@@ -255,6 +263,14 @@ const en: AdminCopy = {
     themes: { black: "Black", white: "White", blue: "Blue", grey: "Grey" },
     logo: "Logo",
     logoBig: "Large logo",
+    icon: "Tab icon",
+    tagline: "Tagline",
+    taglineHint: "The headline a shared link shows, above the platform's name.",
+    description: "Description",
+    descriptionHint: "The sentence search results and link previews show.",
+    siteUrl: "Address",
+    siteUrlHint: "Where this platform lives, for the canonical and the link preview. Empty leaves both out, which is better than pointing at the wrong host.",
+    preview: "What a shared link shows",
     usingBuilt: "Using the built-in logo",
     chooseFile: "Upload an image",
     revert: "Use the built-in one",
@@ -480,6 +496,14 @@ const pt: AdminCopy = {
     themes: { black: "Preto", white: "Branco", blue: "Azul", grey: "Cinza" },
     logo: "Logo",
     logoBig: "Logo grande",
+    icon: "Ícone da aba",
+    tagline: "Chamada",
+    taglineHint: "O título que um link compartilhado mostra, acima do nome da plataforma.",
+    description: "Descrição",
+    descriptionHint: "A frase que aparece nos resultados de busca e na prévia de links.",
+    siteUrl: "Endereço",
+    siteUrlHint: "Onde esta plataforma fica, para o canonical e a prévia de link. Vazio deixa os dois de fora, o que é melhor do que apontar para o host errado.",
+    preview: "O que um link compartilhado mostra",
     usingBuilt: "Usando o logo original",
     chooseFile: "Enviar uma imagem",
     revert: "Voltar ao original",
@@ -705,6 +729,14 @@ const es: AdminCopy = {
     themes: { black: "Negro", white: "Blanco", blue: "Azul", grey: "Gris" },
     logo: "Logo",
     logoBig: "Logo grande",
+    icon: "Icono de la pestaña",
+    tagline: "Lema",
+    taglineHint: "El titular que muestra un enlace compartido, sobre el nombre de la plataforma.",
+    description: "Descripción",
+    descriptionHint: "La frase que muestran los resultados de búsqueda y la vista previa de enlaces.",
+    siteUrl: "Dirección",
+    siteUrlHint: "Dónde vive esta plataforma, para el canonical y la vista previa. Vacío deja los dos fuera, que es mejor que apuntar al host equivocado.",
+    preview: "Lo que muestra un enlace compartido",
     usingBuilt: "Usando el logo original",
     chooseFile: "Subir una imagen",
     revert: "Volver al original",

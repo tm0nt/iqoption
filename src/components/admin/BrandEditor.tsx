@@ -60,7 +60,7 @@ export function BrandEditor({ brand, locale }: { brand: Brand; locale: string })
     });
   }
 
-  async function upload(slot: "logoUrl" | "logoBigUrl", file: File) {
+  async function upload(slot: "logoUrl" | "logoBigUrl" | "iconUrl", file: File) {
     setError(null);
     const form = new FormData();
     form.set("logo", file);
@@ -104,6 +104,68 @@ export function BrandEditor({ brand, locale }: { brand: Brand; locale: string })
             onBlur={() => draft.supportEmail !== brand.supportEmail && save({ supportEmail: draft.supportEmail })}
             className={field}
           />
+        </div>
+      </section>
+
+      <section className="space-y-5">
+        <div>
+          <span className={label}>{t.tagline}</span>
+          <input
+            value={draft.tagline}
+            onChange={(e) => setDraft({ ...draft, tagline: e.target.value })}
+            onBlur={() => draft.tagline !== brand.tagline && save({ tagline: draft.tagline })}
+            className={field}
+          />
+          <p className="mt-1.5 text-[12px] text-[#73747a]">{t.taglineHint}</p>
+        </div>
+
+        <div>
+          <span className={label}>{t.description}</span>
+          <textarea
+            rows={2}
+            value={draft.description}
+            onChange={(e) => setDraft({ ...draft, description: e.target.value })}
+            onBlur={() => draft.description !== brand.description && save({ description: draft.description })}
+            className={field}
+          />
+          <p className="mt-1.5 text-[12px] text-[#73747a]">{t.descriptionHint}</p>
+        </div>
+
+        <div>
+          <span className={label}>{t.siteUrl}</span>
+          <input
+            value={draft.siteUrl}
+            onChange={(e) => setDraft({ ...draft, siteUrl: e.target.value })}
+            onBlur={() => draft.siteUrl !== brand.siteUrl && save({ siteUrl: draft.siteUrl })}
+            placeholder="https://"
+            className={field}
+          />
+          <p className="mt-1.5 text-[12px] text-[#73747a]">{t.siteUrlHint}</p>
+        </div>
+
+        {/*
+          * The card as a chat or a search result would draw it. These three
+          * fields are never seen on the platform itself, so without this they
+          * are edited blind — and a tagline reads differently next to the name
+          * it will actually sit beside.
+          */}
+        <div>
+          <span className={label}>{t.preview}</span>
+          <div className="max-w-[460px] overflow-hidden rounded border border-white/10 bg-[#0f1013]">
+            <div className="flex items-center gap-2.5 border-b border-white/5 px-4 py-2.5">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={draft.iconUrl || "/api/brand/logo/icon"} alt="" className="size-4 object-contain" />
+              <span className="truncate text-[12px] text-[#73747a]">
+                {(draft.siteUrl || "example.com").replace(/^https?:\/\//, "")}
+              </span>
+            </div>
+            <div className="px-4 py-3">
+              <p className="text-[14px] font-medium text-[#8ab4f8]">
+                {draft.tagline ? `${draft.tagline} | ${draft.name}` : draft.name}
+              </p>
+              <p className="mt-1 text-[12px] leading-5 text-[#a0a1a6]">{draft.description}</p>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -162,10 +224,12 @@ export function BrandEditor({ brand, locale }: { brand: Brand; locale: string })
         <p className="mt-2 text-[12px] text-[#73747a]">{t.themeHint}</p>
       </section>
 
-      <section className="grid gap-5 sm:grid-cols-2">
-        {(["logoUrl", "logoBigUrl"] as const).map((slot) => (
+      <section className="grid gap-5 sm:grid-cols-3">
+        {(["logoUrl", "logoBigUrl", "iconUrl"] as const).map((slot) => (
           <div key={slot}>
-            <span className={label}>{slot === "logoUrl" ? t.logo : t.logoBig}</span>
+            <span className={label}>
+              {slot === "logoUrl" ? t.logo : slot === "logoBigUrl" ? t.logoBig : t.icon}
+            </span>
 
             <div className="flex h-24 items-center justify-center rounded border border-dashed border-white/15 bg-[#0f1013] px-4">
               {draft[slot] ? (

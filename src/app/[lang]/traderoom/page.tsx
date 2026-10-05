@@ -3,10 +3,14 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { EngineHost } from "@/components/traderoom/EngineHost";
 import { mintTradingSession } from "@/lib/auth/trading-session";
-import { engineConfig } from "@/lib/engine/settings";
+import { engineConfig, setting } from "@/lib/engine/settings";
 import { isLocale } from "@/i18n/avalon";
 
-export const metadata: Metadata = { title: "Avalon" };
+// The traderoom's tab says the platform's name and nothing else, which is what
+// the live site does — and the name is a row, so it says whatever it is now.
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await setting("brand")).name };
+}
 
 /*
  * Read on every request. The configuration lives in `platform_settings`, so an

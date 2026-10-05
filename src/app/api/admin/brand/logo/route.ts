@@ -16,6 +16,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { randomBytes } from "node:crypto";
 import path from "node:path";
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { setting } from "@/lib/engine/settings";
 
@@ -53,7 +54,7 @@ export async function POST(request: Request) {
   const form = await request.formData().catch(() => null);
   const file = form?.get("logo");
   const slot = String(form?.get("slot") ?? "logoUrl");
-  if (slot !== "logoUrl" && slot !== "logoBigUrl") {
+  if (slot !== "logoUrl" && slot !== "logoBigUrl" && slot !== "iconUrl") {
     return NextResponse.json({ error: "unknown slot" }, { status: 400 });
   }
   if (!(file instanceof File)) return NextResponse.json({ error: "choose a file" }, { status: 400 });
@@ -79,6 +80,10 @@ export async function POST(request: Request) {
     update: { value: { ...brand, [slot]: url } },
     create: { key: "brand", value: { ...brand, [slot]: url } },
   });
+
+  // The tab icon is in the root layout's metadata, so the prerendered pages
+  // under it have to be told. Same reason as the rename next door.
+  revalidatePath("/", "layout");
 
   return NextResponse.json({ url });
 }
