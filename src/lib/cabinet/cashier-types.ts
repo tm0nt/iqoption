@@ -77,23 +77,34 @@ export const CASHIER_DEFAULTS: CashierSettings = {
  * edited. An unmatched method keeps the lettered badge, which is why this
  * returns null instead of a placeholder: a wrong logo is worse than initials.
  *
- * The files are mirrored by `scripts/download-artwork.mjs` and cut from the
- * engine's sprite atlas; where the platform has no logo of its own — Tether,
- * USDC, Cardano, BNB, whose artwork only exists with an OTC badge burnt into
- * it — the generic crypto mark stands in rather than a coin logo from
- * somewhere else.
+ * The files are the platform's own, lifted from the deposit page's billing
+ * frame — a separate app on `billing.trade.avalonbroker.com` embedded in an
+ * iframe, which is why every earlier attempt to find them on the page came
+ * back with nothing. Ten methods, ten icons, matching what the real cashier
+ * draws.
  */
 const METHOD_ICONS: [RegExp, string][] = [
-  [/bitcoin|\bbtc\b/i, "/storage/cashier/methods/bitcoin.png"],
-  [/ethereum|\beth\b/i, "/storage/cashier/methods/eth.png"],
-  [/litecoin|\bltc\b/i, "/storage/cashier/methods/ltc.png"],
-  [/ripple|\bxrp\b/i, "/storage/cashier/methods/xrp.png"],
+  /*
+   * Most specific first, and it matters. "Tether" contains the letters of
+   * "eth" and "USDC (BNB Smart Chain)" contains "BNB", so a looser order hands
+   * Tether's icon to Ethereum and USDC's to Binance — which is exactly what
+   * happened the first time these were matched.
+   */
+  [/tether|usdt/i, "/storage/cashier/methods/usdt.svg"],
+  [/usdc|usd coin/i, "/storage/cashier/methods/usdc.svg"],
+  [/\bpix\b/i, "/storage/cashier/methods/pix.svg"],
+  [/other crypto/i, "/storage/cashier/methods/other_cryptos.svg"],
+  [/binance|\bbnb\b/i, "/storage/cashier/methods/bnb.svg"],
+  [/bitcoin|\bbtc\b/i, "/storage/cashier/methods/bitcoin.svg"],
+  [/cardano|\bada\b/i, "/storage/cashier/methods/ada.svg"],
+  [/ethereum|\beth\b/i, "/storage/cashier/methods/eth.svg"],
+  [/litecoin|\bltc\b/i, "/storage/cashier/methods/ltc.svg"],
+  [/ripple|\bxrp\b/i, "/storage/cashier/methods/xrp.svg"],
   [/visa/i, "/storage/cashier/methods/visa.svg"],
   [/maestro/i, "/storage/cashier/methods/maestro.svg"],
   [/mastercard|master card/i, "/storage/cashier/methods/mastercard.svg"],
-  [/\bpix\b|bank|transfer|boleto/i, "/storage/cashier/methods/wallet.svg"],
-  // Anything else crypto-shaped: the generic mark.
-  [/coin|crypto|usdt|usdc|tether|cardano|\bada\b|\bbnb\b|binance|solana|\bsol\b|doge/i, "/storage/cashier/methods/other_cryptos.svg"],
+  // Anything else crypto-shaped: the platform's own generic mark.
+  [/coin|crypto/i, "/storage/cashier/methods/other_cryptos.svg"],
 ];
 
 export function methodIcon(method: CashierMethod): string | null {
