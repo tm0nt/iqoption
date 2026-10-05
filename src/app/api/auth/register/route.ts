@@ -9,12 +9,15 @@
  * A new account gets a practice wallet and nothing else. Real money is a
  * separate decision and is not made here.
  */
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
+import { cookies } from "next/headers";
 import bcrypt from "bcryptjs";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import { registerSchema } from "@/lib/auth/validation";
 import { setting } from "@/lib/engine/settings";
+import { CLICK_COOKIE, attachReferral } from "@/lib/affiliate/tracking";
+import { firePostback } from "@/lib/affiliate/postback";
 
 export const dynamic = "force-dynamic";
 
@@ -69,6 +72,24 @@ export async function POST(request: Request) {
       },
       select: { id: true, email: true, name: true },
     });
+
+    /*
+     * Whose link they came through, if anyone's. After the account exists and
+     * never instead of it: `attachReferral` swallows its own failures, because
+     * a lost commission is recoverable and a lost registration is not.
+     */
+    const jar = await cookies();
+    const referral = await attachReferral(user.id, jar.get(CLICK_COOKIE)?.value, request.headers);
+    if (referral) {
+      jar.delete(CLICK_COOKIE);
+      after(() =>
+        firePostback(referral.affiliateId, "registration", {
+          userId: user.id,
+          clickId: referral.clickId,
+          subId: referral.subId,
+        }),
+      );
+    }
 
     // No session here. Registering and signing in are separate steps, so a
     // failure to sign in is visible rather than hidden behind a redirect.
