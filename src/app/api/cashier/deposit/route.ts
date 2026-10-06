@@ -37,6 +37,7 @@ import { formatMoney } from "@/lib/cabinet/format";
 import { checkDepositPromo } from "@/lib/cabinet/promo";
 import { settleTransaction } from "@/lib/cabinet/settle";
 import { cardProvider, type ChargeResult } from "@/lib/payments/cards/provider";
+import { pixProvider } from "@/lib/payments/pix/provider";
 import { cardLabel, isExpired } from "@/lib/payments/cards/card-types";
 import { cabinetExtra } from "@/i18n/cabinet-extra";
 
@@ -168,6 +169,52 @@ export async function POST(request: Request) {
     },
     select: { id: true, amount: true, bonus: true, status: true, method: true },
   });
+
+  /*
+   * A PIX deposit has a rail of its own.
+   *
+   * It is not a card: there is no charge to approve here and now. The
+   * provider opens an invoice and answers with a string the person pastes
+   * into their bank; the money arrives later as a webhook, or never. So the
+   * row stays PENDING and what comes back is something to *show*.
+   *
+   * `providerRef` is what the webhook matches on, and it is the provider's
+   * own id rather than one we invented — theirs is what the callback echoes.
+   * Without it a paid deposit would arrive with nothing to attach it to.
+   */
+  if (!provider && method.kind === "bank" && /\bpix\b/i.test(method.name)) {
+    const pix = pixProvider();
+    if (pix) {
+      const charge = await pix.createCharge({
+        externalId: `dep-${transaction.id}`,
+        amount: amount!,
+        description: `${method.name} · ${transaction.id}`,
+      });
+
+      if (!charge) {
+        /*
+         * The row is left PENDING rather than deleted. Somebody asked to
+         * deposit and that is worth a record; the cashier can settle or
+         * reject it by hand, which is exactly what happens on a platform
+         * with no provider at all.
+         */
+        return NextResponse.json(
+          { transaction, pix: null, error: "O provedor PIX não respondeu. O pedido ficou registrado para o caixa." },
+          { status: 201 },
+        );
+      }
+
+      await prisma.transaction.update({
+        where: { id: transaction.id },
+        data: { providerRef: charge.externalId, note: `PIX via ${pix.id}. Aguardando pagamento.` },
+      });
+
+      return NextResponse.json(
+        { transaction, pix: { brCode: charge.brCode, qrImage: charge.qrImage, amount: charge.amount } },
+        { status: 201 },
+      );
+    }
+  }
 
   if (!provider || !card) return NextResponse.json({ transaction }, { status: 201 });
 
