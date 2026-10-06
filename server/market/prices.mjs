@@ -14,6 +14,7 @@
 
 import * as binance from "./binance.mjs";
 import * as twelvedata from "./twelvedata.mjs";
+import * as fastforex from "./fastforex.mjs";
 
 const OCTAVES = 6;
 /** Each octave is this much faster than the one before. */
@@ -67,7 +68,7 @@ function fbm(seed, x) {
  * called once per candle, and a source that is handled in one and forgotten in
  * the other is a chart whose bars and whose price disagree.
  */
-const FEEDS = { BINANCE: binance, TWELVEDATA: twelvedata };
+const FEEDS = { BINANCE: binance, TWELVEDATA: twelvedata, FASTFOREX: fastforex };
 
 function feedFor(active) {
   return FEEDS[active.source] ?? null;

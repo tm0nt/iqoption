@@ -1,10 +1,10 @@
 # Engine host — o que falta
 
-Estado em 5 de outubro de 2026. O traderoom roda em `/[lang]/traderoom`,
+Estado em 6 de outubro de 2026. O traderoom roda em `/[lang]/traderoom`,
 servido pelo Next, atrás de login: contas, carteiras e negócios vivem no MySQL,
-o catálogo de instrumentos também, os preços de cripto vêm da Binance e EURUSD
-da Twelve Data. As oito páginas de conta estão clonadas e ligadas. O painel de
-administração está em `/[lang]/admin`, aberto só a quem tem papel `ADMIN`, em
+o catálogo de instrumentos também, os preços de cripto vêm da Binance e os
+cinco pares de forex da fastforex. As oito páginas de conta estão clonadas e
+ligadas. O painel de administração está em `/[lang]/admin`, aberto só a quem tem papel `ADMIN`, em
 três idiomas. A marca — logo, nome, tema, cor — é um punhado de linhas no banco
 e alcança o engine.
 
@@ -145,33 +145,47 @@ assíncrona por todo o roteador — `openOption` é chamada de dentro do tratame
 do frame e a resposta carrega o id. Enquanto for um processo só, isto é uma
 restrição anotada, não um defeito.
 
-### 5. Forex real existe, mas só num par
+### 5. Forex é real nos cinco pares
 
-`TWELVEDATA` entrou como fonte ao lado de `BINANCE` e `SIMULATED`, e EURUSD usa
-preço de verdade. Os outros quatro pares seguem na curva determinística — não
-por falta de código, mas porque o plano gratuito da Twelve Data **transmite só
-EUR/USD**. GBP/USD, USD/JPY, AUD/USD e USD/CAD respondem no REST e são
-recusados no stream, mesmo pedidos sozinhos.
+`FASTFOREX` entrou como terceira fonte e os cinco pares usam preço de verdade,
+em 1s, 5s e 60s. Cruzado com a cotação ao vivo do vendor, os cinco ficam
+dentro de **0,1 pip** — a diferença é o intervalo entre o último tick e a
+consulta.
 
-Apontá-los para a Twelve Data daria barras de minuto reais e velas de cinco
-segundos vindas da curva — o mesmo instrumento mostrando dois mercados
-diferentes conforme você troca de prazo. Por isso o módulo **recusa servir**
-qualquer símbolo que o stream rejeitou, e eles ficam inteiros na curva. Um
-plano que os transmita não precisa de código: é trocar a fonte na tela de
-Instrumentos e recarregar o catálogo.
+A Twelve Data continua como fonte disponível e é por que vale registrar a
+comparação, medida nos mesmos cinco pares em trinta segundos:
 
-Três coisas sobre esse feed que custam tempo se forem redescobertas:
+| | Twelve Data (free) | fastforex |
+|---|---|---|
+| Símbolos no stream | 1, e só EUR/USD | 5 por conexão, 2 conexões |
+| Ticks | 14 | **1736** |
+| Preço | médio | **bid e ask** |
 
-- **Uma conexão por chave.** Uma segunda não é recusada, ela *assume* e derruba
-  a primeira. Rodar qualquer sonda contra a mesma chave enquanto o feed está de
-  pé rouba o stream em silêncio, e as velas de 5s caem para a curva. Lê-se
-  exatamente como feed quebrado.
-- **O `timestamp` do stream é o minuto da barra, não o segundo do tick.** A
-  série de um segundo é chaveada pelo segundo de chegada; o timestamp do vendor
-  serve as séries de minuto e hora, que é o que ele descreve.
-- **Os baldes de um segundo vivem em memória.** Um restart apaga a janela de
-  ~16 minutos, e velas de 5s anteriores a ele voltam à curva até o buffer
-  encher de novo. Persistir é possível e não foi feito.
+O que **falta**, e é tudo do plano de teste, não do código:
+
+- **Profundidade de histórico.** A chave de teste recusa além de ~200 horas
+  com `Historical data limited during trial`. O módulo para de paginar e fica
+  com o que já pegou, em vez de perder o instrumento — mas o gráfico não
+  alcança meses atrás.
+- **Cinco pares por conexão.** São duas conexões, logo dez pares no total. Um
+  sexto par hoje seria recusado; o módulo avisa e o manda para a curva em vez
+  de deixá-lo meio real.
+- **O bid/ask do mercado ainda não é usado como spread.** O módulo guarda os
+  dois lados e expõe `quoteAt`, mas o `quote()` do feed continua aplicando o
+  meio-spread configurado em `spreadPlus`/`spreadMinus` sobre o preço médio.
+  Ligar um no outro é pequeno e não foi feito.
+
+Três coisas do feed que custam tempo se forem redescobertas:
+
+- **Intervalos são durações ISO 8601** e só três existem: a própria API
+  responde `Options are [P1D, PT1H, PT1M]`. Sem granularidade de segundo — a
+  série de um segundo é deste servidor, montada do stream, e é ela que torna a
+  vela de cinco segundos verdadeira.
+- **`limit` vai até 100.** Profundidade vem de paginar para trás com `end=`.
+- **Uma série que falha não pode derrubar o instrumento.** Com barras de
+  minuto e o stream, o instrumento serve; a primeira versão falhava o
+  instrumento inteiro quando a série de hora era recusada, e mandou os cinco
+  pares de volta para a curva.
 
 ### 6. O `/reload` não é automático
 

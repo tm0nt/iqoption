@@ -37,6 +37,10 @@ model AssetGroup {
 enum PriceSource {
   /// Binance klines and live trades, keyed by `sourceSymbol`.
   BINANCE
+  /// fastforex, for forex. `sourceSymbol` is their spelling: `EURUSD`.
+  /// Five pairs per stream connection, bid and ask, every tick — which is why
+  /// it exists beside TWELVEDATA. See server/market/fastforex.mjs.
+  FASTFOREX
   /// Twelve Data, for forex. `sourceSymbol` is their spelling: `EUR/USD`.
   /// Its REST stops at one minute, so the one-second series is recorded from
   /// their tick stream by this server — see server/market/twelvedata.mjs.

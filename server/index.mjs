@@ -27,6 +27,7 @@ import { MarketFeed } from "./market/feed.mjs";
 import { ACTIVES, activeById, loadCatalog } from "./market/actives.mjs";
 import * as binance from "./market/binance.mjs";
 import * as twelvedata from "./market/twelvedata.mjs";
+import * as fastforex from "./market/fastforex.mjs";
 import { loadNextPositionId } from "./market/position-store.mjs";
 import { startSettlement, stopSettlement } from "./market/settlement.mjs";
 import { openSession } from "./accounts.mjs";
@@ -42,11 +43,18 @@ import { priceAt, round } from "./market/prices.mjs";
  * edited.
  */
 async function warmFeeds(log) {
-  const results = await Promise.all([binance.warmUp(ACTIVES, log), twelvedata.warmUp(ACTIVES, log)]);
+  const results = await Promise.all([
+    binance.warmUp(ACTIVES, log),
+    twelvedata.warmUp(ACTIVES, log),
+    fastforex.warmUp(ACTIVES, log),
+  ]);
   const ready = results.flatMap((result) => result.ready);
   const failed = results.flatMap((result) => result.failed);
   for (const symbol of twelvedata.unavailable()) {
     failed.push(`${symbol} (not on this Twelve Data plan)`);
+  }
+  for (const symbol of fastforex.unavailable()) {
+    failed.push(`${symbol} (not on this fastforex plan)`);
   }
   return { ready, failed };
 }
@@ -95,8 +103,10 @@ const http = createServer((request, response) => {
         const { ready, failed } = await warmFeeds(log);
         binance.disconnect();
         twelvedata.disconnect();
+        fastforex.disconnect();
         binance.connect(ACTIVES, WebSocket, log);
         twelvedata.connect(ACTIVES, WebSocket, log, console.log);
+        fastforex.connect(ACTIVES, WebSocket, log, console.log);
 
   /*
    * One settlement loop for the process, not one per connection. A deal reaches
@@ -206,7 +216,7 @@ async function start() {
    */
   for (const active of ACTIVES) {
     if (active.source === "SIMULATED" || active.base) continue;
-    const feed = active.source === "TWELVEDATA" ? twelvedata : binance;
+    const feed = active.source === "TWELVEDATA" ? twelvedata : active.source === "FASTFOREX" ? fastforex : binance;
     const price = feed.priceAt(active, Date.now() / 1000);
     if (price) {
       active.base = price;
@@ -216,6 +226,7 @@ async function start() {
 
   binance.connect(ACTIVES, WebSocket, log);
   twelvedata.connect(ACTIVES, WebSocket, log, console.log);
+  fastforex.connect(ACTIVES, WebSocket, log, console.log);
 
   /*
    * One settlement loop for the process, not one per connection. A deal reaches
@@ -242,6 +253,7 @@ for (const signal of ["SIGINT", "SIGTERM"]) {
     stopSettlement();
     binance.disconnect();
     twelvedata.disconnect();
+    fastforex.disconnect();
     wss.close();
     http.close(() => process.exit(0));
   });
