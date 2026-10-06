@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
+import { AsYouType, type CountryCode } from "libphonenumber-js/max";
 import { cn } from "@/lib/utils";
 import { SelectCaret } from "../shared/icons";
 import { dialKey, flagSrc } from "../shared/countries";
@@ -10,6 +11,8 @@ import type { AvalonDialCode } from "@/types/avalon-login";
 interface PhoneFieldProps {
   dial: AvalonDialCode;
   onDialChange: (dial: AvalonDialCode) => void;
+  value: string;
+  onChange: (value: string) => void;
   placeholder: string;
   searchPlaceholder: string;
   /** The locale's own dial-code list, already named and ordered as the site serves it. */
@@ -24,6 +27,8 @@ interface PhoneFieldProps {
 export function PhoneField({
   dial,
   onDialChange,
+  value,
+  onChange,
   placeholder,
   searchPlaceholder,
   dialCodes,
@@ -31,6 +36,34 @@ export function PhoneField({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const rootRef = useRef<HTMLDivElement>(null);
+  const phoneInputRef = useRef<HTMLInputElement>(null);
+  const cursorRef = useRef<number | null>(null);
+
+  const formattedPhone = useMemo(
+    () => new AsYouType(dial.iso.toUpperCase() as CountryCode).input(value.replace(/\D/g, "")),
+    [dial.iso, value],
+  );
+
+  useEffect(() => {
+    if (cursorRef.current === null || !phoneInputRef.current) return;
+    phoneInputRef.current.setSelectionRange(cursorRef.current, cursorRef.current);
+    cursorRef.current = null;
+  }, [formattedPhone]);
+
+  function handlePhoneChange(input: HTMLInputElement) {
+    const beforeCursor = input.value.slice(0, input.selectionStart ?? input.value.length);
+    const digitsBeforeCursor = beforeCursor.replace(/\D/g, "").length;
+    const digits = input.value.replace(/\D/g, "");
+    const formatted = new AsYouType(dial.iso.toUpperCase() as CountryCode).input(digits);
+    let cursor = 0;
+    let seen = 0;
+    while (cursor < formatted.length && seen < digitsBeforeCursor) {
+      if (/\d/.test(formatted[cursor])) seen += 1;
+      cursor += 1;
+    }
+    cursorRef.current = cursor;
+    onChange(digits);
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -144,10 +177,14 @@ export function PhoneField({
         >
           <div className="avalon-field avalon-field-end relative h-[50px] w-full">
             <input
+              ref={phoneInputRef}
               data-test-id="register-mandatory-phone-field-input"
               name="phone"
               type="tel"
+              inputMode="tel"
               step="any"
+              value={formattedPhone}
+              onChange={(event) => handlePhoneChange(event.currentTarget)}
               placeholder={placeholder}
               autoComplete="new-password"
               className="box-border h-12 w-full border-0 bg-transparent px-4 font-avalon text-[14px] font-medium leading-[16.1px] text-avalon-text outline-none"

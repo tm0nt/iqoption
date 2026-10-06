@@ -50,8 +50,13 @@ const nextConfig: NextConfig = {
             // `connect-src` — the page runs third-party code by design, and
             // what matters is that none of it can call home.
             //
-            // `connect-src` is scoped to localhost, so pointing the page at a
-            // remote feed means widening this first.
+            // `connect-src` names every host the page may reach. The
+            // production domain is here because that is where the feed lives
+            // once deployed; `ws.trade.avalonbroker.com` is the broker's own
+            // socket, and it is worth knowing it is listed — the host shim
+            // rewrites `/echo/websocket` to this platform's feed before the
+            // engine opens it, so nothing uses that entry today, and removing
+            // it would make the policy match the intent exactly.
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
@@ -61,7 +66,7 @@ const nextConfig: NextConfig = {
               "font-src 'self'",
               "media-src 'self'",
               "worker-src 'self' blob:",
-              "connect-src 'self' ws://localhost:* http://localhost:*",
+              "connect-src 'self' ws://localhost:* http://localhost:* wss://ws.trade.avalonbroker.com wss://trading.spalone.com",
               "frame-src 'none'",
               "object-src 'none'",
               "base-uri 'self'",

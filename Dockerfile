@@ -16,6 +16,8 @@ WORKDIR /app
 
 # Copy package-related files first to leverage Docker's caching mechanism
 COPY package.json yarn.lock* package-lock.json* pnpm-lock.yaml* .npmrc* ./
+COPY prisma ./prisma
+COPY prisma7.config.ts ./prisma7.config.ts
 
 # Install project dependencies with frozen lockfile for reproducible builds
 RUN --mount=type=cache,target=/root/.npm \
@@ -42,6 +44,7 @@ WORKDIR /app
 
 # Copy project dependencies from dependencies stage
 COPY --from=dependencies /app/node_modules ./node_modules
+COPY --from=dependencies /app/src/generated/prisma ./src/generated/prisma
 
 # Copy application source code
 COPY . .
@@ -112,3 +115,21 @@ EXPOSE 3000
 
 # Start Next.js standalone server
 CMD ["node", "server.js"]
+
+# ============================================
+# Market data WebSocket service
+# ============================================
+
+FROM dependencies AS engine
+
+WORKDIR /app
+COPY . .
+
+ENV NODE_ENV=production
+ENV AVALON_SERVER_PORT=3100
+
+EXPOSE 3100
+
+USER node
+
+CMD ["node", "server/index.mjs"]

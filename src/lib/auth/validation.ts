@@ -1,9 +1,7 @@
 /**
  * What a registration form accepts.
  *
- * The rules are deliberately explicit rather than a regex each: a person who is
- * refused needs to be told which rule they broke, and a single pattern can only
- * say "invalid". Every failure here carries a message meant to be shown.
+ * Validation errors carry a message meant to be shown beside the field.
  */
 import { z } from "zod";
 /*
@@ -17,84 +15,26 @@ import { parsePhoneNumberWithError, type CountryCode } from "libphonenumber-js/m
 
 /* --------------------------------------------------------------- password */
 
-/** The longest password a bcrypt hash actually reads. */
+/** bcrypt only reads the first 72 bytes of a password. */
 const BCRYPT_LIMIT = 72;
-
-/**
- * Passwords people reach for first. A length rule alone passes every one of
- * them, and they are the first thing any credential-stuffing list tries.
- */
-const COMMON = new Set([
-  "password", "password1", "passw0rd", "12345678", "123456789", "1234567890",
-  "qwertyui", "qwerty123", "iloveyou", "princess", "admin123", "welcome1",
-  "abc12345", "trustno1", "sunshine", "football", "baseball", "superman",
-  "letmein1", "monkey12", "dragon12", "master12", "shadow12", "michael1",
-  "senha123", "mudar123", "brasil123", "flamengo", "corinthians",
-]);
 
 export type PasswordProblem =
   | "too-short"
-  | "too-long"
-  | "needs-lowercase"
-  | "needs-uppercase"
-  | "needs-digit"
-  | "needs-symbol"
-  | "too-common"
-  | "repeats"
-  | "sequential";
+  | "too-long";
 
 const PASSWORD_MESSAGES: Record<PasswordProblem, string> = {
-  "too-short": "Use at least 10 characters.",
+  "too-short": "Use at least 8 characters.",
   "too-long": `Use at most ${BCRYPT_LIMIT} characters.`,
-  "needs-lowercase": "Add a lowercase letter.",
-  "needs-uppercase": "Add an uppercase letter.",
-  "needs-digit": "Add a digit.",
-  "needs-symbol": "Add a symbol, such as ! ? @ or -.",
-  "too-common": "This is one of the most guessed passwords. Choose another.",
-  repeats: "Avoid repeating one character several times in a row.",
-  sequential: "Avoid runs like 1234 or abcd.",
 };
 
-/** Four or more of the same character in a row. */
-function hasRun(password: string) {
-  return /(.)\1{3,}/.test(password);
-}
-
-/** Four or more consecutive code points, forwards or backwards. */
-function hasSequence(password: string) {
-  const lower = password.toLowerCase();
-  let ascending = 1;
-  let descending = 1;
-  for (let i = 1; i < lower.length; i += 1) {
-    const step = lower.charCodeAt(i) - lower.charCodeAt(i - 1);
-    ascending = step === 1 ? ascending + 1 : 1;
-    descending = step === -1 ? descending + 1 : 1;
-    if (ascending >= 4 || descending >= 4) return true;
-  }
-  return false;
-}
-
-/**
- * Every rule a password breaks, not just the first.
- *
- * Returning all of them lets a form show its whole checklist at once, which is
- * the difference between fixing a password in one edit and in four.
- */
+/** Enforce an eight-character minimum and bcrypt's input limit. */
 export function passwordProblems(password: string): PasswordProblem[] {
   const problems: PasswordProblem[] = [];
 
-  if (password.length < 10) problems.push("too-short");
+  if (password.length < 8) problems.push("too-short");
   // bcrypt silently ignores anything past 72 bytes, so a longer password is
   // not the password the user thinks it is.
   if (Buffer.byteLength(password, "utf8") > BCRYPT_LIMIT) problems.push("too-long");
-  if (!/\p{Ll}/u.test(password)) problems.push("needs-lowercase");
-  if (!/\p{Lu}/u.test(password)) problems.push("needs-uppercase");
-  if (!/\p{Nd}/u.test(password)) problems.push("needs-digit");
-  if (!/[^\p{L}\p{Nd}]/u.test(password)) problems.push("needs-symbol");
-  if (COMMON.has(password.toLowerCase())) problems.push("too-common");
-  if (hasRun(password)) problems.push("repeats");
-  if (hasSequence(password)) problems.push("sequential");
-
   return problems;
 }
 
@@ -105,16 +45,14 @@ export function passwordMessage(problem: PasswordProblem) {
 /**
  * A coarse 0–4 score, for a strength meter.
  *
- * It is not an entropy estimate and should never be presented as one: it counts
- * the variety and length a password has, and anything that breaks a rule above
- * scores zero regardless.
+ * It is a visual length indicator, not an entropy estimate.
  */
 export function passwordStrength(password: string): 0 | 1 | 2 | 3 | 4 {
   if (passwordProblems(password).length > 0) return 0;
   let score = 1;
-  if (password.length >= 14) score += 1;
-  if (password.length >= 20) score += 1;
-  if (new Set(password).size >= password.length * 0.7) score += 1;
+  if (password.length >= 10) score += 1;
+  if (password.length >= 12) score += 1;
+  if (password.length >= 16) score += 1;
   return Math.min(score, 4) as 0 | 1 | 2 | 3 | 4;
 }
 
@@ -234,13 +172,6 @@ export const registerSchema = z
     const phone = parseMobile(value.phone, value.phoneCountry as CountryCode | undefined);
     if (!phone.ok) {
       ctx.addIssue({ code: "custom", message: phone.message, path: ["phone"] });
-      return z.NEVER;
-    }
-    // A password that contains the address it protects is the first thing
-    // tried against a leaked user list.
-    const local = value.email.split("@")[0];
-    if (local.length >= 4 && value.password.toLowerCase().includes(local.toLowerCase())) {
-      ctx.addIssue({ code: "custom", message: "Your password cannot contain your email.", path: ["password"] });
       return z.NEVER;
     }
     return { ...value, phone: phone.e164, phoneCountry: phone.country };

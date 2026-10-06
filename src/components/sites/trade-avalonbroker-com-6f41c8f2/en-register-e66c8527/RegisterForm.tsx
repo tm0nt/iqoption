@@ -37,6 +37,7 @@ export function RegisterForm({ copy, locale }: RegisterFormProps) {
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [busy, setBusy] = useState(false);
   const [password, setPassword] = useState("");
+  const [phone, setPhone] = useState("");
   const countries = useMemo(() => localizedCountries(locale), [locale]);
   const dialCodes = useMemo(() => localizedDialCodes(locale), [locale]);
 
@@ -71,7 +72,7 @@ export function RegisterForm({ copy, locale }: RegisterFormProps) {
           name: [first, last].filter(Boolean).join(" ") || undefined,
           // The dial code and the number, which the server parses together
           // against the chosen country rather than trusting either alone.
-          phone: `${dial.dial}${String(form.get("phone") ?? "").replace(/\D/g, "")}`,
+          phone: `${dial.dial}${phone.replace(/\D/g, "")}`,
           phoneCountry: dial.iso.toUpperCase(),
           acceptedTerms: true,
         }),
@@ -163,6 +164,8 @@ export function RegisterForm({ copy, locale }: RegisterFormProps) {
         dial={dial}
         dialCodes={dialCodes}
         onDialChange={(next) => setSelectedDial(dialKey(next))}
+        value={phone}
+        onChange={setPhone}
         placeholder={copy.phonePlaceholder}
         searchPlaceholder={copy.countrySearchPlaceholder}
       />

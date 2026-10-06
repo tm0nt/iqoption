@@ -58,10 +58,39 @@ const CONTENT_TYPES: Record<string, string> = {
 };
 
 /** The answers built from the database rather than read from disk. */
-const DYNAMIC = new Set(["company.json", "check-session.json", "geoip.json", "webinars.json"]);
+const DYNAMIC = new Set(["appinit.json", "company.json", "check-session.json", "geoip.json", "webinars.json"]);
+
+/**
+ * The engine replaces the first host label with `company.subdomain` during
+ * boot. An empty value therefore turns `trading.example.com` into
+ * `example.com`. Return the current label when the engine would otherwise
+ * rewrite it, so the traderoom stays on the hostname that served the page.
+ */
+function appSubdomain(request: Request) {
+  const forwarded = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
+  const host = (forwarded?.split(",", 1)[0] ?? new URL(request.url).host)
+    .trim()
+    .replace(/:\d+$/, "")
+    .toLowerCase();
+  const labels = host.split(".");
+  const first = labels[0] ?? "";
+  const shallow =
+    labels.length <= 2 || first === "int" || first === "trade" || first.startsWith("build");
+
+  return shallow ? "" : first;
+}
 
 async function dynamicBody(file: string, request: Request) {
   const config = await engineConfig();
+
+  if (file === "appinit.json") {
+    const raw = await readFile(path.join(process.cwd(), "public", "engine-host", "appinit.json"), "utf8");
+    const appinit = JSON.parse(raw) as {
+      company?: Record<string, unknown>;
+    };
+    appinit.company = { ...appinit.company, subdomain: appSubdomain(request) };
+    return appinit;
+  }
 
   if (file === "webinars.json") {
     /*

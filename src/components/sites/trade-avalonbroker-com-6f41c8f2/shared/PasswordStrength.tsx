@@ -4,14 +4,8 @@ import { passwordProblems, passwordStrength, passwordMessage } from "@/lib/auth/
 import { cn } from "@/lib/utils";
 
 /**
- * What is still wrong with a password, while it is being typed.
- *
- * The same rules the server applies, run here as well — not instead. The server
- * is the one that decides; this exists so the decision is not a surprise after
- * a round trip.
- *
- * It shows every unmet rule at once rather than the first, so the password can
- * be fixed in one edit instead of four.
+ * Shows password length feedback as the user types; the server applies the
+ * same minimum and bcrypt input limit when creating the account.
  */
 export function PasswordStrength({ password }: { password: string }) {
   if (!password) return null;

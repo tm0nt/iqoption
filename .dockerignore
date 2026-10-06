@@ -1,5 +1,6 @@
 # Dependencies (reinstalled inside Docker)
 node_modules
+/src/generated/prisma
 pnpm-debug.log*
 npm-debug.log*
 yarn-debug.log*
@@ -37,7 +38,6 @@ CLAUDE.md
 
 # Docs / research (large, not needed at runtime)
 docs
-scripts
 
 # Docker files themselves (no need to copy into image)
 Dockerfile
